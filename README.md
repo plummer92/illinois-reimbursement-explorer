@@ -73,3 +73,9 @@ For this MVP, the dashboard groups HSAs into:
 - `Downstate / Smaller Market`
 
 This is a research proxy, not a definitive rural/urban designation. A later version should add facility address, county, ZIP, RUCA, and Census urbanized-area matching.
+
+## Capital Equity Method
+
+Illinois HFS nursing facility rates are interpreted as per-resident-per-day Medicaid reimbursement amounts. The dashboard separates the total per diem into nursing, support, and capital components, then compares capital reimbursement by geography.
+
+The Capital Equity tab uses capital rate as a proxy for capital funding pressure and infrastructure modernization risk. It is not proof of actual facility investment behavior, deferred maintenance, or ownership-level capital spending.

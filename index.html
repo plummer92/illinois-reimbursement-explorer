@@ -57,6 +57,7 @@
             <button class="tab active" data-tab="records">Records</button>
             <button class="tab" data-tab="geography">Geography</button>
             <button class="tab" data-tab="analysis">Analysis</button>
+            <button class="tab" data-tab="capital">Capital Equity</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -128,6 +129,41 @@
                 <h3>Lowest Published Rates</h3>
                 <div id="bottomFacilities" class="facility-list"></div>
               </section>
+            </div>
+          </section>
+
+          <section id="capitalPanel" class="panel" aria-labelledby="capital">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Capital planning</p>
+                <h2>Capital Equity</h2>
+              </div>
+            </div>
+            <div class="callout">
+              Illinois HFS nursing facility rates are per-resident-per-day Medicaid reimbursement amounts. The total per diem is made up of nursing, support, and capital components.
+            </div>
+            <div id="capitalFindingList" class="finding-list"></div>
+            <div class="capital-grid">
+              <section>
+                <h3>Capital by Geography</h3>
+                <div id="capitalGeographyRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Lowest Capital Rates</h3>
+                <div id="lowestCapitalRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Highest Capital Rates</h3>
+                <div id="highestCapitalRows" class="data-table"></div>
+              </section>
+            </div>
+            <section class="watchlist-section">
+              <h3>Infrastructure Risk Watchlist</h3>
+              <p class="status">Bottom 20% of facilities by capital reimbursement within the current filters.</p>
+              <div id="capitalWatchlistRows" class="data-table wide"></div>
+            </section>
+            <div class="callout muted-callout">
+              Capital rate is not the same as actual capital spending. It is a reimbursement component and should be interpreted as a proxy for capital funding pressure, not proof of facility investment decisions.
             </div>
           </section>
 

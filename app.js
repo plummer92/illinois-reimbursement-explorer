@@ -30,6 +30,7 @@ const els = {
     records: document.querySelector("#recordsPanel"),
     geography: document.querySelector("#geographyPanel"),
     analysis: document.querySelector("#analysisPanel"),
+    capital: document.querySelector("#capitalPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -39,7 +40,12 @@ const els = {
   findingList: document.querySelector("#findingList"),
   componentRows: document.querySelector("#componentRows"),
   topFacilities: document.querySelector("#topFacilities"),
-  bottomFacilities: document.querySelector("#bottomFacilities")
+  bottomFacilities: document.querySelector("#bottomFacilities"),
+  capitalFindingList: document.querySelector("#capitalFindingList"),
+  capitalGeographyRows: document.querySelector("#capitalGeographyRows"),
+  lowestCapitalRows: document.querySelector("#lowestCapitalRows"),
+  highestCapitalRows: document.querySelector("#highestCapitalRows"),
+  capitalWatchlistRows: document.querySelector("#capitalWatchlistRows")
 };
 
 async function loadData() {
@@ -73,6 +79,7 @@ function render() {
   renderSources();
   renderGeography();
   renderAnalysis();
+  renderCapitalEquity();
 }
 
 function renderMetrics() {
@@ -228,6 +235,20 @@ function renderAnalysis() {
   els.findingList.innerHTML = renderFindings(records);
 }
 
+function renderCapitalEquity() {
+  const records = getCapitalRecords();
+  const geographyGroups = summarizeCapitalByGeography(records);
+  const lowest = getCapitalRankedFacilities(records, "asc", 10);
+  const highest = getCapitalRankedFacilities(records, "desc", 10);
+  const watchlist = getCapitalWatchlist(records);
+
+  els.capitalFindingList.innerHTML = renderCapitalFindings(geographyGroups, watchlist);
+  els.capitalGeographyRows.innerHTML = renderCapitalGeographyRows(geographyGroups);
+  els.lowestCapitalRows.innerHTML = renderCapitalFacilityRows(lowest);
+  els.highestCapitalRows.innerHTML = renderCapitalFacilityRows(highest);
+  els.capitalWatchlistRows.innerHTML = renderCapitalWatchlistRows(watchlist);
+}
+
 function summarizeBy(records, getKey) {
   const groups = new Map();
 
@@ -342,11 +363,167 @@ function renderFacilityRows(records, direction) {
     <article class="facility-row">
       <div>
         <strong>${escapeHtml(record.facility)}</strong>
-        <small>${escapeHtml(record.city)} · ${escapeHtml(record.geography?.tier || "Unclassified")} · ${escapeHtml(record.category)}</small>
+        <small>${escapeHtml(record.city)} / ${escapeHtml(record.geography?.tier || "Unclassified")} / ${escapeHtml(record.category)}</small>
       </div>
       <div class="comparison-value">${currency.format(record.publishedAmount)}</div>
     </article>
   `).join("");
+}
+
+function getCapitalRecords() {
+  return getFilteredRecords().filter((record) => (
+    Number.isFinite(record.components?.capitalRate)
+    && Number.isFinite(record.components?.supportRate)
+    && Number.isFinite(record.components?.nursingRate)
+    && Number.isFinite(record.publishedAmount)
+  ));
+}
+
+function summarizeCapitalByGeography(records) {
+  const groups = new Map();
+
+  records.forEach((record) => {
+    const key = record.geography?.tier || "Unclassified";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        count: 0,
+        totalCapital: 0,
+        totalRate: 0,
+        ratioTotal: 0
+      });
+    }
+
+    const group = groups.get(key);
+    group.count += 1;
+    group.totalCapital += record.components.capitalRate;
+    group.totalRate += record.publishedAmount;
+    group.ratioTotal += record.components.capitalRate / record.publishedAmount;
+  });
+
+  return [...groups.values()]
+    .map((group) => ({
+      key: group.key,
+      count: group.count,
+      averageCapital: group.totalCapital / group.count,
+      averageTotal: group.totalRate / group.count,
+      averageCapitalShare: group.ratioTotal / group.count
+    }))
+    .sort((a, b) => a.averageCapital - b.averageCapital);
+}
+
+function getCapitalRankedFacilities(records, direction, limit) {
+  return [...records]
+    .sort((a, b) => direction === "desc"
+      ? b.components.capitalRate - a.components.capitalRate
+      : a.components.capitalRate - b.components.capitalRate)
+    .slice(0, limit);
+}
+
+function getCapitalWatchlist(records) {
+  if (!records.length) return [];
+  const sorted = getCapitalRankedFacilities(records, "asc", records.length);
+  const thresholdCount = Math.max(1, Math.ceil(sorted.length * 0.2));
+  return sorted.slice(0, thresholdCount);
+}
+
+function renderCapitalGeographyRows(groups) {
+  if (!groups.length) {
+    return '<p class="status">No capital-rate records match the current filters.</p>';
+  }
+
+  const rows = groups.map((group) => `
+    <article class="table-row">
+      <div>
+        <strong>${escapeHtml(group.key)}</strong>
+        <small>${group.count} facilities</small>
+      </div>
+      <div class="numeric">${currency.format(group.averageCapital)}</div>
+      <div class="numeric">${currency.format(group.averageTotal)}</div>
+      <div class="numeric">${formatPercent(group.averageCapitalShare)}</div>
+    </article>
+  `).join("");
+
+  return `
+    <article class="table-row header">
+      <div>Geography</div>
+      <div class="numeric">Capital</div>
+      <div class="numeric">Total</div>
+      <div class="numeric">Capital %</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function renderCapitalFacilityRows(records) {
+  if (!records.length) {
+    return '<p class="status">No facilities match the current filters.</p>';
+  }
+
+  return records.map((record) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(record.facility)}</strong>
+        <small>${escapeHtml(record.city)} / ${escapeHtml(record.geography?.tier || "Unclassified")}</small>
+      </div>
+      <div class="numeric">${currency.format(record.components.capitalRate)}</div>
+    </article>
+  `).join("");
+}
+
+function renderCapitalWatchlistRows(records) {
+  if (!records.length) {
+    return '<p class="status">No watchlist facilities match the current filters.</p>';
+  }
+
+  const rows = records.map((record) => `
+    <article class="table-row watchlist">
+      <div>
+        <strong>${escapeHtml(record.facility)}</strong>
+        <small>${escapeHtml(record.category)}</small>
+      </div>
+      <div>${escapeHtml(record.city)}</div>
+      <div>${escapeHtml(record.geography?.tier || "Unclassified")}</div>
+      <div class="numeric">${currency.format(record.components.capitalRate)}</div>
+      <div class="numeric">${currency.format(record.components.supportRate)}</div>
+      <div class="numeric">${currency.format(record.components.nursingRate)}</div>
+      <div class="numeric">${currency.format(record.publishedAmount)}</div>
+    </article>
+  `).join("");
+
+  return `
+    <article class="table-row watchlist header">
+      <div>Facility</div>
+      <div>City</div>
+      <div>Geography</div>
+      <div class="numeric">Capital</div>
+      <div class="numeric">Support</div>
+      <div class="numeric">Nursing</div>
+      <div class="numeric">Total</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function renderCapitalFindings(groups, watchlist) {
+  if (!groups.length) {
+    return '<div class="finding">Use the filters to generate capital equity findings from reimbursed long-term-care records.</div>';
+  }
+
+  const lowest = groups[0];
+  const highest = groups[groups.length - 1];
+  const downstate = groups.find((group) => group.key === "Downstate / Smaller Market");
+  const chicago = groups.find((group) => group.key === "Chicago Metro");
+  const geographyFinding = downstate && chicago
+    ? `${downstate.key} facilities have an average capital component of ${currency.format(downstate.averageCapital)}, compared with ${currency.format(chicago.averageCapital)} for ${chicago.key}.`
+    : `${lowest.key} has the lowest average capital component in the current view at ${currency.format(lowest.averageCapital)}, while ${highest.key} is highest at ${currency.format(highest.averageCapital)}.`;
+
+  const watchlistFinding = `${watchlist.length} facilities fall into the bottom quintile of capital reimbursement under the current filters. These facilities may face higher risk of deferred maintenance or limited modernization capacity.`;
+  const shareFinding = `${lowest.key} capital reimbursement averages ${formatPercent(lowest.averageCapitalShare)} of total per diem, making capital funding pressure visible separately from nursing and support rates.`;
+
+  return [geographyFinding, watchlistFinding, shareFinding]
+    .map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`)
+    .join("");
 }
 
 function renderFindings(records) {
@@ -397,6 +574,10 @@ function componentLabel(key) {
     supportRate: "support",
     capitalRate: "capital"
   }[key] || key;
+}
+
+function formatPercent(value) {
+  return `${(value * 100).toFixed(1)}%`;
 }
 
 function setTab(tabName) {
@@ -527,6 +708,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderRecords();
   renderGeography();
   renderAnalysis();
+  renderCapitalEquity();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -534,6 +716,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderRecords();
   renderGeography();
   renderAnalysis();
+  renderCapitalEquity();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -541,6 +724,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderRecords();
   renderGeography();
   renderAnalysis();
+  renderCapitalEquity();
 });
 
 els.exportButton.addEventListener("click", exportRecords);
