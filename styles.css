@@ -197,6 +197,30 @@ h3 {
   font-size: 14px;
 }
 
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.summary-grid div {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--soft);
+}
+
+.summary-grid span {
+  display: block;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.summary-grid small {
+  color: var(--muted);
+}
+
 .cards {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -319,6 +343,7 @@ h3 {
   }
 
   .cards,
+  .summary-grid,
   .model-grid {
     grid-template-columns: 1fr;
   }

@@ -18,6 +18,9 @@ const els = {
   searchInput: document.querySelector("#searchInput"),
   sourceCount: document.querySelector("#sourceCount"),
   recordCount: document.querySelector("#recordCount"),
+  visibleCount: document.querySelector("#visibleCount"),
+  averageAmount: document.querySelector("#averageAmount"),
+  rangeAmount: document.querySelector("#rangeAmount"),
   exportButton: document.querySelector("#exportButton"),
   importInput: document.querySelector("#importInput"),
   importStatus: document.querySelector("#importStatus"),
@@ -35,9 +38,21 @@ async function loadData() {
     fetch("data/sources.json")
   ]);
 
-  state.records = await recordsResponse.json();
+  const starterRecords = await recordsResponse.json();
+  const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
+  state.records = [...nursingRates, ...starterRecords];
   state.sources = await sourcesResponse.json();
   render();
+}
+
+async function fetchOptionalJson(url) {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) return [];
+    return await response.json();
+  } catch {
+    return [];
+  }
 }
 
 function render() {
@@ -91,6 +106,7 @@ function getFilteredRecords() {
 
 function renderRecords() {
   const records = getFilteredRecords();
+  renderSummary(records);
 
   if (!records.length) {
     els.cards.innerHTML = "<p>No matching records yet. Try a broader search or import another source.</p>";
@@ -122,6 +138,28 @@ function renderRecords() {
       </article>
     `;
   }).join("");
+}
+
+function renderSummary(records) {
+  const amounts = records
+    .map((record) => record.publishedAmount)
+    .filter((amount) => Number.isFinite(amount));
+
+  els.visibleCount.textContent = records.length;
+
+  if (!amounts.length) {
+    els.averageAmount.textContent = "N/A";
+    els.rangeAmount.textContent = "N/A";
+    return;
+  }
+
+  const total = amounts.reduce((sum, amount) => sum + amount, 0);
+  const average = total / amounts.length;
+  const minimum = Math.min(...amounts);
+  const maximum = Math.max(...amounts);
+
+  els.averageAmount.textContent = currency.format(average);
+  els.rangeAmount.textContent = `${currency.format(minimum)}-${currency.format(maximum)}`;
 }
 
 function renderSources() {

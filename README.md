@@ -51,3 +51,13 @@ Then visit http://localhost:8000.
 The dashboard can import JSON arrays or CSV files. For CSV imports, use these column names when possible:
 
 `facility`, `city`, `category`, `payer`, `service`, `codeType`, `code`, `publishedAmount`, `amountLabel`, `effectiveDate`, `source`, `confidence`, `notes`
+
+## Refresh Illinois Nursing Facility Rates
+
+Download the latest HFS nursing facility rate XLSX into `data/raw`, then run:
+
+```powershell
+python scripts/import_hfs_nursing_rates.py data/raw/illinois_hfs_nursing_facility_rates_2025-10-01.xlsx data/nursing-facility-rates.json
+```
+
+The importer reads all facility sheets in the workbook and writes dashboard-ready records with total, capital, support, and nursing rate components.
