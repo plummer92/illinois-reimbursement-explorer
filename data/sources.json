@@ -54,6 +54,12 @@
     "url": "https://www.cms.gov/Medicare/Medicare-Fee-for-Service-Payment/SNFPPS",
     "public": true,
     "bestFor": "Medicare SNF payment rules, updates, and PPS methodology."
+  },
+  {
+    "name": "CMS Care Compare Nursing Home Provider Information",
+    "category": "Nursing Home Quality",
+    "url": "https://data.cms.gov/provider-data/dataset/4pq5-n9py",
+    "public": true,
+    "bestFor": "Nursing home ownership, certified beds, star ratings, and reported staffing hours per resident day."
   }
 ]
-

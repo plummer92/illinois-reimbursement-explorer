@@ -58,6 +58,7 @@
             <button class="tab" data-tab="geography">Geography</button>
             <button class="tab" data-tab="analysis">Analysis</button>
             <button class="tab" data-tab="capital">Capital Equity</button>
+            <button class="tab" data-tab="quality">Quality Correlation</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -164,6 +165,39 @@
             </section>
             <div class="callout muted-callout">
               Capital rate is not the same as actual capital spending. It is a reimbursement component and should be interpreted as a proxy for capital funding pressure, not proof of facility investment decisions.
+            </div>
+          </section>
+
+          <section id="qualityPanel" class="panel" aria-labelledby="quality">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Care Compare</p>
+                <h2>Quality Correlation</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              CMS Care Compare quality ratings are matched to HFS facility rates by facility name and city. Findings show associations only and require further validation before drawing causal conclusions.
+            </div>
+            <div id="qualityFindingList" class="finding-list"></div>
+            <div class="quality-grid">
+              <section>
+                <h3>Total Rate by Overall Rating</h3>
+                <div id="overallRatingRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Capital Rate by Staffing Rating</h3>
+                <div id="staffingRatingRows" class="data-table"></div>
+              </section>
+            </div>
+            <div class="quality-grid">
+              <section>
+                <h3>Low Capital + Low Staffing</h3>
+                <div id="lowCapitalLowStaffingRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>High Reimbursement + Low Quality</h3>
+                <div id="highRateLowQualityRows" class="data-table"></div>
+              </section>
             </div>
           </section>
 

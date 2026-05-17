@@ -1,5 +1,6 @@
 const state = {
   records: [],
+  qualityRecords: [],
   sources: [],
   activeTab: "records",
   query: "",
@@ -31,6 +32,7 @@ const els = {
     geography: document.querySelector("#geographyPanel"),
     analysis: document.querySelector("#analysisPanel"),
     capital: document.querySelector("#capitalPanel"),
+    quality: document.querySelector("#qualityPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -45,7 +47,12 @@ const els = {
   capitalGeographyRows: document.querySelector("#capitalGeographyRows"),
   lowestCapitalRows: document.querySelector("#lowestCapitalRows"),
   highestCapitalRows: document.querySelector("#highestCapitalRows"),
-  capitalWatchlistRows: document.querySelector("#capitalWatchlistRows")
+  capitalWatchlistRows: document.querySelector("#capitalWatchlistRows"),
+  qualityFindingList: document.querySelector("#qualityFindingList"),
+  overallRatingRows: document.querySelector("#overallRatingRows"),
+  staffingRatingRows: document.querySelector("#staffingRatingRows"),
+  lowCapitalLowStaffingRows: document.querySelector("#lowCapitalLowStaffingRows"),
+  highRateLowQualityRows: document.querySelector("#highRateLowQualityRows")
 };
 
 async function loadData() {
@@ -56,6 +63,7 @@ async function loadData() {
 
   const starterRecords = await recordsResponse.json();
   const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
+  state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
   state.records = [...nursingRates, ...starterRecords];
   state.sources = await sourcesResponse.json();
   render();
@@ -80,6 +88,7 @@ function render() {
   renderGeography();
   renderAnalysis();
   renderCapitalEquity();
+  renderQualityCorrelation();
 }
 
 function renderMetrics() {
@@ -249,6 +258,26 @@ function renderCapitalEquity() {
   els.capitalWatchlistRows.innerHTML = renderCapitalWatchlistRows(watchlist);
 }
 
+function renderQualityCorrelation() {
+  const records = getFilteredQualityRecords();
+  const lowCapitalLowStaffing = getLowCapitalLowStaffing(records);
+  const highRateLowQuality = getHighRateLowQuality(records);
+
+  els.qualityFindingList.innerHTML = renderQualityFindings(records, lowCapitalLowStaffing, highRateLowQuality);
+  els.overallRatingRows.innerHTML = renderRatingRows(
+    summarizeByRating(records, (record) => record.quality?.overallStarRating, (record) => record.publishedAmount),
+    "Overall Stars",
+    "Avg Total Rate"
+  );
+  els.staffingRatingRows.innerHTML = renderRatingRows(
+    summarizeByRating(records, (record) => record.quality?.staffingStarRating, (record) => record.components?.capitalRate),
+    "Staffing Stars",
+    "Avg Capital"
+  );
+  els.lowCapitalLowStaffingRows.innerHTML = renderQualityFacilityRows(lowCapitalLowStaffing, "staffing");
+  els.highRateLowQualityRows.innerHTML = renderQualityFacilityRows(highRateLowQuality, "overall");
+}
+
 function summarizeBy(records, getKey) {
   const groups = new Map();
 
@@ -377,6 +406,28 @@ function getCapitalRecords() {
     && Number.isFinite(record.components?.nursingRate)
     && Number.isFinite(record.publishedAmount)
   ));
+}
+
+function getFilteredQualityRecords() {
+  const query = state.query.toLowerCase().trim();
+
+  return state.qualityRecords.filter((record) => {
+    const categoryMatch = state.category === "all" || record.category === state.category;
+    const tierMatch = !state.tier || state.tier === "all" || record.geography?.tier === state.tier;
+    const haystack = [
+      record.facility,
+      record.city,
+      record.category,
+      record.geography?.tier,
+      record.geography?.region,
+      record.quality?.facilityName,
+      record.quality?.county,
+      record.quality?.ownershipType,
+      record.quality?.cmsCertificationNumber
+    ].join(" ").toLowerCase();
+
+    return categoryMatch && tierMatch && (!query || haystack.includes(query));
+  });
 }
 
 function summarizeCapitalByGeography(records) {
@@ -524,6 +575,144 @@ function renderCapitalFindings(groups, watchlist) {
   return [geographyFinding, watchlistFinding, shareFinding]
     .map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`)
     .join("");
+}
+
+function summarizeByRating(records, getRating, getValue) {
+  const groups = new Map();
+
+  records.forEach((record) => {
+    const rating = getRating(record);
+    const value = getValue(record);
+    if (!Number.isFinite(rating) || !Number.isFinite(value)) return;
+    if (!groups.has(rating)) {
+      groups.set(rating, { rating, count: 0, total: 0, min: Infinity, max: -Infinity });
+    }
+
+    const group = groups.get(rating);
+    group.count += 1;
+    group.total += value;
+    group.min = Math.min(group.min, value);
+    group.max = Math.max(group.max, value);
+  });
+
+  return [...groups.values()]
+    .map((group) => ({ ...group, average: group.total / group.count }))
+    .sort((a, b) => a.rating - b.rating);
+}
+
+function renderRatingRows(groups, ratingLabel, valueLabel) {
+  if (!groups.length) {
+    return '<p class="status">No matched quality records are available for this view.</p>';
+  }
+
+  const rows = groups.map((group) => `
+    <article class="table-row">
+      <div>
+        <strong>${group.rating} star${group.rating === 1 ? "" : "s"}</strong>
+        <small>${group.count} matched facilities</small>
+      </div>
+      <div class="numeric">${currency.format(group.average)}</div>
+      <div class="numeric">${currency.format(group.min)}</div>
+      <div class="numeric">${currency.format(group.max)}</div>
+    </article>
+  `).join("");
+
+  return `
+    <article class="table-row header">
+      <div>${escapeHtml(ratingLabel)}</div>
+      <div class="numeric">${escapeHtml(valueLabel)}</div>
+      <div class="numeric">Low</div>
+      <div class="numeric">High</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function getLowCapitalLowStaffing(records) {
+  const capitalRecords = records
+    .filter((record) => Number.isFinite(record.components?.capitalRate))
+    .sort((a, b) => a.components.capitalRate - b.components.capitalRate);
+  if (!capitalRecords.length) return [];
+
+  const thresholdIndex = Math.max(0, Math.ceil(capitalRecords.length * 0.2) - 1);
+  const threshold = capitalRecords[thresholdIndex].components.capitalRate;
+
+  return capitalRecords
+    .filter((record) => (
+      record.components.capitalRate <= threshold
+      && Number.isFinite(record.quality?.staffingStarRating)
+      && record.quality.staffingStarRating <= 2
+    ))
+    .slice(0, 12);
+}
+
+function getHighRateLowQuality(records) {
+  const rateRecords = records
+    .filter((record) => Number.isFinite(record.publishedAmount))
+    .sort((a, b) => b.publishedAmount - a.publishedAmount);
+  if (!rateRecords.length) return [];
+
+  const thresholdIndex = Math.max(0, Math.ceil(rateRecords.length * 0.25) - 1);
+  const threshold = rateRecords[thresholdIndex].publishedAmount;
+
+  return rateRecords
+    .filter((record) => (
+      record.publishedAmount >= threshold
+      && Number.isFinite(record.quality?.overallStarRating)
+      && record.quality.overallStarRating <= 2
+    ))
+    .slice(0, 12);
+}
+
+function renderQualityFacilityRows(records, ratingType) {
+  if (!records.length) {
+    return '<p class="status">No facilities match this watch condition under the current filters.</p>';
+  }
+
+  return records.map((record) => {
+    const rating = ratingType === "staffing"
+      ? record.quality.staffingStarRating
+      : record.quality.overallStarRating;
+    const ratingLabel = ratingType === "staffing" ? "Staffing" : "Overall";
+
+    return `
+      <article class="table-row">
+        <div>
+          <strong>${escapeHtml(record.facility)}</strong>
+          <small>${escapeHtml(record.city)} / ${escapeHtml(record.quality?.county || "Unknown county")} / ${escapeHtml(record.geography?.tier || "Unclassified")}</small>
+        </div>
+        <div class="numeric">${currency.format(record.publishedAmount)}</div>
+        <div class="numeric">${currency.format(record.components.capitalRate)}</div>
+        <div class="numeric">${ratingLabel}: ${rating}</div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderQualityFindings(records, lowCapitalLowStaffing, highRateLowQuality) {
+  if (!records.length) {
+    return '<div class="finding">No matched HFS/CMS quality records match the current filters.</div>';
+  }
+
+  const overallGroups = summarizeByRating(records, (record) => record.quality?.overallStarRating, (record) => record.publishedAmount);
+  const staffingGroups = summarizeByRating(records, (record) => record.quality?.staffingStarRating, (record) => record.components?.capitalRate);
+  const lowOverall = overallGroups[0];
+  const highOverall = overallGroups[overallGroups.length - 1];
+  const lowStaffing = staffingGroups[0];
+  const highStaffing = staffingGroups[staffingGroups.length - 1];
+
+  const findings = [
+    `${records.length} HFS facility records are matched to CMS Care Compare quality records in the current view.`,
+    lowOverall && highOverall
+      ? `Average total rate is ${currency.format(lowOverall.average)} among ${lowOverall.rating}-star overall facilities and ${currency.format(highOverall.average)} among ${highOverall.rating}-star facilities; this is an association and requires further validation.`
+      : "Overall-star correlation is limited in this filtered view because too few rated facilities are available.",
+    lowStaffing && highStaffing
+      ? `Average capital rate is ${currency.format(lowStaffing.average)} among ${lowStaffing.rating}-star staffing facilities and ${currency.format(highStaffing.average)} among ${highStaffing.rating}-star staffing facilities, which may suggest a relationship worth deeper testing.`
+      : "Staffing-star correlation is limited in this filtered view because too few rated facilities are available.",
+    `${lowCapitalLowStaffing.length} facilities currently show both low capital reimbursement and low staffing ratings; ${highRateLowQuality.length} show high reimbursement with low overall quality. These are screening flags, not causal findings.`
+  ];
+
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
 }
 
 function renderFindings(records) {
@@ -709,6 +898,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderGeography();
   renderAnalysis();
   renderCapitalEquity();
+  renderQualityCorrelation();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -717,6 +907,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderGeography();
   renderAnalysis();
   renderCapitalEquity();
+  renderQualityCorrelation();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -725,6 +916,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderGeography();
   renderAnalysis();
   renderCapitalEquity();
+  renderQualityCorrelation();
 });
 
 els.exportButton.addEventListener("click", exportRecords);

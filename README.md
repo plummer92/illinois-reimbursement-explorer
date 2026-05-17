@@ -79,3 +79,15 @@ This is a research proxy, not a definitive rural/urban designation. A later vers
 Illinois HFS nursing facility rates are interpreted as per-resident-per-day Medicaid reimbursement amounts. The dashboard separates the total per diem into nursing, support, and capital components, then compares capital reimbursement by geography.
 
 The Capital Equity tab uses capital rate as a proxy for capital funding pressure and infrastructure modernization risk. It is not proof of actual facility investment behavior, deferred maintenance, or ownership-level capital spending.
+
+## CMS Care Compare Quality Match
+
+The Quality Correlation tab uses CMS Care Compare Nursing Home Provider Information from the Provider Data Catalog. The current source file is `NH_ProviderInfo_Apr2026.csv`, filtered to Illinois.
+
+Refresh the normalized CMS and matched quality datasets with:
+
+```powershell
+python scripts/import_cms_care_compare.py data/raw/NH_ProviderInfo_Apr2026.csv data/nursing-facility-rates.json data/cms-care-compare-illinois.json data/quality-matched-rates.json
+```
+
+The match uses facility name and city, with a fuzzy name fallback. Correlation views should be interpreted as associations that may suggest areas for deeper validation, not proof that reimbursement causes quality differences.
