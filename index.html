@@ -1,0 +1,111 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Illinois Reimbursement Explorer</title>
+    <link rel="stylesheet" href="styles.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="workspace">
+        <aside class="sidebar" aria-label="Research controls">
+          <div>
+            <p class="eyebrow">Illinois MVP</p>
+            <h1>Reimbursement Explorer</h1>
+            <p class="lede">Compare public reimbursement signals across Medicaid, Medicare, nursing facilities, and hospital transparency files.</p>
+          </div>
+
+          <label class="field">
+            <span>Search</span>
+            <input id="searchInput" type="search" placeholder="facility, service, payer, code">
+          </label>
+
+          <label class="field">
+            <span>Category</span>
+            <select id="categorySelect">
+              <option value="all">All categories</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Import data</span>
+            <input id="importInput" type="file" accept=".csv,.json,application/json,text/csv">
+          </label>
+
+          <div class="metric-stack">
+            <div>
+              <span id="sourceCount">0</span>
+              <small>public sources</small>
+            </div>
+            <div>
+              <span id="recordCount">0</span>
+              <small>starter records</small>
+            </div>
+          </div>
+        </aside>
+
+        <section class="content">
+          <nav class="tabs" aria-label="Dashboard sections">
+            <button class="tab active" data-tab="records">Records</button>
+            <button class="tab" data-tab="sources">Sources</button>
+            <button class="tab" data-tab="model">Estimate Model</button>
+          </nav>
+
+          <section id="recordsPanel" class="panel active" aria-labelledby="records">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Published amounts</p>
+                <h2>Starter Dataset</h2>
+              </div>
+              <button id="exportButton" class="button">Export JSON</button>
+            </div>
+            <p id="importStatus" class="status" aria-live="polite"></p>
+            <div id="cards" class="cards"></div>
+          </section>
+
+          <section id="sourcesPanel" class="panel" aria-labelledby="sources">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Research map</p>
+                <h2>Public Data Sources</h2>
+              </div>
+            </div>
+            <div id="sources" class="source-list"></div>
+          </section>
+
+          <section id="modelPanel" class="panel" aria-labelledby="model">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">How estimates should work</p>
+                <h2>Reimbursement Logic</h2>
+              </div>
+            </div>
+            <div class="model-grid">
+              <article>
+                <h3>Professional claim</h3>
+                <p>Use CPT or HCPCS code, payer, provider type, modifier, locality, and fee schedule effective date.</p>
+              </article>
+              <article>
+                <h3>Hospital outpatient</h3>
+                <p>Use CPT/HCPCS, revenue code, APC/EAPG logic where available, drug J-code or NDC, and facility setting.</p>
+              </article>
+              <article>
+                <h3>Hospital inpatient</h3>
+                <p>Use diagnosis, procedures, APR-DRG or MS-DRG, length of stay, wage index, add-ons, and facility-specific policy.</p>
+              </article>
+              <article>
+                <h3>Nursing facility</h3>
+                <p>Use facility-level per diem rate, effective date, care category, Medicaid utilization, staffing add-ons, and quality incentives.</p>
+              </article>
+            </div>
+            <div class="callout">
+              Actual patient responsibility needs benefit design data, including deductible, coinsurance, copay, network status, and prior authorization rules.
+            </div>
+          </section>
+        </section>
+      </section>
+    </main>
+    <script src="app.js"></script>
+  </body>
+</html>

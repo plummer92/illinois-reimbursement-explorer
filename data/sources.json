@@ -1,0 +1,59 @@
+[
+  {
+    "name": "Illinois HFS Medicaid Reimbursement",
+    "category": "Medicaid",
+    "url": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement.html",
+    "public": true,
+    "bestFor": "Directory of Illinois Medicaid reimbursement pages, fee schedules, managed care, hospital, pharmacy, rural health clinic, and long-term care resources."
+  },
+  {
+    "name": "Illinois HFS Practitioner Fee Schedule",
+    "category": "Medicaid",
+    "url": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/individualpractitioner.html",
+    "public": true,
+    "bestFor": "CPT and HCPCS fee-for-service reimbursement lookups for professional services."
+  },
+  {
+    "name": "Illinois HFS Hospital Rate Sheets",
+    "category": "Hospital Medicaid",
+    "url": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hrs.html",
+    "public": true,
+    "bestFor": "Facility-specific Illinois Medicaid hospital rate sheet context."
+  },
+  {
+    "name": "Illinois HFS Nursing Facility Rate Lists",
+    "category": "Long-Term Care",
+    "url": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/ltc/archivedmedicaidratelists.html",
+    "public": true,
+    "bestFor": "Facility-level Medicaid nursing facility, county nursing facility, and SMHRF rate lists."
+  },
+  {
+    "name": "Illinois HFS Cost Reports",
+    "category": "Facility Finance",
+    "url": "https://hfs.illinois.gov/medicalproviders/costreports.html",
+    "public": true,
+    "bestFor": "Hospital and long-term care cost reports for deeper financial analysis."
+  },
+  {
+    "name": "CMS Hospital Price Transparency",
+    "category": "Hospital Prices",
+    "url": "https://www.cms.gov/priorities/key-initiatives/hospital-price-transparency",
+    "public": true,
+    "bestFor": "Hospital machine-readable files with gross charges, discounted cash prices, and payer-specific negotiated rates."
+  },
+  {
+    "name": "CMS Physician Fee Schedule",
+    "category": "Medicare",
+    "url": "https://www.cms.gov/medicare/physician-fee-schedule/search",
+    "public": true,
+    "bestFor": "Medicare professional service benchmark rates by CPT/HCPCS code and locality."
+  },
+  {
+    "name": "CMS Skilled Nursing Facility PPS",
+    "category": "Medicare Long-Term Care",
+    "url": "https://www.cms.gov/Medicare/Medicare-Fee-for-Service-Payment/SNFPPS",
+    "public": true,
+    "bestFor": "Medicare SNF payment rules, updates, and PPS methodology."
+  }
+]
+

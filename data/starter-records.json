@@ -1,0 +1,48 @@
+[
+  {
+    "facility": "Aledo Rehab Health Care Ctr",
+    "city": "Aledo",
+    "category": "Nursing Facility",
+    "payer": "Illinois Medicaid",
+    "service": "Nursing facility per diem",
+    "codeType": "Facility rate",
+    "code": "HFS rate list",
+    "publishedAmount": 177.67,
+    "amountLabel": "Total rate",
+    "effectiveDate": "2024-07-01",
+    "source": "Illinois HFS Medicaid Rate List for Nursing Facilities as of 07-01-24",
+    "confidence": "source-observed",
+    "notes": "Starter row captured from public HFS search result. Replace with imported XLSX rows for production analysis."
+  },
+  {
+    "facility": "Illinois HFS Practitioner Fee Schedule",
+    "city": "Statewide",
+    "category": "Professional Service",
+    "payer": "Illinois Medicaid",
+    "service": "CPT/HCPCS lookup placeholder",
+    "codeType": "CPT/HCPCS",
+    "code": "IMPORT",
+    "publishedAmount": null,
+    "amountLabel": "Fee schedule amount",
+    "effectiveDate": null,
+    "source": "Illinois HFS Practitioner Fee Schedule",
+    "confidence": "import-needed",
+    "notes": "Use this category to load the latest HFS XLS practitioner fee schedule."
+  },
+  {
+    "facility": "Hospital Price Transparency MRF",
+    "city": "Illinois",
+    "category": "Hospital Price",
+    "payer": "Commercial / Cash / Gross",
+    "service": "Hospital standard charge lookup placeholder",
+    "codeType": "CPT, HCPCS, DRG, Rev Code, NDC",
+    "code": "IMPORT",
+    "publishedAmount": null,
+    "amountLabel": "Published standard charge",
+    "effectiveDate": null,
+    "source": "CMS Hospital Price Transparency",
+    "confidence": "import-needed",
+    "notes": "Import hospital MRF rows to compare gross charges, cash prices, and payer-negotiated amounts."
+  }
+]
+
