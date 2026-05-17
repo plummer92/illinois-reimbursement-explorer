@@ -21,6 +21,64 @@ SHEET_CATEGORIES = {
     "SMHRF": "Specialized Mental Health Rehabilitation Facility",
 }
 
+HSA_REGIONS = {
+    1: {
+        "name": "HSA I",
+        "description": "Northwest Illinois",
+        "tier": "Downstate / Smaller Market",
+    },
+    2: {
+        "name": "HSA II",
+        "description": "Peoria and North-Central Illinois",
+        "tier": "Regional Urban / Mixed",
+    },
+    3: {
+        "name": "HSA III",
+        "description": "West-Central Illinois",
+        "tier": "Downstate / Smaller Market",
+    },
+    4: {
+        "name": "HSA IV",
+        "description": "Champaign, Bloomington, Decatur, and East-Central Illinois",
+        "tier": "Regional Urban / Mixed",
+    },
+    5: {
+        "name": "HSA V",
+        "description": "Southern Illinois",
+        "tier": "Downstate / Smaller Market",
+    },
+    6: {
+        "name": "HSA VI",
+        "description": "City of Chicago",
+        "tier": "Chicago Metro",
+    },
+    7: {
+        "name": "HSA VII",
+        "description": "DuPage County and suburban Cook County",
+        "tier": "Chicago Metro",
+    },
+    8: {
+        "name": "HSA VIII",
+        "description": "Kane, Lake, and McHenry Counties",
+        "tier": "Chicago Metro",
+    },
+    9: {
+        "name": "HSA IX",
+        "description": "Grundy, Kankakee, Kendall, and Will Counties",
+        "tier": "Chicago Metro",
+    },
+    10: {
+        "name": "HSA X",
+        "description": "Henry, Mercer, and Rock Island Counties",
+        "tier": "Downstate / Smaller Market",
+    },
+    11: {
+        "name": "HSA XI",
+        "description": "Metro East Illinois",
+        "tier": "Regional Urban / Mixed",
+    },
+}
+
 
 def load_openpyxl():
     try:
@@ -57,6 +115,12 @@ def normalize_number(value: object) -> float | None:
     return round(float(value), 2)
 
 
+def normalize_int(value: object) -> int | None:
+    if value in (None, ""):
+        return None
+    return int(value)
+
+
 def category_for_sheet(sheet_name: str) -> str:
     for key, category in SHEET_CATEGORIES.items():
         if key in sheet_name.upper():
@@ -86,6 +150,9 @@ def import_rates(input_path: Path) -> list[dict[str, object]]:
                 continue
 
             total_rate = normalize_number(values.get("total_rate"))
+            rate_area = normalize_int(values.get("rate_area"))
+            hsa = normalize_int(values.get("hsa")) or rate_area
+            region = HSA_REGIONS.get(hsa, {})
             record = {
                 "facility": str(facility_name).strip(),
                 "city": str(values.get("city") or "").strip(),
@@ -103,15 +170,22 @@ def import_rates(input_path: Path) -> list[dict[str, object]]:
                     f"{report_title}. Capital: {normalize_number(values.get('capital_rate'))}; "
                     f"support: {normalize_number(values.get('support_rate'))}; "
                     f"nursing: {normalize_number(values.get('nursing_rate'))}; "
-                    f"HSA: {values.get('hsa')}; rate area: {values.get('rate_area')}."
+                    f"HSA: {hsa}; rate area: {rate_area}."
                 ),
                 "components": {
                     "capitalRate": normalize_number(values.get("capital_rate")),
                     "supportRate": normalize_number(values.get("support_rate")),
                     "nursingRate": normalize_number(values.get("nursing_rate")),
-                    "hsa": values.get("hsa"),
-                    "rateArea": values.get("rate_area"),
+                    "hsa": hsa,
+                    "rateArea": rate_area,
                     "capitalRateChangeEffectiveDate": normalize_date(values.get("capital_rate_change_eff_date")),
+                },
+                "geography": {
+                    "hsa": hsa,
+                    "hsaName": region.get("name", f"HSA {hsa}" if hsa else "Unknown HSA"),
+                    "region": region.get("description", "Unknown HSA region"),
+                    "tier": region.get("tier", "Unclassified"),
+                    "classificationBasis": "HSA-based proxy from Illinois facility rate file",
                 },
                 "sourceUrl": SOURCE_URL,
             }

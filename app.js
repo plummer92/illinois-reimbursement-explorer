@@ -15,6 +15,7 @@ const els = {
   cards: document.querySelector("#cards"),
   sources: document.querySelector("#sources"),
   categorySelect: document.querySelector("#categorySelect"),
+  tierSelect: document.querySelector("#tierSelect"),
   searchInput: document.querySelector("#searchInput"),
   sourceCount: document.querySelector("#sourceCount"),
   recordCount: document.querySelector("#recordCount"),
@@ -27,9 +28,13 @@ const els = {
   tabs: document.querySelectorAll(".tab"),
   panels: {
     records: document.querySelector("#recordsPanel"),
+    geography: document.querySelector("#geographyPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
-  }
+  },
+  geographyCommentary: document.querySelector("#geographyCommentary"),
+  tierRows: document.querySelector("#tierRows"),
+  hsaRows: document.querySelector("#hsaRows")
 };
 
 async function loadData() {
@@ -58,8 +63,10 @@ async function fetchOptionalJson(url) {
 function render() {
   renderMetrics();
   renderCategoryOptions();
+  renderTierOptions();
   renderRecords();
   renderSources();
+  renderGeography();
 }
 
 function renderMetrics() {
@@ -83,11 +90,28 @@ function renderCategoryOptions() {
   state.category = els.categorySelect.value;
 }
 
+function renderTierOptions() {
+  const tiers = [...new Set(state.records.map((record) => record.geography?.tier).filter(Boolean))].sort();
+  const selected = els.tierSelect.value;
+
+  els.tierSelect.innerHTML = '<option value="all">All geographies</option>';
+  tiers.forEach((tier) => {
+    const option = document.createElement("option");
+    option.value = tier;
+    option.textContent = tier;
+    els.tierSelect.append(option);
+  });
+
+  els.tierSelect.value = tiers.includes(selected) ? selected : "all";
+  state.tier = els.tierSelect.value;
+}
+
 function getFilteredRecords() {
   const query = state.query.toLowerCase().trim();
 
   return state.records.filter((record) => {
     const categoryMatch = state.category === "all" || record.category === state.category;
+    const tierMatch = !state.tier || state.tier === "all" || record.geography?.tier === state.tier;
     const haystack = [
       record.facility,
       record.city,
@@ -96,11 +120,14 @@ function getFilteredRecords() {
       record.service,
       record.codeType,
       record.code,
+      record.geography?.tier,
+      record.geography?.region,
+      record.geography?.hsaName,
       record.source,
       record.notes
     ].join(" ").toLowerCase();
 
-    return categoryMatch && (!query || haystack.includes(query));
+    return categoryMatch && tierMatch && (!query || haystack.includes(query));
   });
 }
 
@@ -131,6 +158,7 @@ function renderRecords() {
           <span><strong>Service:</strong> ${escapeHtml(record.service)}</span>
           <span><strong>Payer:</strong> ${escapeHtml(record.payer)}</span>
           <span><strong>Code:</strong> ${escapeHtml(record.codeType)} / ${escapeHtml(record.code)}</span>
+          <span><strong>Geography:</strong> ${escapeHtml(record.geography?.tier || "Unclassified")} / ${escapeHtml(record.geography?.region || record.city)}</span>
           <span><strong>Effective:</strong> ${escapeHtml(record.effectiveDate || "TBD")}</span>
           <span><strong>Source:</strong> ${escapeHtml(record.source)}</span>
           <span>${escapeHtml(record.notes)}</span>
@@ -170,6 +198,84 @@ function renderSources() {
       <a href="${source.url}" target="_blank" rel="noreferrer">Open</a>
     </article>
   `).join("");
+}
+
+function renderGeography() {
+  const records = getFilteredRecords().filter((record) => Number.isFinite(record.publishedAmount));
+  const tierGroups = summarizeBy(records, (record) => record.geography?.tier || "Unclassified");
+  const hsaGroups = summarizeBy(records, (record) => {
+    const name = record.geography?.hsaName || "Unknown HSA";
+    const region = record.geography?.region || "Unknown region";
+    return `${name}|${region}`;
+  });
+
+  els.tierRows.innerHTML = renderComparisonRows(tierGroups, true);
+  els.hsaRows.innerHTML = renderComparisonRows(hsaGroups, false);
+  els.geographyCommentary.textContent = buildGeographyCommentary(tierGroups);
+}
+
+function summarizeBy(records, getKey) {
+  const groups = new Map();
+
+  records.forEach((record) => {
+    const key = getKey(record);
+    if (!groups.has(key)) {
+      groups.set(key, {
+        key,
+        count: 0,
+        total: 0,
+        min: Infinity,
+        max: -Infinity
+      });
+    }
+
+    const group = groups.get(key);
+    group.count += 1;
+    group.total += record.publishedAmount;
+    group.min = Math.min(group.min, record.publishedAmount);
+    group.max = Math.max(group.max, record.publishedAmount);
+  });
+
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      average: group.total / group.count
+    }))
+    .sort((a, b) => b.average - a.average);
+}
+
+function renderComparisonRows(groups, compact) {
+  if (!groups.length) {
+    return '<p class="status">No reimbursed records match the current filters.</p>';
+  }
+
+  return groups.map((group) => {
+    const [title, subtitle] = group.key.split("|");
+    return `
+      <article class="comparison-row">
+        <div>
+          <strong>${escapeHtml(title)}</strong>
+          <small>${escapeHtml(subtitle || `${group.count} records`)}</small>
+        </div>
+        <div class="comparison-value">
+          ${currency.format(group.average)}
+          <small>${compact ? `${group.count} records` : `${group.count} records, ${currency.format(group.min)}-${currency.format(group.max)}`}</small>
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function buildGeographyCommentary(groups) {
+  if (groups.length < 2) {
+    return "Use the filters to compare published Illinois Medicaid long-term-care rates across HFS geography groups.";
+  }
+
+  const highest = groups[0];
+  const lowest = groups[groups.length - 1];
+  const spread = highest.average - lowest.average;
+
+  return `${highest.key} has the highest average published rate in the current view at ${currency.format(highest.average)}, while ${lowest.key} is lowest at ${currency.format(lowest.average)}. The current spread is ${currency.format(spread)} per day. This geography lens uses HFS Health Service Areas as an MVP proxy, not final county-level rural/urban coding.`;
 }
 
 function setTab(tabName) {
@@ -298,11 +404,19 @@ function escapeHtml(value) {
 els.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value;
   renderRecords();
+  renderGeography();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
   state.category = event.target.value;
   renderRecords();
+  renderGeography();
+});
+
+els.tierSelect.addEventListener("change", (event) => {
+  state.tier = event.target.value;
+  renderRecords();
+  renderGeography();
 });
 
 els.exportButton.addEventListener("click", exportRecords);

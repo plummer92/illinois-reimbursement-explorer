@@ -61,3 +61,15 @@ python scripts/import_hfs_nursing_rates.py data/raw/illinois_hfs_nursing_facilit
 ```
 
 The importer reads all facility sheets in the workbook and writes dashboard-ready records with total, capital, support, and nursing rate components.
+
+## Geography Method
+
+The first geography layer uses the `HSA` field already present in the Illinois HFS rate list. Illinois defines Health Service Areas in state administrative rules, with HSA VI covering Chicago, HSA VII suburban Cook and DuPage, HSA VIII Kane/Lake/McHenry, and HSA IX Grundy/Kankakee/Kendall/Will.
+
+For this MVP, the dashboard groups HSAs into:
+
+- `Chicago Metro`
+- `Regional Urban / Mixed`
+- `Downstate / Smaller Market`
+
+This is a research proxy, not a definitive rural/urban designation. A later version should add facility address, county, ZIP, RUCA, and Census urbanized-area matching.

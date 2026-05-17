@@ -29,6 +29,13 @@
           </label>
 
           <label class="field">
+            <span>Geography</span>
+            <select id="tierSelect">
+              <option value="all">All geographies</option>
+            </select>
+          </label>
+
+          <label class="field">
             <span>Import data</span>
             <input id="importInput" type="file" accept=".csv,.json,application/json,text/csv">
           </label>
@@ -48,6 +55,7 @@
         <section class="content">
           <nav class="tabs" aria-label="Dashboard sections">
             <button class="tab active" data-tab="records">Records</button>
+            <button class="tab" data-tab="geography">Geography</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -76,6 +84,26 @@
               </div>
             </div>
             <div id="cards" class="cards"></div>
+          </section>
+
+          <section id="geographyPanel" class="panel" aria-labelledby="geography">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Disparity lens</p>
+                <h2>HSA-Based Rate Comparison</h2>
+              </div>
+            </div>
+            <div id="geographyCommentary" class="callout"></div>
+            <div class="comparison-layout">
+              <section>
+                <h3>Market Tier Comparison</h3>
+                <div id="tierRows" class="comparison-list"></div>
+              </section>
+              <section>
+                <h3>Health Service Area Comparison</h3>
+                <div id="hsaRows" class="comparison-list"></div>
+              </section>
+            </div>
           </section>
 
           <section id="sourcesPanel" class="panel" aria-labelledby="sources">
