@@ -291,16 +291,42 @@ h3 {
   margin-top: 16px;
 }
 
-.comparison-layout h3 {
+.analysis-layout {
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(260px, 0.9fr) minmax(260px, 0.9fr);
+  gap: 16px;
+  margin-top: 16px;
+}
+
+.comparison-layout h3,
+.analysis-layout h3 {
   margin-bottom: 12px;
 }
 
-.comparison-list {
+.comparison-list,
+.component-list,
+.facility-list,
+.finding-list {
   display: grid;
   gap: 10px;
 }
 
-.comparison-row {
+.finding-list {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.finding {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 14px;
+  background: var(--soft);
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.comparison-row,
+.component-row,
+.facility-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 12px;
@@ -311,16 +337,42 @@ h3 {
   background: #fff;
 }
 
-.comparison-row strong {
+.component-row {
+  grid-template-columns: 120px minmax(0, 1fr) auto;
+}
+
+.component-bar {
+  height: 12px;
+  border-radius: 999px;
+  background: #dfe8e1;
+  overflow: hidden;
+}
+
+.component-bar span {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.facility-row {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.comparison-row strong,
+.component-row strong,
+.facility-row strong {
   display: block;
   margin-bottom: 4px;
 }
 
-.comparison-row small {
+.comparison-row small,
+.component-row small,
+.facility-row small {
   color: var(--muted);
 }
 
-.comparison-value {
+.comparison-value,
+.component-value {
   font-weight: 800;
   text-align: right;
   white-space: nowrap;
@@ -386,6 +438,7 @@ h3 {
 
   .cards,
   .summary-grid,
+  .finding-list,
   .model-grid {
     grid-template-columns: 1fr;
   }
@@ -395,11 +448,14 @@ h3 {
   }
 
   .comparison-layout,
-  .comparison-row {
+  .analysis-layout,
+  .comparison-row,
+  .component-row {
     grid-template-columns: 1fr;
   }
 
-  .comparison-value {
+  .comparison-value,
+  .component-value {
     text-align: left;
   }
 

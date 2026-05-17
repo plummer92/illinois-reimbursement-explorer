@@ -29,12 +29,17 @@ const els = {
   panels: {
     records: document.querySelector("#recordsPanel"),
     geography: document.querySelector("#geographyPanel"),
+    analysis: document.querySelector("#analysisPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
   geographyCommentary: document.querySelector("#geographyCommentary"),
   tierRows: document.querySelector("#tierRows"),
-  hsaRows: document.querySelector("#hsaRows")
+  hsaRows: document.querySelector("#hsaRows"),
+  findingList: document.querySelector("#findingList"),
+  componentRows: document.querySelector("#componentRows"),
+  topFacilities: document.querySelector("#topFacilities"),
+  bottomFacilities: document.querySelector("#bottomFacilities")
 };
 
 async function loadData() {
@@ -67,6 +72,7 @@ function render() {
   renderRecords();
   renderSources();
   renderGeography();
+  renderAnalysis();
 }
 
 function renderMetrics() {
@@ -214,6 +220,14 @@ function renderGeography() {
   els.geographyCommentary.textContent = buildGeographyCommentary(tierGroups);
 }
 
+function renderAnalysis() {
+  const records = getFilteredRecords().filter((record) => Number.isFinite(record.publishedAmount));
+  els.componentRows.innerHTML = renderComponentRows(records);
+  els.topFacilities.innerHTML = renderFacilityRows(records, "desc");
+  els.bottomFacilities.innerHTML = renderFacilityRows(records, "asc");
+  els.findingList.innerHTML = renderFindings(records);
+}
+
 function summarizeBy(records, getKey) {
   const groups = new Map();
 
@@ -276,6 +290,113 @@ function buildGeographyCommentary(groups) {
   const spread = highest.average - lowest.average;
 
   return `${highest.key} has the highest average published rate in the current view at ${currency.format(highest.average)}, while ${lowest.key} is lowest at ${currency.format(lowest.average)}. The current spread is ${currency.format(spread)} per day. This geography lens uses HFS Health Service Areas as an MVP proxy, not final county-level rural/urban coding.`;
+}
+
+function renderComponentRows(records) {
+  const components = [
+    { key: "nursingRate", label: "Nursing" },
+    { key: "supportRate", label: "Support" },
+    { key: "capitalRate", label: "Capital" }
+  ].map((component) => {
+    const values = records
+      .map((record) => record.components?.[component.key])
+      .filter((value) => Number.isFinite(value));
+    const total = values.reduce((sum, value) => sum + value, 0);
+
+    return {
+      ...component,
+      count: values.length,
+      average: values.length ? total / values.length : 0
+    };
+  });
+
+  const maxAverage = Math.max(...components.map((component) => component.average), 1);
+
+  return components.map((component) => `
+    <article class="component-row">
+      <div>
+        <strong>${escapeHtml(component.label)}</strong>
+        <small>${component.count} records</small>
+      </div>
+      <div class="component-bar" aria-hidden="true">
+        <span style="width: ${(component.average / maxAverage) * 100}%"></span>
+      </div>
+      <div class="component-value">${currency.format(component.average)}</div>
+    </article>
+  `).join("");
+}
+
+function renderFacilityRows(records, direction) {
+  const sorted = [...records]
+    .filter((record) => Number.isFinite(record.publishedAmount))
+    .sort((a, b) => direction === "desc"
+      ? b.publishedAmount - a.publishedAmount
+      : a.publishedAmount - b.publishedAmount)
+    .slice(0, 10);
+
+  if (!sorted.length) {
+    return '<p class="status">No facilities match the current filters.</p>';
+  }
+
+  return sorted.map((record) => `
+    <article class="facility-row">
+      <div>
+        <strong>${escapeHtml(record.facility)}</strong>
+        <small>${escapeHtml(record.city)} · ${escapeHtml(record.geography?.tier || "Unclassified")} · ${escapeHtml(record.category)}</small>
+      </div>
+      <div class="comparison-value">${currency.format(record.publishedAmount)}</div>
+    </article>
+  `).join("");
+}
+
+function renderFindings(records) {
+  const amounts = records
+    .map((record) => record.publishedAmount)
+    .filter((amount) => Number.isFinite(amount));
+
+  if (!amounts.length) {
+    return '<div class="finding">Use the filters to generate findings from reimbursed long-term-care records.</div>';
+  }
+
+  const components = averageComponents(records);
+  const dominant = Object.entries(components)
+    .sort(([, a], [, b]) => b - a)[0];
+  const tierGroups = summarizeBy(records, (record) => record.geography?.tier || "Unclassified");
+  const highest = tierGroups[0];
+  const lowest = tierGroups[tierGroups.length - 1];
+  const spread = highest && lowest ? highest.average - lowest.average : 0;
+  const highestFacility = [...records].sort((a, b) => b.publishedAmount - a.publishedAmount)[0];
+
+  const findingText = [
+    `${records.length} records match the current filters, with an average total published rate of ${currency.format(average(amounts))}.`,
+    `The largest average component is ${componentLabel(dominant[0])} at ${currency.format(dominant[1])} per day, so this view is mainly driven by that rate category.`,
+    tierGroups.length > 1
+      ? `${highest.key} is ${currency.format(spread)} per day above ${lowest.key} on average in this filtered view.`
+      : `${highestFacility.facility} is the highest-rate facility in this view at ${currency.format(highestFacility.publishedAmount)} per day.`
+  ];
+
+  return findingText.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function averageComponents(records) {
+  return {
+    nursingRate: average(records.map((record) => record.components?.nursingRate).filter((value) => Number.isFinite(value))),
+    supportRate: average(records.map((record) => record.components?.supportRate).filter((value) => Number.isFinite(value))),
+    capitalRate: average(records.map((record) => record.components?.capitalRate).filter((value) => Number.isFinite(value)))
+  };
+}
+
+function average(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function componentLabel(key) {
+  return {
+    nursingRate: "nursing",
+    supportRate: "support",
+    capitalRate: "capital"
+  }[key] || key;
 }
 
 function setTab(tabName) {
@@ -405,18 +526,21 @@ els.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value;
   renderRecords();
   renderGeography();
+  renderAnalysis();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
   state.category = event.target.value;
   renderRecords();
   renderGeography();
+  renderAnalysis();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
   state.tier = event.target.value;
   renderRecords();
   renderGeography();
+  renderAnalysis();
 });
 
 els.exportButton.addEventListener("click", exportRecords);

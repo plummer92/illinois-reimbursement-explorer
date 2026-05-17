@@ -56,6 +56,7 @@
           <nav class="tabs" aria-label="Dashboard sections">
             <button class="tab active" data-tab="records">Records</button>
             <button class="tab" data-tab="geography">Geography</button>
+            <button class="tab" data-tab="analysis">Analysis</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -102,6 +103,30 @@
               <section>
                 <h3>Health Service Area Comparison</h3>
                 <div id="hsaRows" class="comparison-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section id="analysisPanel" class="panel" aria-labelledby="analysis">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Rate drivers</p>
+                <h2>Component Analysis</h2>
+              </div>
+            </div>
+            <div id="findingList" class="finding-list"></div>
+            <div class="analysis-layout">
+              <section>
+                <h3>Average Rate Components</h3>
+                <div id="componentRows" class="component-list"></div>
+              </section>
+              <section>
+                <h3>Highest Published Rates</h3>
+                <div id="topFacilities" class="facility-list"></div>
+              </section>
+              <section>
+                <h3>Lowest Published Rates</h3>
+                <div id="bottomFacilities" class="facility-list"></div>
               </section>
             </div>
           </section>
