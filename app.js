@@ -28,6 +28,7 @@ const els = {
   importStatus: document.querySelector("#importStatus"),
   tabs: document.querySelectorAll(".tab"),
   panels: {
+    executive: document.querySelector("#executivePanel"),
     records: document.querySelector("#recordsPanel"),
     geography: document.querySelector("#geographyPanel"),
     analysis: document.querySelector("#analysisPanel"),
@@ -52,7 +53,12 @@ const els = {
   overallRatingRows: document.querySelector("#overallRatingRows"),
   staffingRatingRows: document.querySelector("#staffingRatingRows"),
   lowCapitalLowStaffingRows: document.querySelector("#lowCapitalLowStaffingRows"),
-  highRateLowQualityRows: document.querySelector("#highRateLowQualityRows")
+  highRateLowQualityRows: document.querySelector("#highRateLowQualityRows"),
+  projectPurpose: document.querySelector("#projectPurpose"),
+  executiveMetricCards: document.querySelector("#executiveMetricCards"),
+  executiveFindings: document.querySelector("#executiveFindings"),
+  strategicImplications: document.querySelector("#strategicImplications"),
+  recommendedActions: document.querySelector("#recommendedActions")
 };
 
 async function loadData() {
@@ -89,6 +95,7 @@ function render() {
   renderAnalysis();
   renderCapitalEquity();
   renderQualityCorrelation();
+  renderExecutiveSummary();
 }
 
 function renderMetrics() {
@@ -276,6 +283,53 @@ function renderQualityCorrelation() {
   );
   els.lowCapitalLowStaffingRows.innerHTML = renderQualityFacilityRows(lowCapitalLowStaffing, "staffing");
   els.highRateLowQualityRows.innerHTML = renderQualityFacilityRows(highRateLowQuality, "overall");
+}
+
+function renderExecutiveSummary() {
+  const records = getFilteredRecords().filter((record) => Number.isFinite(record.publishedAmount));
+  const qualityRecords = getFilteredQualityRecords();
+  const tierGroups = summarizeBy(records, (record) => record.geography?.tier || "Unclassified");
+  const capitalGroups = summarizeCapitalByGeography(getCapitalRecords());
+  const lowCapitalLowStaffing = getLowCapitalLowStaffing(qualityRecords);
+  const highRateLowQuality = getHighRateLowQuality(qualityRecords);
+  const components = averageComponents(records);
+  const lowestGeography = tierGroups[tierGroups.length - 1];
+  const highestGeography = tierGroups[0];
+
+  els.projectPurpose.textContent = "This tool analyzes Illinois nursing facility Medicaid reimbursement, geographic reimbursement patterns, capital reimbursement components, and CMS Care Compare quality data to identify possible healthcare disparity signals, infrastructure-risk patterns, and planning questions for long-term care leaders.";
+  els.executiveMetricCards.innerHTML = renderExecutiveMetricCards({
+    totalRecords: state.records.filter((record) => Number.isFinite(record.publishedAmount)).length,
+    matchedRecords: state.qualityRecords.length,
+    averageTotal: average(records.map((record) => record.publishedAmount).filter((value) => Number.isFinite(value))),
+    averageNursing: components.nursingRate,
+    averageSupport: components.supportRate,
+    averageCapital: components.capitalRate,
+    lowestGeography,
+    highestGeography
+  });
+  els.executiveFindings.innerHTML = renderExecutiveFindings({
+    records,
+    tierGroups,
+    capitalGroups,
+    lowCapitalLowStaffing,
+    highRateLowQuality
+  });
+  els.strategicImplications.innerHTML = renderStrategyItems([
+    ["Long-term care equity", "Geographic and quality-linked reimbursement patterns can help identify where resident access and facility resources may be uneven."],
+    ["Rural healthcare access", "Downstate and smaller-market facilities can be monitored for lower reimbursement levels, limited staffing capacity, and infrastructure pressure."],
+    ["Capital planning", "Capital-rate variation can guide deeper review of modernization needs, physical plant age, and deferred-maintenance exposure."],
+    ["Staffing pressure", "Combining staffing ratings with per-diem components helps separate workforce concerns from facility infrastructure concerns."],
+    ["Reimbursement policy", "Rate differences by geography and component may support targeted policy review rather than one-size-fits-all reimbursement assumptions."],
+    ["Quality improvement", "Outlier lists can help prioritize facilities for validation, outreach, quality support, or operational review."]
+  ]);
+  els.recommendedActions.innerHTML = renderStrategyItems([
+    ["Validate unmatched facilities", "Review CMS/HFS name matching and add manual crosswalks for facilities that fuzzy matching missed."],
+    ["Add rurality and income data", "Layer county, ZIP, RUCA, broadband, poverty, and median income data onto each facility."],
+    ["Trend quality and staffing", "Compare reimbursement against CMS staffing and quality measures across multiple Care Compare releases."],
+    ["Flag infrastructure risk", "Use bottom-quintile capital reimbursement as a starting screen for potential underinvestment risk."],
+    ["Support capital planning", "Use findings to inform targeted capital planning, grant strategy, policy review, or facility outreach."],
+    ["Document limitations", "Keep match confidence, missing-data rates, and non-causal language visible in the portfolio version."]
+  ]);
 }
 
 function summarizeBy(records, getKey) {
@@ -715,6 +769,66 @@ function renderQualityFindings(records, lowCapitalLowStaffing, highRateLowQualit
   return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
 }
 
+function renderExecutiveMetricCards(metrics) {
+  const cards = [
+    ["Total HFS records", metrics.totalRecords],
+    ["Matched CMS/HFS records", metrics.matchedRecords],
+    ["Avg total Medicaid per diem", currency.format(metrics.averageTotal)],
+    ["Avg nursing component", currency.format(metrics.averageNursing)],
+    ["Avg support component", currency.format(metrics.averageSupport)],
+    ["Avg capital component", currency.format(metrics.averageCapital)],
+    ["Lowest geography average", metrics.lowestGeography ? `${metrics.lowestGeography.key}: ${currency.format(metrics.lowestGeography.average)}` : "N/A"],
+    ["Highest geography average", metrics.highestGeography ? `${metrics.highestGeography.key}: ${currency.format(metrics.highestGeography.average)}` : "N/A"]
+  ];
+
+  return cards.map(([label, value]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(value)}</span>
+      <small>${escapeHtml(label)}</small>
+    </article>
+  `).join("");
+}
+
+function renderExecutiveFindings({ records, tierGroups, capitalGroups, lowCapitalLowStaffing, highRateLowQuality }) {
+  if (!records.length) {
+    return '<div class="finding">No reimbursed records match the current filters.</div>';
+  }
+
+  const highestRate = tierGroups[0];
+  const lowestRate = tierGroups[tierGroups.length - 1];
+  const lowestCapital = capitalGroups[0];
+  const highestCapital = capitalGroups[capitalGroups.length - 1];
+  const capitalSpread = lowestCapital && highestCapital
+    ? highestCapital.averageCapital - lowestCapital.averageCapital
+    : 0;
+
+  const findings = [
+    highestRate && lowestRate
+      ? `${highestRate.key} has the highest average total Medicaid per-diem rate at ${currency.format(highestRate.average)}, while ${lowestRate.key} is lowest at ${currency.format(lowestRate.average)}.`
+      : "Geography-level total-rate findings require more than one geography group in the current view.",
+    lowestRate
+      ? `${lowestRate.key} may warrant closer equity review because it has the lowest average total reimbursement in this filtered dataset.`
+      : "Lowest-geography review is not available for the current filters.",
+    lowestCapital && highestCapital
+      ? `Capital reimbursement varies by ${currency.format(capitalSpread)} per resident day between the lowest and highest geography averages, which appears meaningful for capital planning triage.`
+      : "Capital-rate variation cannot be assessed for the current filters.",
+    `${lowCapitalLowStaffing.length} matched facilities combine low capital reimbursement with low CMS staffing ratings, which may suggest overlapping workforce and infrastructure risk signals.`,
+    `${highRateLowQuality.length} matched facilities show high reimbursement with low CMS overall quality ratings, creating outliers for operational and quality-improvement review.`,
+    "These patterns are associations and screening signals; they require validation with facility addresses, ownership context, cost reports, and longitudinal quality trends."
+  ];
+
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderStrategyItems(items) {
+  return items.map(([title, body]) => `
+    <article class="strategy-item">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(body)}</span>
+    </article>
+  `).join("");
+}
+
 function renderFindings(records) {
   const amounts = records
     .map((record) => record.publishedAmount)
@@ -899,6 +1013,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderAnalysis();
   renderCapitalEquity();
   renderQualityCorrelation();
+  renderExecutiveSummary();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -908,6 +1023,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderAnalysis();
   renderCapitalEquity();
   renderQualityCorrelation();
+  renderExecutiveSummary();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -917,6 +1033,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderAnalysis();
   renderCapitalEquity();
   renderQualityCorrelation();
+  renderExecutiveSummary();
 });
 
 els.exportButton.addEventListener("click", exportRecords);

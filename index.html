@@ -54,7 +54,8 @@
 
         <section class="content">
           <nav class="tabs" aria-label="Dashboard sections">
-            <button class="tab active" data-tab="records">Records</button>
+            <button class="tab active" data-tab="executive">Executive Summary</button>
+            <button class="tab" data-tab="records">Records</button>
             <button class="tab" data-tab="geography">Geography</button>
             <button class="tab" data-tab="analysis">Analysis</button>
             <button class="tab" data-tab="capital">Capital Equity</button>
@@ -63,7 +64,39 @@
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
 
-          <section id="recordsPanel" class="panel active" aria-labelledby="records">
+          <section id="executivePanel" class="panel active" aria-labelledby="executive">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Portfolio brief</p>
+                <h2>Executive Summary</h2>
+              </div>
+            </div>
+            <section class="summary-section">
+              <h3>Project Purpose</h3>
+              <p id="projectPurpose" class="summary-copy"></p>
+            </section>
+            <section class="summary-section">
+              <h3>Key Metrics</h3>
+              <div id="executiveMetricCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Key Findings</h3>
+              <div id="executiveFindings" class="finding-list"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Strategic Implications</h3>
+              <div id="strategicImplications" class="strategy-grid"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Recommended Next Actions</h3>
+              <div id="recommendedActions" class="strategy-grid"></div>
+            </section>
+            <div class="callout muted-callout">
+              This tool identifies associations and risk signals, not causation. Capital reimbursement is a proxy for capital funding pressure, not proof of actual capital spending.
+            </div>
+          </section>
+
+          <section id="recordsPanel" class="panel" aria-labelledby="records">
             <div class="panel-head">
               <div>
                 <p class="eyebrow">Published amounts</p>

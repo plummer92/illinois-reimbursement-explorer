@@ -91,3 +91,7 @@ python scripts/import_cms_care_compare.py data/raw/NH_ProviderInfo_Apr2026.csv d
 ```
 
 The match uses facility name and city, with a fuzzy name fallback. Correlation views should be interpreted as associations that may suggest areas for deeper validation, not proof that reimbursement causes quality differences.
+
+## Executive Summary
+
+The dashboard opens with an Executive Summary tab for portfolio and interview use. It automatically summarizes total HFS records, matched CMS/HFS records, average reimbursement components, geography extremes, key findings, strategic implications, recommended next actions, and limitations.
