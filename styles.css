@@ -421,6 +421,14 @@ h3 {
   grid-template-columns: minmax(160px, 1.3fr) 110px minmax(150px, 1fr) repeat(4, minmax(82px, 0.45fr));
 }
 
+.table-row.county-row {
+  grid-template-columns: minmax(150px, 1.2fr) 78px repeat(7, minmax(86px, 0.5fr));
+}
+
+.table-row.county-risk-row {
+  grid-template-columns: minmax(150px, 1fr) minmax(150px, 0.9fr) minmax(220px, 1.4fr) repeat(4, minmax(82px, 0.45fr));
+}
+
 .table-row.header {
   background: var(--soft);
   color: var(--muted);
@@ -586,7 +594,9 @@ h3 {
   .comparison-row,
   .component-row,
   .table-row,
-  .table-row.watchlist {
+  .table-row.watchlist,
+  .table-row.county-row,
+  .table-row.county-risk-row {
     grid-template-columns: 1fr;
   }
 

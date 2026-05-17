@@ -95,3 +95,15 @@ The match uses facility name and city, with a fuzzy name fallback. Correlation v
 ## Executive Summary
 
 The dashboard opens with an Executive Summary tab for portfolio and interview use. It automatically summarizes total HFS records, matched CMS/HFS records, average reimbursement components, geography extremes, key findings, strategic implications, recommended next actions, and limitations.
+
+## County Disparity Context
+
+The County Context tab uses 2025 County Health Rankings Illinois data to add county-level context to matched CMS/HFS facility records. It includes rurality, median household income, uninsured rate, age 65+, population, child poverty as the poverty proxy, preventable hospitalization, and primary care access indicators.
+
+Refresh county context with:
+
+```powershell
+python scripts/import_county_context.py data/raw/2025_county_health_rankings_illinois.xlsx data/quality-matched-rates.json data/county-context-illinois.json data/county-facility-summary.json
+```
+
+County-level social data provides context only. It does not prove reimbursement causes quality, access, or capital investment differences.

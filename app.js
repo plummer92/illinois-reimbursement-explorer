@@ -1,6 +1,8 @@
 const state = {
   records: [],
   qualityRecords: [],
+  countyContext: [],
+  countySummaries: [],
   sources: [],
   activeTab: "records",
   query: "",
@@ -34,6 +36,7 @@ const els = {
     analysis: document.querySelector("#analysisPanel"),
     capital: document.querySelector("#capitalPanel"),
     quality: document.querySelector("#qualityPanel"),
+    county: document.querySelector("#countyPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -58,7 +61,10 @@ const els = {
   executiveMetricCards: document.querySelector("#executiveMetricCards"),
   executiveFindings: document.querySelector("#executiveFindings"),
   strategicImplications: document.querySelector("#strategicImplications"),
-  recommendedActions: document.querySelector("#recommendedActions")
+  recommendedActions: document.querySelector("#recommendedActions"),
+  countyFindingList: document.querySelector("#countyFindingList"),
+  countySummaryRows: document.querySelector("#countySummaryRows"),
+  countyRiskRows: document.querySelector("#countyRiskRows")
 };
 
 async function loadData() {
@@ -70,6 +76,8 @@ async function loadData() {
   const starterRecords = await recordsResponse.json();
   const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
   state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
+  state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
+  state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
   state.records = [...nursingRates, ...starterRecords];
   state.sources = await sourcesResponse.json();
   render();
@@ -96,6 +104,7 @@ function render() {
   renderCapitalEquity();
   renderQualityCorrelation();
   renderExecutiveSummary();
+  renderCountyContext();
 }
 
 function renderMetrics() {
@@ -332,6 +341,15 @@ function renderExecutiveSummary() {
   ]);
 }
 
+function renderCountyContext() {
+  const countySummaries = getFilteredCountySummaries();
+  const riskFlags = buildCountyRiskFlags(countySummaries);
+
+  els.countyFindingList.innerHTML = renderCountyFindings(countySummaries, riskFlags);
+  els.countySummaryRows.innerHTML = renderCountySummaryRows(countySummaries);
+  els.countyRiskRows.innerHTML = renderCountyRiskRows(riskFlags);
+}
+
 function summarizeBy(records, getKey) {
   const groups = new Map();
 
@@ -482,6 +500,26 @@ function getFilteredQualityRecords() {
 
     return categoryMatch && tierMatch && (!query || haystack.includes(query));
   });
+}
+
+function getFilteredCountySummaries() {
+  const qualityRecords = getFilteredQualityRecords();
+  const allowedCounties = new Set(qualityRecords.map((record) => normalizeCountyName(record.quality?.county)));
+
+  return state.countySummaries
+    .filter((county) => allowedCounties.has(normalizeCountyName(county.county)))
+    .map((county) => {
+      const countyRecords = qualityRecords.filter((record) => normalizeCountyName(record.quality?.county) === normalizeCountyName(county.county));
+      return {
+        ...county,
+        matchedFacilityCount: countyRecords.length,
+        averageTotalRate: average(countyRecords.map((record) => record.publishedAmount).filter((value) => Number.isFinite(value))),
+        averageCapitalRate: average(countyRecords.map((record) => record.components?.capitalRate).filter((value) => Number.isFinite(value))),
+        averageOverallStarRating: average(countyRecords.map((record) => record.quality?.overallStarRating).filter((value) => Number.isFinite(value))),
+        averageStaffingRating: average(countyRecords.map((record) => record.quality?.staffingStarRating).filter((value) => Number.isFinite(value)))
+      };
+    })
+    .sort((a, b) => calculateCountyRiskScore(b) - calculateCountyRiskScore(a));
 }
 
 function summarizeCapitalByGeography(records) {
@@ -829,6 +867,177 @@ function renderStrategyItems(items) {
   `).join("");
 }
 
+function renderCountySummaryRows(counties) {
+  if (!counties.length) {
+    return '<p class="status">No county summaries match the current filters.</p>';
+  }
+
+  const rows = counties.map((county) => `
+    <article class="table-row county-row">
+      <div>
+        <strong>${escapeHtml(county.county)}</strong>
+        <small>${escapeHtml(county.ruralUrbanClassification || "Unknown")} / ${formatOptionalPercent(county.percentRural)} rural</small>
+      </div>
+      <div class="numeric">${county.matchedFacilityCount}</div>
+      <div class="numeric">${formatCurrencyOrNA(county.averageTotalRate)}</div>
+      <div class="numeric">${formatCurrencyOrNA(county.averageCapitalRate)}</div>
+      <div class="numeric">${formatNumberOrNA(county.averageOverallStarRating, 1)}</div>
+      <div class="numeric">${formatNumberOrNA(county.averageStaffingRating, 1)}</div>
+      <div class="numeric">${formatOptionalPercent(county.povertyRate)}</div>
+      <div class="numeric">${formatCurrencyOrNA(county.medianHouseholdIncome, 0)}</div>
+      <div class="numeric">${formatOptionalPercent(county.age65PlusPercent)}</div>
+    </article>
+  `).join("");
+
+  return `
+    <article class="table-row county-row header">
+      <div>County</div>
+      <div class="numeric">Facilities</div>
+      <div class="numeric">Avg Total</div>
+      <div class="numeric">Avg Capital</div>
+      <div class="numeric">Overall</div>
+      <div class="numeric">Staffing</div>
+      <div class="numeric">Poverty</div>
+      <div class="numeric">Income</div>
+      <div class="numeric">65+</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function buildCountyRiskFlags(counties) {
+  if (!counties.length) return [];
+
+  const povertyCutoff = percentile(counties.map((county) => county.povertyRate), 0.75);
+  const ageCutoff = percentile(counties.map((county) => county.age65PlusPercent), 0.75);
+  const capitalCutoff = percentile(counties.map((county) => county.averageCapitalRate), 0.25);
+  const totalCutoff = percentile(counties.map((county) => county.averageTotalRate), 0.25);
+  const lowFacilityCutoff = Math.max(1, percentile(counties.map((county) => county.matchedFacilityCount), 0.25));
+
+  const flags = [];
+  counties.forEach((county) => {
+    if (county.povertyRate >= povertyCutoff && county.averageStaffingRating <= 2.5) {
+      flags.push({ county, flag: "High poverty + low staffing", rationale: "Higher child poverty proxy overlaps with lower average CMS staffing rating." });
+    }
+    if (county.age65PlusPercent >= ageCutoff && county.matchedFacilityCount <= lowFacilityCutoff) {
+      flags.push({ county, flag: "Older population + low facility count", rationale: "Higher older-adult share overlaps with relatively few matched nursing facilities." });
+    }
+    if (county.averageCapitalRate <= capitalCutoff && county.ruralUrbanClassification === "Rural") {
+      flags.push({ county, flag: "Low capital + rural county", rationale: "Lower capital reimbursement appears in a rural county context." });
+    }
+    if (county.averageOverallStarRating <= 2.5 && county.averageTotalRate <= totalCutoff) {
+      flags.push({ county, flag: "Low quality + low reimbursement", rationale: "Lower overall CMS rating overlaps with lower average Medicaid per diem." });
+    }
+  });
+
+  return flags.sort((a, b) => calculateCountyRiskScore(b.county) - calculateCountyRiskScore(a.county));
+}
+
+function renderCountyRiskRows(flags) {
+  if (!flags.length) {
+    return '<p class="status">No county risk flags match the current filters.</p>';
+  }
+
+  const rows = flags.slice(0, 30).map(({ county, flag, rationale }) => `
+    <article class="table-row county-risk-row">
+      <div>
+        <strong>${escapeHtml(county.county)}</strong>
+        <small>${escapeHtml(county.ruralUrbanClassification || "Unknown")}</small>
+      </div>
+      <div>${escapeHtml(flag)}</div>
+      <div>${escapeHtml(rationale)}</div>
+      <div class="numeric">${county.matchedFacilityCount}</div>
+      <div class="numeric">${formatCurrencyOrNA(county.averageCapitalRate)}</div>
+      <div class="numeric">${formatNumberOrNA(county.averageStaffingRating, 1)}</div>
+      <div class="numeric">${formatOptionalPercent(county.povertyRate)}</div>
+    </article>
+  `).join("");
+
+  return `
+    <article class="table-row county-risk-row header">
+      <div>County</div>
+      <div>Flag</div>
+      <div>Why it matters</div>
+      <div class="numeric">Facilities</div>
+      <div class="numeric">Capital</div>
+      <div class="numeric">Staffing</div>
+      <div class="numeric">Poverty</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function renderCountyFindings(counties, riskFlags) {
+  if (!counties.length) {
+    return '<div class="finding">No county context records match the current filters.</div>';
+  }
+
+  const highestRisk = counties[0];
+  const lowReimbursementHighPoverty = counties
+    .filter((county) => county.averageTotalRate <= percentile(counties.map((item) => item.averageTotalRate), 0.25))
+    .sort((a, b) => (b.povertyRate || 0) - (a.povertyRate || 0))[0];
+  const ruralLowCapital = counties
+    .filter((county) => county.ruralUrbanClassification === "Rural")
+    .sort((a, b) => (a.averageCapitalRate || Infinity) - (b.averageCapitalRate || Infinity))[0];
+
+  const findings = [
+    `${highestRisk.county} County has the highest composite disparity-risk score in the current view, based on reimbursement, capital, quality, staffing, poverty, age, and facility-count signals.`,
+    lowReimbursementHighPoverty
+      ? `${lowReimbursementHighPoverty.county} County combines lower average reimbursement with a higher poverty context, which may indicate a county worth deeper validation.`
+      : "Low reimbursement plus high poverty could not be identified under the current filters.",
+    ruralLowCapital
+      ? `${ruralLowCapital.county} County is a rural county with lower average capital reimbursement at ${formatCurrencyOrNA(ruralLowCapital.averageCapitalRate)}, which may suggest infrastructure-risk pressure.`
+      : "No rural low-capital county appears under the current filters.",
+    `${riskFlags.length} county-level risk flags are currently active. These are screening signals and should be validated with local facility, ownership, access, and cost-report context.`
+  ];
+
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function calculateCountyRiskScore(county) {
+  let score = 0;
+  score += county.povertyRate || 0;
+  score += county.age65PlusPercent || 0;
+  score += county.uninsuredRate || 0;
+  score += county.ruralUrbanClassification === "Rural" ? 12 : county.ruralUrbanClassification === "Mixed" ? 6 : 0;
+  score += Math.max(0, 3 - (county.averageStaffingRating || 3)) * 10;
+  score += Math.max(0, 3 - (county.averageOverallStarRating || 3)) * 8;
+  score += Math.max(0, 25 - (county.averageCapitalRate || 25));
+  score += county.matchedFacilityCount <= 2 ? 6 : 0;
+  return score;
+}
+
+function normalizeCountyName(value) {
+  return String(value || "").replace(/ County$/i, "").trim().toUpperCase();
+}
+
+function percentile(values, p) {
+  const sorted = values.filter((value) => Number.isFinite(value)).sort((a, b) => a - b);
+  if (!sorted.length) return 0;
+  const index = Math.min(sorted.length - 1, Math.max(0, Math.ceil(sorted.length * p) - 1));
+  return sorted[index];
+}
+
+function formatCurrencyOrNA(value, digits = 2) {
+  if (!Number.isFinite(value)) return "N/A";
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: digits,
+    minimumFractionDigits: digits
+  }).format(value);
+}
+
+function formatNumberOrNA(value, digits = 1) {
+  if (!Number.isFinite(value)) return "N/A";
+  return value.toFixed(digits);
+}
+
+function formatOptionalPercent(value) {
+  if (!Number.isFinite(value)) return "N/A";
+  return value <= 1 ? `${(value * 100).toFixed(1)}%` : `${value.toFixed(1)}%`;
+}
+
 function renderFindings(records) {
   const amounts = records
     .map((record) => record.publishedAmount)
@@ -1014,6 +1223,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderCapitalEquity();
   renderQualityCorrelation();
   renderExecutiveSummary();
+  renderCountyContext();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -1024,6 +1234,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderCapitalEquity();
   renderQualityCorrelation();
   renderExecutiveSummary();
+  renderCountyContext();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -1034,6 +1245,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderCapitalEquity();
   renderQualityCorrelation();
   renderExecutiveSummary();
+  renderCountyContext();
 });
 
 els.exportButton.addEventListener("click", exportRecords);

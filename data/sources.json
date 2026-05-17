@@ -61,5 +61,12 @@
     "url": "https://data.cms.gov/provider-data/dataset/4pq5-n9py",
     "public": true,
     "bestFor": "Nursing home ownership, certified beds, star ratings, and reported staffing hours per resident day."
+  },
+  {
+    "name": "County Health Rankings 2025 Illinois Data",
+    "category": "County Disparity Context",
+    "url": "https://www.countyhealthrankings.org/health-data/illinois/data-and-resources",
+    "public": true,
+    "bestFor": "County-level social and health context including income, uninsured rate, age 65+, rurality, population, and access indicators."
   }
 ]

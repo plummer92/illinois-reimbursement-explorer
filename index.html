@@ -60,6 +60,7 @@
             <button class="tab" data-tab="analysis">Analysis</button>
             <button class="tab" data-tab="capital">Capital Equity</button>
             <button class="tab" data-tab="quality">Quality Correlation</button>
+            <button class="tab" data-tab="county">County Context</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -232,6 +233,27 @@
                 <div id="highRateLowQualityRows" class="data-table"></div>
               </section>
             </div>
+          </section>
+
+          <section id="countyPanel" class="panel" aria-labelledby="county">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Disparity context</p>
+                <h2>County Context</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              County-level social data provides context only and does not prove that reimbursement causes quality or access differences. Poverty uses County Health Rankings' child poverty measure as the county poverty proxy.
+            </div>
+            <div id="countyFindingList" class="finding-list"></div>
+            <section class="summary-section">
+              <h3>County Summary</h3>
+              <div id="countySummaryRows" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Disparity Risk Flags</h3>
+              <div id="countyRiskRows" class="data-table wide"></div>
+            </section>
           </section>
 
           <section id="sourcesPanel" class="panel" aria-labelledby="sources">
