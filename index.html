@@ -55,6 +55,7 @@
         <section class="content">
           <nav class="tabs" aria-label="Dashboard sections">
             <button class="tab active" data-tab="executive">Executive Summary</button>
+            <button class="tab" data-tab="findings">Executive Findings</button>
             <button class="tab" data-tab="records">Records</button>
             <button class="tab" data-tab="geography">Geography</button>
             <button class="tab" data-tab="analysis">Analysis</button>
@@ -94,6 +95,50 @@
             </section>
             <div class="callout muted-callout">
               This tool identifies associations and risk signals, not causation. Capital reimbursement is a proxy for capital funding pressure, not proof of actual capital spending.
+            </div>
+          </section>
+
+          <section id="findingsPanel" class="panel" aria-labelledby="findings">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Policy brief</p>
+                <h2>Executive Findings</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              These findings identify associations and screening signals across reimbursement, CMS quality, and county social context. They do not establish causation.
+            </div>
+            <section class="summary-section">
+              <h3>Export-Ready Summary Cards</h3>
+              <div id="policySummaryCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Report Narrative</h3>
+              <div id="policyNarrative" class="narrative-box"></div>
+            </section>
+            <section class="summary-section">
+              <h3>What This May Suggest</h3>
+              <div id="policySuggestionCards" class="finding-list"></div>
+            </section>
+            <div class="policy-grid">
+              <section>
+                <h3>High Reimbursement + Low Quality Counties</h3>
+                <div id="highReimbursementLowQualityCounties" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Low Reimbursement + High Social Risk</h3>
+                <div id="lowReimbursementHighRiskCounties" class="data-table"></div>
+              </section>
+            </div>
+            <div class="policy-grid">
+              <section>
+                <h3>High Capital + Weak Staffing Facilities</h3>
+                <div id="highCapitalWeakStaffingFacilities" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Rural Counties with Limited Facility Coverage</h3>
+                <div id="ruralLimitedCoverageCounties" class="data-table"></div>
+              </section>
             </div>
           </section>
 

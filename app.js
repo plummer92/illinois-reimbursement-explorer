@@ -31,6 +31,7 @@ const els = {
   tabs: document.querySelectorAll(".tab"),
   panels: {
     executive: document.querySelector("#executivePanel"),
+    findings: document.querySelector("#findingsPanel"),
     records: document.querySelector("#recordsPanel"),
     geography: document.querySelector("#geographyPanel"),
     analysis: document.querySelector("#analysisPanel"),
@@ -64,7 +65,14 @@ const els = {
   recommendedActions: document.querySelector("#recommendedActions"),
   countyFindingList: document.querySelector("#countyFindingList"),
   countySummaryRows: document.querySelector("#countySummaryRows"),
-  countyRiskRows: document.querySelector("#countyRiskRows")
+  countyRiskRows: document.querySelector("#countyRiskRows"),
+  policySummaryCards: document.querySelector("#policySummaryCards"),
+  policyNarrative: document.querySelector("#policyNarrative"),
+  policySuggestionCards: document.querySelector("#policySuggestionCards"),
+  highReimbursementLowQualityCounties: document.querySelector("#highReimbursementLowQualityCounties"),
+  lowReimbursementHighRiskCounties: document.querySelector("#lowReimbursementHighRiskCounties"),
+  highCapitalWeakStaffingFacilities: document.querySelector("#highCapitalWeakStaffingFacilities"),
+  ruralLimitedCoverageCounties: document.querySelector("#ruralLimitedCoverageCounties")
 };
 
 async function loadData() {
@@ -105,6 +113,7 @@ function render() {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
+  renderExecutiveFindings();
 }
 
 function renderMetrics() {
@@ -348,6 +357,40 @@ function renderCountyContext() {
   els.countyFindingList.innerHTML = renderCountyFindings(countySummaries, riskFlags);
   els.countySummaryRows.innerHTML = renderCountySummaryRows(countySummaries);
   els.countyRiskRows.innerHTML = renderCountyRiskRows(riskFlags);
+}
+
+function renderExecutiveFindings() {
+  const countySummaries = getFilteredCountySummaries();
+  const qualityRecords = getFilteredQualityRecords();
+  const highReimbursementLowQuality = getHighReimbursementLowQualityCounties(countySummaries);
+  const lowReimbursementHighRisk = getLowReimbursementHighRiskCounties(countySummaries);
+  const highCapitalWeakStaffing = getHighCapitalWeakStaffingFacilities(qualityRecords);
+  const ruralLimitedCoverage = getRuralLimitedCoverageCounties(countySummaries);
+
+  els.policySummaryCards.innerHTML = renderPolicySummaryCards({
+    countySummaries,
+    qualityRecords,
+    highReimbursementLowQuality,
+    lowReimbursementHighRisk,
+    highCapitalWeakStaffing,
+    ruralLimitedCoverage
+  });
+  els.policyNarrative.innerHTML = renderPolicyNarrative({
+    highReimbursementLowQuality,
+    lowReimbursementHighRisk,
+    highCapitalWeakStaffing,
+    ruralLimitedCoverage
+  });
+  els.policySuggestionCards.innerHTML = renderPolicySuggestionCards({
+    highReimbursementLowQuality,
+    lowReimbursementHighRisk,
+    highCapitalWeakStaffing,
+    ruralLimitedCoverage
+  });
+  els.highReimbursementLowQualityCounties.innerHTML = renderPolicyCountyRows(highReimbursementLowQuality, "quality");
+  els.lowReimbursementHighRiskCounties.innerHTML = renderPolicyCountyRows(lowReimbursementHighRisk, "risk");
+  els.highCapitalWeakStaffingFacilities.innerHTML = renderPolicyFacilityRows(highCapitalWeakStaffing);
+  els.ruralLimitedCoverageCounties.innerHTML = renderPolicyCountyRows(ruralLimitedCoverage, "coverage");
 }
 
 function summarizeBy(records, getKey) {
@@ -994,6 +1037,142 @@ function renderCountyFindings(counties, riskFlags) {
   return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
 }
 
+function getHighReimbursementLowQualityCounties(counties) {
+  const highRateCutoff = percentile(counties.map((county) => county.averageTotalRate), 0.75);
+  return counties
+    .filter((county) => county.averageTotalRate >= highRateCutoff && county.averageOverallStarRating <= 2.75)
+    .sort((a, b) => (b.averageTotalRate - a.averageTotalRate) || (a.averageOverallStarRating - b.averageOverallStarRating))
+    .slice(0, 5);
+}
+
+function getLowReimbursementHighRiskCounties(counties) {
+  const lowRateCutoff = percentile(counties.map((county) => county.averageTotalRate), 0.25);
+  const highPovertyCutoff = percentile(counties.map((county) => county.povertyRate), 0.75);
+  return counties
+    .filter((county) => county.averageTotalRate <= lowRateCutoff && county.povertyRate >= highPovertyCutoff)
+    .sort((a, b) => calculateCountyRiskScore(b) - calculateCountyRiskScore(a))
+    .slice(0, 5);
+}
+
+function getHighCapitalWeakStaffingFacilities(records) {
+  const highCapitalCutoff = percentile(records.map((record) => record.components?.capitalRate), 0.75);
+  return records
+    .filter((record) => record.components?.capitalRate >= highCapitalCutoff && record.quality?.staffingStarRating <= 2)
+    .sort((a, b) => (b.components.capitalRate - a.components.capitalRate) || (a.quality.staffingStarRating - b.quality.staffingStarRating))
+    .slice(0, 10);
+}
+
+function getRuralLimitedCoverageCounties(counties) {
+  return counties
+    .filter((county) => county.ruralUrbanClassification === "Rural" && county.matchedFacilityCount <= 2)
+    .sort((a, b) => (a.matchedFacilityCount - b.matchedFacilityCount) || (b.age65PlusPercent - a.age65PlusPercent))
+    .slice(0, 10);
+}
+
+function renderPolicySummaryCards(groups) {
+  const cards = [
+    ["Counties reviewed", groups.countySummaries.length],
+    ["Matched facilities reviewed", groups.qualityRecords.length],
+    ["High reimbursement + low quality counties", groups.highReimbursementLowQuality.length],
+    ["Low reimbursement + high social risk counties", groups.lowReimbursementHighRisk.length],
+    ["High capital + weak staffing facilities", groups.highCapitalWeakStaffing.length],
+    ["Rural limited-coverage counties", groups.ruralLimitedCoverage.length]
+  ];
+
+  return cards.map(([label, value]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(value)}</span>
+      <small>${escapeHtml(label)}</small>
+    </article>
+  `).join("");
+}
+
+function renderPolicyNarrative(groups) {
+  const highQualityCounty = groups.highReimbursementLowQuality[0];
+  const lowRiskCounty = groups.lowReimbursementHighRisk[0];
+  const weakStaffingFacility = groups.highCapitalWeakStaffing[0];
+  const ruralCounty = groups.ruralLimitedCoverage[0];
+
+  const sentences = [
+    "This executive findings view summarizes policy-relevant screening signals from Illinois Medicaid nursing facility reimbursement, CMS Care Compare quality indicators, and county-level disparity context.",
+    highQualityCounty
+      ? `${highQualityCounty.county} County appears in the high-reimbursement, lower-quality screen, with an average total Medicaid per-diem rate of ${formatCurrencyOrNA(highQualityCounty.averageTotalRate)} and average overall CMS rating of ${formatNumberOrNA(highQualityCounty.averageOverallStarRating, 1)}.`
+      : "No county currently meets the high-reimbursement, lower-quality screen under the active filters.",
+    lowRiskCounty
+      ? `${lowRiskCounty.county} County appears in the low-reimbursement, higher-social-risk screen, which may indicate a county where reimbursement policy, access, and socioeconomic context deserve additional validation.`
+      : "No county currently meets the low-reimbursement, high-social-risk screen under the active filters.",
+    weakStaffingFacility
+      ? `${weakStaffingFacility.facility} is an example of a facility with a higher capital rate but weak staffing rating, suggesting capital reimbursement alone should not be interpreted as a complete quality signal.`
+      : "No facility currently meets the high-capital, weak-staffing screen under the active filters.",
+    ruralCounty
+      ? `${ruralCounty.county} County appears in the rural limited-coverage screen, which may suggest access vulnerability when combined with older population share and local facility availability.`
+      : "No rural county currently meets the limited matched facility coverage screen under the active filters.",
+    "These findings are associations and prioritization flags. They should be validated with facility addresses, ownership history, cost reports, staffing trends, and local market context before being used for policy or capital allocation decisions."
+  ];
+
+  return sentences.map((sentence) => `<p>${escapeHtml(sentence)}</p>`).join("");
+}
+
+function renderPolicySuggestionCards(groups) {
+  const suggestions = [
+    groups.highReimbursementLowQuality.length
+      ? "High reimbursement paired with weaker CMS quality may suggest operational, ownership, staffing, or case-mix issues that reimbursement alone does not resolve."
+      : "The current filters do not show a strong high-reimbursement, low-quality county signal.",
+    groups.lowReimbursementHighRisk.length
+      ? "Low reimbursement in higher-risk counties may indicate places where payment adequacy and broader social need should be reviewed together."
+      : "The current filters do not show a strong low-reimbursement, high-social-risk county signal.",
+    groups.highCapitalWeakStaffing.length
+      ? "Facilities with higher capital rates but weak staffing may require separate capital planning and workforce strategy review."
+      : "The current filters do not show high-capital, weak-staffing facility outliers.",
+    groups.ruralLimitedCoverage.length
+      ? "Rural counties with limited matched facility coverage may face access fragility, especially where older population share is high."
+      : "The current filters do not show rural limited-coverage counties."
+  ];
+
+  return suggestions.map((suggestion) => `<div class="finding">${escapeHtml(suggestion)}</div>`).join("");
+}
+
+function renderPolicyCountyRows(counties, mode) {
+  if (!counties.length) {
+    return '<p class="status">No counties match this screen under the current filters.</p>';
+  }
+
+  const rows = counties.map((county) => {
+    const emphasis = mode === "quality"
+      ? `Overall ${formatNumberOrNA(county.averageOverallStarRating, 1)}`
+      : mode === "coverage"
+        ? `${county.matchedFacilityCount} matched facilities`
+        : `Risk score ${formatNumberOrNA(calculateCountyRiskScore(county), 1)}`;
+    return `
+      <article class="table-row compact">
+        <div>
+          <strong>${escapeHtml(county.county)}</strong>
+          <small>${escapeHtml(county.ruralUrbanClassification || "Unknown")} / Poverty ${formatOptionalPercent(county.povertyRate)} / 65+ ${formatOptionalPercent(county.age65PlusPercent)}</small>
+        </div>
+        <div class="numeric">${formatCurrencyOrNA(county.averageTotalRate)} / ${emphasis}</div>
+      </article>
+    `;
+  }).join("");
+
+  return rows;
+}
+
+function renderPolicyFacilityRows(records) {
+  if (!records.length) {
+    return '<p class="status">No facilities match this screen under the current filters.</p>';
+  }
+
+  return records.map((record) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(record.facility)}</strong>
+        <small>${escapeHtml(record.city)} / ${escapeHtml(record.quality?.county || "Unknown county")} / ${escapeHtml(record.geography?.tier || "Unclassified")}</small>
+      </div>
+      <div class="numeric">${formatCurrencyOrNA(record.components?.capitalRate)} / Staffing ${record.quality?.staffingStarRating || "N/A"}</div>
+    </article>
+  `).join("");
+}
+
 function calculateCountyRiskScore(county) {
   let score = 0;
   score += county.povertyRate || 0;
@@ -1224,6 +1403,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
+  renderExecutiveFindings();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -1235,6 +1415,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
+  renderExecutiveFindings();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -1246,6 +1427,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
+  renderExecutiveFindings();
 });
 
 els.exportButton.addEventListener("click", exportRecords);

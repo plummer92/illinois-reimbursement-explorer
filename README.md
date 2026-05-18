@@ -96,6 +96,8 @@ The match uses facility name and city, with a fuzzy name fallback. Correlation v
 
 The dashboard opens with an Executive Summary tab for portfolio and interview use. It automatically summarizes total HFS records, matched CMS/HFS records, average reimbursement components, geography extremes, key findings, strategic implications, recommended next actions, and limitations.
 
+The Executive Findings tab turns reimbursement, CMS quality, and county context into a policy-style brief with export-ready cards, ranked outlier lists, and report-ready narrative language. It is designed for healthcare administration, strategic sourcing, reimbursement, capital planning, and policy interview conversations.
+
 ## County Disparity Context
 
 The County Context tab uses 2025 County Health Rankings Illinois data to add county-level context to matched CMS/HFS facility records. It includes rurality, median household income, uninsured rate, age 65+, population, child poverty as the poverty proxy, preventable hospitalization, and primary care access indicators.
