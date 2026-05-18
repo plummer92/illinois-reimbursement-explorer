@@ -6,7 +6,11 @@ const state = {
   sources: [],
   activeTab: "records",
   query: "",
-  category: "all"
+  category: "all",
+  riskLevel: "all",
+  ownership: "all",
+  staffingRating: "all",
+  selectedRiskFacilityId: null
 };
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -38,6 +42,7 @@ const els = {
     capital: document.querySelector("#capitalPanel"),
     quality: document.querySelector("#qualityPanel"),
     county: document.querySelector("#countyPanel"),
+    facilityRisk: document.querySelector("#facilityRiskPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -66,6 +71,19 @@ const els = {
   countyFindingList: document.querySelector("#countyFindingList"),
   countySummaryRows: document.querySelector("#countySummaryRows"),
   countyRiskRows: document.querySelector("#countyRiskRows"),
+  riskLevelSelect: document.querySelector("#riskLevelSelect"),
+  ownershipSelect: document.querySelector("#ownershipSelect"),
+  staffingRatingSelect: document.querySelector("#staffingRatingSelect"),
+  riskInsightCards: document.querySelector("#riskInsightCards"),
+  illinoisRiskMap: document.querySelector("#illinoisRiskMap"),
+  facilityDrilldown: document.querySelector("#facilityDrilldown"),
+  topRiskFacilities: document.querySelector("#topRiskFacilities"),
+  riskDistribution: document.querySelector("#riskDistribution"),
+  riskBreakdown: document.querySelector("#riskBreakdown"),
+  highestRiskCounties: document.querySelector("#highestRiskCounties"),
+  riskByGeography: document.querySelector("#riskByGeography"),
+  riskReimbursementScatter: document.querySelector("#riskReimbursementScatter"),
+  riskStaffingScatter: document.querySelector("#riskStaffingScatter"),
   policySummaryCards: document.querySelector("#policySummaryCards"),
   policyNarrative: document.querySelector("#policyNarrative"),
   policySuggestionCards: document.querySelector("#policySuggestionCards"),
@@ -105,6 +123,7 @@ function render() {
   renderMetrics();
   renderCategoryOptions();
   renderTierOptions();
+  renderRiskFilterOptions();
   renderRecords();
   renderSources();
   renderGeography();
@@ -114,6 +133,7 @@ function render() {
   renderExecutiveSummary();
   renderCountyContext();
   renderExecutiveFindings();
+  renderFacilityRisk();
 }
 
 function renderMetrics() {
@@ -151,6 +171,43 @@ function renderTierOptions() {
 
   els.tierSelect.value = tiers.includes(selected) ? selected : "all";
   state.tier = els.tierSelect.value;
+}
+
+function renderRiskFilterOptions() {
+  const ownershipTypes = [...new Set(state.qualityRecords.map((record) => record.quality?.ownershipType).filter(Boolean))].sort();
+  const ownershipSelected = els.ownershipSelect.value;
+  const staffingSelected = els.staffingRatingSelect.value;
+  const riskSelected = els.riskLevelSelect.value;
+
+  els.riskLevelSelect.innerHTML = '<option value="all">All risk levels</option>';
+  ["High Risk", "Elevated Risk", "Moderate Risk", "Low Risk"].forEach((level) => {
+    const option = document.createElement("option");
+    option.value = level;
+    option.textContent = level;
+    els.riskLevelSelect.append(option);
+  });
+  els.riskLevelSelect.value = ["High Risk", "Elevated Risk", "Moderate Risk", "Low Risk"].includes(riskSelected) ? riskSelected : "all";
+  state.riskLevel = els.riskLevelSelect.value;
+
+  els.ownershipSelect.innerHTML = '<option value="all">All ownership types</option>';
+  ownershipTypes.forEach((ownership) => {
+    const option = document.createElement("option");
+    option.value = ownership;
+    option.textContent = ownership;
+    els.ownershipSelect.append(option);
+  });
+  els.ownershipSelect.value = ownershipTypes.includes(ownershipSelected) ? ownershipSelected : "all";
+  state.ownership = els.ownershipSelect.value;
+
+  els.staffingRatingSelect.innerHTML = '<option value="all">All staffing ratings</option>';
+  [1, 2, 3, 4, 5].forEach((rating) => {
+    const option = document.createElement("option");
+    option.value = String(rating);
+    option.textContent = `${rating} star${rating === 1 ? "" : "s"}`;
+    els.staffingRatingSelect.append(option);
+  });
+  els.staffingRatingSelect.value = ["1", "2", "3", "4", "5"].includes(staffingSelected) ? staffingSelected : "all";
+  state.staffingRating = els.staffingRatingSelect.value;
 }
 
 function getFilteredRecords() {
@@ -357,6 +414,303 @@ function renderCountyContext() {
   els.countyFindingList.innerHTML = renderCountyFindings(countySummaries, riskFlags);
   els.countySummaryRows.innerHTML = renderCountySummaryRows(countySummaries);
   els.countyRiskRows.innerHTML = renderCountyRiskRows(riskFlags);
+}
+
+function renderFacilityRisk() {
+  const facilities = getFilteredRiskFacilities();
+  const selected = facilities.find((facility) => getFacilityRiskId(facility) === state.selectedRiskFacilityId) || facilities[0] || null;
+  state.selectedRiskFacilityId = selected ? getFacilityRiskId(selected) : null;
+
+  els.riskInsightCards.innerHTML = renderRiskInsights(facilities);
+  els.illinoisRiskMap.innerHTML = renderIllinoisRiskMap(facilities);
+  els.facilityDrilldown.innerHTML = renderFacilityDrilldown(selected);
+  els.topRiskFacilities.innerHTML = renderTopRiskFacilityRows(facilities);
+  els.riskDistribution.innerHTML = renderRiskDistribution(facilities);
+  els.riskBreakdown.innerHTML = renderRiskBreakdown(selected);
+  els.highestRiskCounties.innerHTML = renderHighestRiskCountyRows(facilities);
+  els.riskByGeography.innerHTML = renderRiskByGeographyRows(facilities);
+  els.riskReimbursementScatter.innerHTML = renderRiskScatter(facilities, "publishedAmount", "Total Medicaid per diem");
+  els.riskStaffingScatter.innerHTML = renderRiskScatter(facilities, "staffing", "CMS staffing stars");
+}
+
+function getRiskFacilities() {
+  const countyByName = new Map(state.countySummaries.map((county) => [normalizeCountyName(county.county), county]));
+  return state.qualityRecords
+    .filter((record) => Number.isFinite(record.publishedAmount))
+    .map((record) => {
+      const county = countyByName.get(normalizeCountyName(record.quality?.county));
+      return {
+        ...record,
+        countyContext: county || null,
+        risk: calculateFacilityRisk(record, county)
+      };
+    });
+}
+
+function getFilteredRiskFacilities() {
+  const query = state.query.toLowerCase().trim();
+  return getRiskFacilities().filter((facility) => {
+    const categoryMatch = state.category === "all" || facility.category === state.category;
+    const tierMatch = !state.tier || state.tier === "all" || facility.geography?.tier === state.tier;
+    const riskMatch = state.riskLevel === "all" || facility.risk.risk_level === state.riskLevel;
+    const ownershipMatch = state.ownership === "all" || facility.quality?.ownershipType === state.ownership;
+    const staffingMatch = state.staffingRating === "all" || String(facility.quality?.staffingStarRating) === state.staffingRating;
+    const haystack = [
+      facility.facility,
+      facility.city,
+      facility.category,
+      facility.geography?.tier,
+      facility.quality?.county,
+      facility.quality?.ownershipType,
+      facility.risk.risk_level,
+      facility.risk.factors.map((factor) => factor.label).join(" ")
+    ].join(" ").toLowerCase();
+
+    return categoryMatch && tierMatch && riskMatch && ownershipMatch && staffingMatch && (!query || haystack.includes(query));
+  }).sort((a, b) => b.risk.risk_score - a.risk.risk_score);
+}
+
+function calculateFacilityRisk(record, county) {
+  const allRecords = state.qualityRecords;
+  const capitalP25 = percentile(allRecords.map((item) => item.components?.capitalRate), 0.25);
+  const totalP25 = percentile(allRecords.map((item) => item.publishedAmount), 0.25);
+  const bedsP25 = percentile(allRecords.map((item) => item.quality?.certifiedBeds), 0.25);
+  const rnP25 = percentile(allRecords.map((item) => item.quality?.rnStaffingHoursPerResidentDay), 0.25);
+  const povertyP75 = percentile(state.countySummaries.map((item) => item.povertyRate), 0.75);
+  const factors = [];
+  let score = 0;
+
+  function add(condition, points, label, description) {
+    if (!condition) return;
+    score += points;
+    factors.push({ points, label, description });
+  }
+
+  add(record.components?.capitalRate <= capitalP25, 18, "Low capital reimbursement", "Potential infrastructure pressure indicator.");
+  add(record.publishedAmount <= totalP25, 12, "Low total reimbursement", "Lower per-diem reimbursement indicator.");
+  add(record.quality?.staffingStarRating <= 2, 16, "Low staffing rating", "Possible staffing vulnerability indicator.");
+  add(record.quality?.overallStarRating <= 2, 14, "Low overall rating", "CMS quality screening indicator.");
+  add(["Downstate / Smaller Market"].includes(record.geography?.tier) || county?.ruralUrbanClassification === "Rural", 12, "Rural/downstate context", "Potential access and market fragility indicator.");
+  add(record.quality?.certifiedBeds <= bedsP25, 8, "Low certified bed count", "Smaller facility scale indicator.");
+  add(county?.povertyRate >= povertyP75, 10, "High county poverty", "County social-risk context indicator.");
+  add(record.quality?.rnStaffingHoursPerResidentDay <= rnP25, 10, "Low RN hours", "Lower RN hours per resident day indicator.");
+
+  const risk_score = Math.min(100, Math.round(score));
+  return {
+    risk_score,
+    risk_level: riskLevelForScore(risk_score),
+    factors
+  };
+}
+
+function riskLevelForScore(score) {
+  if (score >= 70) return "High Risk";
+  if (score >= 50) return "Elevated Risk";
+  if (score >= 25) return "Moderate Risk";
+  return "Low Risk";
+}
+
+function riskClass(level) {
+  return {
+    "Low Risk": "risk-low",
+    "Moderate Risk": "risk-moderate",
+    "Elevated Risk": "risk-elevated",
+    "High Risk": "risk-high"
+  }[level] || "risk-moderate";
+}
+
+function getFacilityRiskId(facility) {
+  return facility.quality?.cmsCertificationNumber || facility.code || `${facility.facility}-${facility.city}`;
+}
+
+function renderRiskInsights(facilities) {
+  if (!facilities.length) {
+    return '<div class="finding">No matched facilities are available under the current filters.</div>';
+  }
+  const highOrElevated = facilities.filter((facility) => ["High Risk", "Elevated Risk"].includes(facility.risk.risk_level));
+  const lowerCapitalElevated = highOrElevated.filter((facility) => facility.risk.factors.some((factor) => factor.label === "Low capital reimbursement"));
+  const ruralStaffingCapital = highOrElevated.filter((facility) => (
+    facility.risk.factors.some((factor) => factor.label === "Rural/downstate context")
+    && facility.risk.factors.some((factor) => factor.label === "Low staffing rating")
+    && facility.risk.factors.some((factor) => factor.label === "Low capital reimbursement")
+  ));
+  const avgRisk = average(facilities.map((facility) => facility.risk.risk_score));
+  const findings = [
+    `${highOrElevated.length} of ${facilities.length} matched facilities are currently in elevated or high risk tiers, with an average risk score of ${avgRisk.toFixed(1)}.`,
+    `${lowerCapitalElevated.length} elevated/high-risk facilities also trigger the low-capital reimbursement indicator, which may suggest potential infrastructure pressure.`,
+    `${ruralStaffingCapital.length} elevated/high-risk rural or downstate facilities also show lower staffing and lower capital indicators, a pattern that warrants further operational or capital review.`
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderIllinoisRiskMap(facilities) {
+  const plotted = facilities.filter((facility) => Number.isFinite(facility.quality?.latitude) && Number.isFinite(facility.quality?.longitude));
+  if (!plotted.length) return '<p class="status">No geocoded facilities match the current filters.</p>';
+  const markers = plotted.map((facility) => {
+    const point = projectIllinoisPoint(facility.quality.latitude, facility.quality.longitude);
+    const id = escapeHtml(getFacilityRiskId(facility));
+    return `
+      <circle class="map-marker ${riskClass(facility.risk.risk_level)}" data-risk-id="${id}" cx="${point.x}" cy="${point.y}" r="${markerRadius(facility.risk.risk_score)}">
+        <title>${escapeHtml(facility.facility)} | total ${formatCurrencyOrNA(facility.publishedAmount)} | capital ${formatCurrencyOrNA(facility.components?.capitalRate)} | staffing ${facility.quality?.staffingStarRating || "N/A"} | risk ${facility.risk.risk_score}</title>
+      </circle>
+    `;
+  }).join("");
+
+  return `
+    <svg viewBox="0 0 260 520" role="img" aria-label="Illinois facility risk map">
+      <path d="M95 8 L180 16 L205 82 L190 150 L214 226 L198 312 L220 402 L178 505 L112 500 L95 422 L65 370 L82 300 L58 230 L78 150 L62 82 Z" fill="#f8faf8" stroke="#b8c2ba" stroke-width="2"></path>
+      ${markers}
+    </svg>
+  `;
+}
+
+function projectIllinoisPoint(latitude, longitude) {
+  const minLat = 36.9;
+  const maxLat = 42.6;
+  const minLon = -91.6;
+  const maxLon = -87.0;
+  return {
+    x: 30 + ((longitude - minLon) / (maxLon - minLon)) * 200,
+    y: 500 - ((latitude - minLat) / (maxLat - minLat)) * 480
+  };
+}
+
+function markerRadius(score) {
+  return 3.5 + (score / 100) * 4.5;
+}
+
+function renderFacilityDrilldown(facility) {
+  if (!facility) return '<p class="status">Select a facility marker or row to view details.</p>';
+  const factors = facility.risk.factors.length
+    ? facility.risk.factors.map((factor) => `<span>${escapeHtml(factor.label)} (+${factor.points})</span>`).join("")
+    : "<span>No major risk factors triggered</span>";
+  return `
+    <h3>${escapeHtml(facility.facility)}</h3>
+    <p><strong>${facility.risk.risk_level}</strong> / risk score ${facility.risk.risk_score}</p>
+    <p>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.county || "Unknown county")} / ${escapeHtml(facility.geography?.tier || "Unclassified")}</p>
+    <p>Total: <strong>${formatCurrencyOrNA(facility.publishedAmount)}</strong> | Nursing: ${formatCurrencyOrNA(facility.components?.nursingRate)} | Support: ${formatCurrencyOrNA(facility.components?.supportRate)} | Capital: ${formatCurrencyOrNA(facility.components?.capitalRate)}</p>
+    <p>Staffing: <strong>${facility.quality?.staffingStarRating || "N/A"}</strong> | Overall: ${facility.quality?.overallStarRating || "N/A"} | QM: ${facility.quality?.qualityMeasureRating || "N/A"} | RN HPRD: ${formatNumberOrNA(facility.quality?.rnStaffingHoursPerResidentDay, 2)}</p>
+    <p>Ownership: ${escapeHtml(facility.quality?.ownershipType || "Unknown")} | Beds: ${facility.quality?.certifiedBeds || "N/A"}</p>
+    <div class="risk-factor-list">${factors}</div>
+  `;
+}
+
+function renderTopRiskFacilityRows(facilities) {
+  if (!facilities.length) return '<p class="status">No facilities match the current filters.</p>';
+  return facilities.slice(0, 25).map((facility) => `
+    <article class="table-row compact" data-risk-row="${escapeHtml(getFacilityRiskId(facility))}">
+      <div>
+        <strong>${escapeHtml(facility.facility)}</strong>
+        <small>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.county || "Unknown county")} / ${escapeHtml(facility.risk.risk_level)}</small>
+      </div>
+      <div class="numeric">${facility.risk.risk_score} / ${formatCurrencyOrNA(facility.components?.capitalRate)} / Staffing ${facility.quality?.staffingStarRating || "N/A"}</div>
+    </article>
+  `).join("");
+}
+
+function renderRiskDistribution(facilities) {
+  const levels = ["High Risk", "Elevated Risk", "Moderate Risk", "Low Risk"];
+  const maxCount = Math.max(...levels.map((level) => facilities.filter((facility) => facility.risk.risk_level === level).length), 1);
+  return levels.map((level) => {
+    const count = facilities.filter((facility) => facility.risk.risk_level === level).length;
+    return `
+      <article class="component-row">
+        <div><strong>${escapeHtml(level)}</strong><small>${count} facilities</small></div>
+        <div class="component-bar"><span class="${riskClass(level)}" style="width: ${(count / maxCount) * 100}%"></span></div>
+        <div class="component-value">${count}</div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderRiskBreakdown(facility) {
+  if (!facility) return '<p class="status">Select a facility to view risk factors.</p>';
+  if (!facility.risk.factors.length) return '<p class="status">No major risk indicators triggered for the selected facility.</p>';
+  return facility.risk.factors.map((factor) => `
+    <article class="component-row">
+      <div><strong>${escapeHtml(factor.label)}</strong><small>${escapeHtml(factor.description)}</small></div>
+      <div class="component-bar"><span style="width: ${(factor.points / 18) * 100}%"></span></div>
+      <div class="component-value">+${factor.points}</div>
+    </article>
+  `).join("");
+}
+
+function renderHighestRiskCountyRows(facilities) {
+  const groups = summarizeRiskBy(facilities, (facility) => normalizeCountyName(facility.quality?.county));
+  if (!groups.length) return '<p class="status">No county risk data matches the current filters.</p>';
+  return groups.slice(0, 10).map((group) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(titleCase(group.key))}</strong>
+        <small>${group.count} matched facilities</small>
+      </div>
+      <div class="numeric">${group.average.toFixed(1)} avg risk</div>
+    </article>
+  `).join("");
+}
+
+function renderRiskByGeographyRows(facilities) {
+  const groups = summarizeRiskBy(facilities, (facility) => facility.geography?.tier || "Unclassified");
+  if (!groups.length) return '<p class="status">No geography risk data matches the current filters.</p>';
+  return groups.map((group) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(group.key)}</strong>
+        <small>${group.count} matched facilities</small>
+      </div>
+      <div class="numeric">${group.average.toFixed(1)} avg risk</div>
+    </article>
+  `).join("");
+}
+
+function summarizeRiskBy(facilities, getKey) {
+  const groups = new Map();
+  facilities.forEach((facility) => {
+    const key = getKey(facility) || "Unknown";
+    if (!groups.has(key)) groups.set(key, { key, count: 0, total: 0 });
+    const group = groups.get(key);
+    group.count += 1;
+    group.total += facility.risk.risk_score;
+  });
+  return [...groups.values()]
+    .map((group) => ({ ...group, average: group.total / group.count }))
+    .sort((a, b) => b.average - a.average);
+}
+
+function renderRiskScatter(facilities, xKey, label) {
+  const points = facilities.filter((facility) => {
+    const x = xKey === "staffing" ? facility.quality?.staffingStarRating : facility[xKey];
+    return Number.isFinite(x) && Number.isFinite(facility.risk.risk_score);
+  });
+  if (!points.length) return '<p class="status">No scatterplot data matches the current filters.</p>';
+  const xValues = points.map((facility) => xKey === "staffing" ? facility.quality.staffingStarRating : facility[xKey]);
+  const minX = Math.min(...xValues);
+  const maxX = Math.max(...xValues);
+  const circles = points.map((facility) => {
+    const xValue = xKey === "staffing" ? facility.quality.staffingStarRating : facility[xKey];
+    const x = 35 + ((xValue - minX) / Math.max(maxX - minX, 1)) * 220;
+    const y = 220 - (facility.risk.risk_score / 100) * 190;
+    return `
+      <circle class="scatter-dot ${riskClass(facility.risk.risk_level)}" data-risk-id="${escapeHtml(getFacilityRiskId(facility))}" cx="${x}" cy="${y}" r="4">
+        <title>${escapeHtml(facility.facility)} | ${label}: ${xKey === "staffing" ? xValue : formatCurrencyOrNA(xValue)} | risk ${facility.risk.risk_score}</title>
+      </circle>
+    `;
+  }).join("");
+  return `
+    <svg viewBox="0 0 290 250" role="img" aria-label="Risk scatterplot">
+      <line x1="35" y1="220" x2="270" y2="220" stroke="#b8c2ba"></line>
+      <line x1="35" y1="20" x2="35" y2="220" stroke="#b8c2ba"></line>
+      <text x="36" y="242" font-size="11" fill="#5e6a63">${escapeHtml(label)}</text>
+      <text x="2" y="20" font-size="11" fill="#5e6a63">Risk</text>
+      ${circles}
+    </svg>
+  `;
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .toLowerCase()
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function renderExecutiveFindings() {
@@ -1404,6 +1758,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderExecutiveSummary();
   renderCountyContext();
   renderExecutiveFindings();
+  renderFacilityRisk();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -1416,6 +1771,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderExecutiveSummary();
   renderCountyContext();
   renderExecutiveFindings();
+  renderFacilityRisk();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -1428,6 +1784,47 @@ els.tierSelect.addEventListener("change", (event) => {
   renderExecutiveSummary();
   renderCountyContext();
   renderExecutiveFindings();
+  renderFacilityRisk();
+});
+
+els.riskLevelSelect.addEventListener("change", (event) => {
+  state.riskLevel = event.target.value;
+  renderFacilityRisk();
+});
+
+els.ownershipSelect.addEventListener("change", (event) => {
+  state.ownership = event.target.value;
+  renderFacilityRisk();
+});
+
+els.staffingRatingSelect.addEventListener("change", (event) => {
+  state.staffingRating = event.target.value;
+  renderFacilityRisk();
+});
+
+function selectRiskFacility(id) {
+  state.selectedRiskFacilityId = id;
+  renderFacilityRisk();
+}
+
+els.illinoisRiskMap.addEventListener("click", (event) => {
+  const marker = event.target.closest("[data-risk-id]");
+  if (marker) selectRiskFacility(marker.dataset.riskId);
+});
+
+els.topRiskFacilities.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-risk-row]");
+  if (row) selectRiskFacility(row.dataset.riskRow);
+});
+
+els.riskReimbursementScatter.addEventListener("click", (event) => {
+  const dot = event.target.closest("[data-risk-id]");
+  if (dot) selectRiskFacility(dot.dataset.riskId);
+});
+
+els.riskStaffingScatter.addEventListener("click", (event) => {
+  const dot = event.target.closest("[data-risk-id]");
+  if (dot) selectRiskFacility(dot.dataset.riskId);
 });
 
 els.exportButton.addEventListener("click", exportRecords);

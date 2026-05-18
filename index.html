@@ -62,6 +62,7 @@
             <button class="tab" data-tab="capital">Capital Equity</button>
             <button class="tab" data-tab="quality">Quality Correlation</button>
             <button class="tab" data-tab="county">County Context</button>
+            <button class="tab" data-tab="facilityRisk">Facility Risk</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -299,6 +300,81 @@
               <h3>Disparity Risk Flags</h3>
               <div id="countyRiskRows" class="data-table wide"></div>
             </section>
+          </section>
+
+          <section id="facilityRiskPanel" class="panel" aria-labelledby="facilityRisk">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Risk intelligence</p>
+                <h2>Facility Risk</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              This is exploratory analytics. Facility Risk Score identifies patterns and associations that may indicate infrastructure pressure, staffing vulnerability, or disparity risk. It does not prove causation, financial instability, or unsafe care.
+            </div>
+            <div class="risk-filter-grid">
+              <label class="field">
+                <span>Risk level</span>
+                <select id="riskLevelSelect">
+                  <option value="all">All risk levels</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Ownership</span>
+                <select id="ownershipSelect">
+                  <option value="all">All ownership types</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>Staffing rating</span>
+                <select id="staffingRatingSelect">
+                  <option value="all">All staffing ratings</option>
+                </select>
+              </label>
+            </div>
+            <div id="riskInsightCards" class="finding-list"></div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Illinois Facility Risk Map</h3>
+                <div id="illinoisRiskMap" class="map-panel"></div>
+              </section>
+              <section>
+                <h3>Facility Drilldown</h3>
+                <div id="facilityDrilldown" class="drilldown-card"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Top 25 Highest-Risk Facilities</h3>
+                <div id="topRiskFacilities" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Risk Distribution</h3>
+                <div id="riskDistribution" class="component-list"></div>
+                <h3>Risk Breakdown</h3>
+                <div id="riskBreakdown" class="component-list"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Highest-Risk Counties</h3>
+                <div id="highestRiskCounties" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Average Risk by Geography</h3>
+                <div id="riskByGeography" class="data-table"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Risk vs Reimbursement</h3>
+                <div id="riskReimbursementScatter" class="scatter-panel"></div>
+              </section>
+              <section>
+                <h3>Risk vs Staffing</h3>
+                <div id="riskStaffingScatter" class="scatter-panel"></div>
+              </section>
+            </div>
           </section>
 
           <section id="sourcesPanel" class="panel" aria-labelledby="sources">
