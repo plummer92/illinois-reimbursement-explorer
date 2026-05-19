@@ -630,10 +630,12 @@ h3 {
 .table-row strong {
   display: block;
   margin-bottom: 4px;
+  overflow-wrap: anywhere;
 }
 
 .table-row small {
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .numeric {
@@ -804,6 +806,7 @@ h3 {
   .comparison-row,
   .component-row,
   .table-row,
+  .table-row.compact,
   .table-row.watchlist,
   .table-row.county-row,
   .table-row.county-risk-row {
@@ -814,6 +817,7 @@ h3 {
   .component-value,
   .numeric {
     text-align: left;
+    white-space: normal;
   }
 
   .panel-head {
