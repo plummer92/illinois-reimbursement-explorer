@@ -595,11 +595,13 @@ h3 {
   grid-template-columns: minmax(0, 1fr) auto;
 }
 
-.table-row[data-risk-row] {
+.table-row[data-risk-row],
+.table-row[data-chain-row] {
   cursor: pointer;
 }
 
-.table-row[data-risk-row]:hover {
+.table-row[data-risk-row]:hover,
+.table-row[data-chain-row]:hover {
   border-color: var(--accent);
   background: #f6faf7;
 }

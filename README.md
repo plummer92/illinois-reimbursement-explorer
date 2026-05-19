@@ -117,3 +117,9 @@ The Facility Risk tab creates a composite exploratory risk score from reimbursem
 The facility profile uses public CMS Care Compare fields where available, including ownership, legal business name, chain affiliation, certified beds, average residents per day, staffing hours per resident day, turnover, survey indicators, fines, payment denials, penalties, and ownership-change flags. Pharmacy vendor relationships, consultant pharmacist contracts, full financial statements, debt, liquidity, lease burden, and cash flow are not included in the standard CMS/HFS dataset and should be validated through additional source work.
 
 The score is a risk indicator for review and prioritization. It does not prove financial instability, poor care, infrastructure failure, or causal relationships.
+
+## Chain / Operator Analytics
+
+The Chain Analytics tab rolls matched facilities up by CMS chain name or available operator fields. It highlights average risk score, elevated/high-risk share, average reimbursement components, staffing and overall ratings, RN hours, low-capital counts, weak-staffing counts, penalties, fines, counties, geographies, and facilities in the selected operator.
+
+These rollups are portfolio screening signals. CMS chain fields should be validated against current ownership, management agreements, lease structures, cost reports, and operator disclosures before making business, policy, or quality conclusions.

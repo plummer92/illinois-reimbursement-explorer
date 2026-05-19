@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Illinois Reimbursement Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=2026-05-18-layout-2">
+    <link rel="stylesheet" href="styles.css?v=2026-05-18-chain-2">
   </head>
   <body>
     <main class="shell">
@@ -63,6 +63,7 @@
             <button class="tab" data-tab="quality">Quality Correlation</button>
             <button class="tab" data-tab="county">County Context</button>
             <button class="tab" data-tab="facilityRisk">Facility Risk</button>
+            <button class="tab" data-tab="chain">Chain Analytics</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -377,6 +378,42 @@
             </div>
           </section>
 
+          <section id="chainPanel" class="panel" aria-labelledby="chain">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Operator intelligence</p>
+                <h2>Chain Analytics</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              Chain analytics use CMS Care Compare chain fields where available. These are portfolio screening signals only and should be validated against current ownership, management agreements, leases, cost reports, and facility-level diligence.
+            </div>
+            <section class="summary-section">
+              <h3>Operator Risk Signals</h3>
+              <div id="chainInsightCards" class="finding-list"></div>
+            </section>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Highest-Risk Chains / Operators</h3>
+                <div id="chainSummaryRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Selected Operator Profile</h3>
+                <div id="chainDrilldown" class="drilldown-card"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Operator Watchlist</h3>
+                <div id="chainWatchlistRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Facilities in Selected Operator</h3>
+                <div id="chainFacilityRows" class="data-table"></div>
+              </section>
+            </div>
+          </section>
+
           <section id="sourcesPanel" class="panel" aria-labelledby="sources">
             <div class="panel-head">
               <div>
@@ -419,6 +456,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=2026-05-18-layout-2"></script>
+    <script src="app.js?v=2026-05-18-chain-2"></script>
   </body>
 </html>

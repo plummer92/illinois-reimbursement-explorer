@@ -10,7 +10,8 @@ const state = {
   riskLevel: "all",
   ownership: "all",
   staffingRating: "all",
-  selectedRiskFacilityId: null
+  selectedRiskFacilityId: null,
+  selectedChainId: null
 };
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -43,6 +44,7 @@ const els = {
     quality: document.querySelector("#qualityPanel"),
     county: document.querySelector("#countyPanel"),
     facilityRisk: document.querySelector("#facilityRiskPanel"),
+    chain: document.querySelector("#chainPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -93,6 +95,14 @@ const els = {
   ruralLimitedCoverageCounties: document.querySelector("#ruralLimitedCoverageCounties")
 };
 
+Object.assign(els, {
+  chainInsightCards: document.querySelector("#chainInsightCards"),
+  chainSummaryRows: document.querySelector("#chainSummaryRows"),
+  chainDrilldown: document.querySelector("#chainDrilldown"),
+  chainWatchlistRows: document.querySelector("#chainWatchlistRows"),
+  chainFacilityRows: document.querySelector("#chainFacilityRows")
+});
+
 async function loadData() {
   const [recordsResponse, sourcesResponse] = await Promise.all([
     fetch("data/starter-records.json"),
@@ -135,6 +145,7 @@ function render() {
   renderCountyContext();
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
+  renderChainAnalytics();
 }
 
 function renderMetrics() {
@@ -432,6 +443,187 @@ function renderFacilityRisk() {
   els.riskByGeography.innerHTML = renderRiskByGeographyRows(facilities);
   els.riskReimbursementScatter.innerHTML = renderRiskScatter(facilities, "publishedAmount", "Total Medicaid per diem");
   els.riskStaffingScatter.innerHTML = renderRiskScatter(facilities, "staffing", "CMS staffing stars");
+}
+
+function renderChainAnalytics() {
+  const chains = summarizeChains(getFilteredRiskFacilities());
+  const selected = chains.find((chain) => chain.id === state.selectedChainId) || chains[0] || null;
+  state.selectedChainId = selected ? selected.id : null;
+
+  els.chainInsightCards.innerHTML = renderChainInsights(chains);
+  els.chainSummaryRows.innerHTML = renderChainSummaryRows(chains);
+  els.chainDrilldown.innerHTML = renderChainDrilldown(selected);
+  els.chainWatchlistRows.innerHTML = renderChainWatchlistRows(chains);
+  els.chainFacilityRows.innerHTML = renderChainFacilityRows(selected);
+}
+
+function summarizeChains(facilities) {
+  const groups = new Map();
+  facilities.forEach((facility) => {
+    const chainName = getChainName(facility);
+    const id = getChainId(chainName);
+    if (!groups.has(id)) {
+      groups.set(id, {
+        id,
+        name: chainName,
+        facilities: [],
+        counties: new Set(),
+        geographies: new Set(),
+        ownershipTypes: new Set()
+      });
+    }
+    const group = groups.get(id);
+    group.facilities.push(facility);
+    if (facility.quality?.county) group.counties.add(facility.quality.county);
+    if (facility.geography?.tier) group.geographies.add(facility.geography.tier);
+    if (facility.quality?.ownershipType) group.ownershipTypes.add(facility.quality.ownershipType);
+  });
+
+  return [...groups.values()].map((group) => {
+    const facilitiesInGroup = group.facilities;
+    const elevatedFacilities = facilitiesInGroup.filter((facility) => ["High Risk", "Elevated Risk"].includes(facility.risk.risk_level));
+    const lowCapitalFacilities = facilitiesInGroup.filter((facility) => facility.risk.factors.some((factor) => factor.label === "Low capital reimbursement"));
+    const weakStaffingFacilities = facilitiesInGroup.filter((facility) => facility.quality?.staffingStarRating <= 2);
+    const lowQualityFacilities = facilitiesInGroup.filter((facility) => facility.quality?.overallStarRating <= 2);
+    const totalFines = sum(facilitiesInGroup.map((facility) => facility.quality?.totalFinesDollars));
+    const totalPenalties = sum(facilitiesInGroup.map((facility) => facility.quality?.totalNumberOfPenalties));
+    return {
+      ...group,
+      count: facilitiesInGroup.length,
+      averageRisk: average(facilitiesInGroup.map((facility) => facility.risk.risk_score)),
+      averageTotalRate: average(facilitiesInGroup.map((facility) => facility.publishedAmount).filter(Number.isFinite)),
+      averageCapitalRate: average(facilitiesInGroup.map((facility) => facility.components?.capitalRate).filter(Number.isFinite)),
+      averageStaffingRating: average(facilitiesInGroup.map((facility) => facility.quality?.staffingStarRating).filter(Number.isFinite)),
+      averageOverallRating: average(facilitiesInGroup.map((facility) => facility.quality?.overallStarRating).filter(Number.isFinite)),
+      averageRnHours: average(facilitiesInGroup.map((facility) => facility.quality?.rnStaffingHoursPerResidentDay).filter(Number.isFinite)),
+      averageResidentsPerDay: average(facilitiesInGroup.map((facility) => facility.quality?.averageResidentsPerDay).filter(Number.isFinite)),
+      elevatedCount: elevatedFacilities.length,
+      elevatedShare: elevatedFacilities.length / facilitiesInGroup.length,
+      lowCapitalCount: lowCapitalFacilities.length,
+      weakStaffingCount: weakStaffingFacilities.length,
+      lowQualityCount: lowQualityFacilities.length,
+      totalFines,
+      totalPenalties,
+      countyCount: group.counties.size,
+      geographyList: [...group.geographies].sort(),
+      ownershipList: [...group.ownershipTypes].sort()
+    };
+  }).sort((a, b) => {
+    if (b.averageRisk !== a.averageRisk) return b.averageRisk - a.averageRisk;
+    return b.count - a.count;
+  });
+}
+
+function getChainName(facility) {
+  const chain = String(facility.quality?.chainName || "").trim();
+  if (chain) return chain;
+  return facility.quality?.legalBusinessName || facility.quality?.ownershipType || "Independent / not listed";
+}
+
+function getChainId(chainName) {
+  return String(chainName || "unknown").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
+
+function renderChainInsights(chains) {
+  if (!chains.length) return '<div class="finding">No matched operator data is available under the current filters.</div>';
+  const multiFacilityChains = chains.filter((chain) => chain.count >= 2);
+  const highestRisk = multiFacilityChains[0] || chains[0];
+  const highestElevatedShare = [...multiFacilityChains].sort((a, b) => b.elevatedShare - a.elevatedShare)[0] || highestRisk;
+  const weakStaffing = [...multiFacilityChains].sort((a, b) => b.weakStaffingCount - a.weakStaffingCount)[0] || highestRisk;
+  const penaltySignal = [...chains].sort((a, b) => b.totalPenalties - a.totalPenalties)[0] || highestRisk;
+  const findings = [
+    `${highestRisk.name} has the highest average facility risk score among multi-facility operators in this view at ${highestRisk.averageRisk.toFixed(1)} across ${highestRisk.count} matched facilities.`,
+    `${highestElevatedShare.name} has ${formatPercent(highestElevatedShare.elevatedShare)} of matched facilities in elevated or high risk tiers, which may suggest a portfolio-level review priority.`,
+    `${weakStaffing.name} has ${weakStaffing.weakStaffingCount} matched facilities with CMS staffing ratings of 1-2 stars, a possible staffing vulnerability signal.`,
+    `${penaltySignal.name} shows ${formatIntegerOrNA(penaltySignal.totalPenalties)} CMS penalty records in the current matched data. This is an enforcement signal, not a complete financial or quality conclusion.`
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderChainSummaryRows(chains) {
+  const ranked = chains.filter((chain) => chain.count >= 2).slice(0, 20);
+  if (!ranked.length) return '<p class="status">No multi-facility operators match the current filters.</p>';
+  return ranked.map((chain) => `
+    <article class="table-row compact" data-chain-row="${escapeHtml(chain.id)}">
+      <div>
+        <strong>${escapeHtml(chain.name)}</strong>
+        <small>${chain.count} facilities / ${chain.countyCount} counties / ${escapeHtml(chain.geographyList.join(", ") || "Unclassified")}</small>
+      </div>
+      <div class="numeric">${chain.averageRisk.toFixed(1)} avg risk / ${formatPercent(chain.elevatedShare)} elevated / ${formatCurrencyOrNA(chain.averageCapitalRate)} capital</div>
+    </article>
+  `).join("");
+}
+
+function renderChainDrilldown(chain) {
+  if (!chain) return '<p class="status">Select an operator row to view portfolio details.</p>';
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(chain.name)}</h3>
+        <p>${chain.count} matched facilities across ${chain.countyCount} Illinois counties</p>
+      </div>
+      <span class="risk-pill ${riskClass(riskLevelForScore(chain.averageRisk))}">${riskLevelForScore(chain.averageRisk)} ${chain.averageRisk.toFixed(1)}</span>
+    </div>
+    <section class="profile-section">
+      <h4>Portfolio Metrics</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Matched facilities", formatIntegerOrNA(chain.count))}
+        ${renderProfileMetric("Elevated/high risk share", formatPercent(chain.elevatedShare))}
+        ${renderProfileMetric("Avg total per diem", formatCurrencyOrNA(chain.averageTotalRate))}
+        ${renderProfileMetric("Avg capital rate", formatCurrencyOrNA(chain.averageCapitalRate))}
+        ${renderProfileMetric("Avg staffing stars", formatNumberOrNA(chain.averageStaffingRating, 1))}
+        ${renderProfileMetric("Avg overall stars", formatNumberOrNA(chain.averageOverallRating, 1))}
+        ${renderProfileMetric("Avg RN HPRD", formatNumberOrNA(chain.averageRnHours, 2))}
+        ${renderProfileMetric("Avg residents/day", formatNumberOrNA(chain.averageResidentsPerDay, 1))}
+        ${renderProfileMetric("Low capital facilities", formatIntegerOrNA(chain.lowCapitalCount))}
+        ${renderProfileMetric("Weak staffing facilities", formatIntegerOrNA(chain.weakStaffingCount))}
+        ${renderProfileMetric("Total penalties", formatIntegerOrNA(chain.totalPenalties))}
+        ${renderProfileMetric("Total fines", formatCurrencyOrNA(chain.totalFines, 0))}
+      </div>
+      <p class="profile-note">Operator rollups can reveal portfolio patterns, but CMS chain fields may not fully reflect current ownership, management, lease, or real-estate control.</p>
+    </section>
+    <section class="profile-section">
+      <h4>Footprint</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Geographies", chain.geographyList.join(", ") || "Unclassified")}
+        ${renderProfileMetric("Ownership types", chain.ownershipList.join(", ") || "N/A")}
+        ${renderProfileMetric("Counties represented", [...chain.counties].sort().join(", ") || "N/A")}
+        ${renderProfileMetric("Low quality facilities", formatIntegerOrNA(chain.lowQualityCount))}
+      </div>
+    </section>
+  `;
+}
+
+function renderChainWatchlistRows(chains) {
+  const watchlist = chains
+    .filter((chain) => chain.count >= 2 && (chain.averageRisk >= 50 || chain.elevatedShare >= 0.5 || chain.weakStaffingCount >= 2 || chain.lowCapitalCount >= 2))
+    .slice(0, 12);
+  if (!watchlist.length) return '<p class="status">No operator watchlist records match the current filters.</p>';
+  return watchlist.map((chain) => `
+    <article class="table-row compact" data-chain-row="${escapeHtml(chain.id)}">
+      <div>
+        <strong>${escapeHtml(chain.name)}</strong>
+        <small>${chain.weakStaffingCount} weak staffing / ${chain.lowCapitalCount} low capital / ${chain.lowQualityCount} low overall quality</small>
+      </div>
+      <div class="numeric">${chain.averageRisk.toFixed(1)} avg risk / ${formatIntegerOrNA(chain.totalPenalties)} penalties</div>
+    </article>
+  `).join("");
+}
+
+function renderChainFacilityRows(chain) {
+  if (!chain) return '<p class="status">Select an operator to view facilities.</p>';
+  return [...chain.facilities]
+    .sort((a, b) => b.risk.risk_score - a.risk.risk_score)
+    .slice(0, 20)
+    .map((facility) => `
+      <article class="table-row compact" data-risk-row="${escapeHtml(getFacilityRiskId(facility))}">
+        <div>
+          <strong>${escapeHtml(facility.facility)}</strong>
+          <small>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.county || "Unknown county")} / ${escapeHtml(facility.risk.risk_level)}</small>
+        </div>
+        <div class="numeric">${facility.risk.risk_score} risk / ${formatCurrencyOrNA(facility.components?.capitalRate)} capital / Staffing ${facility.quality?.staffingStarRating || "N/A"}</div>
+      </article>
+    `).join("");
 }
 
 function getRiskFacilities() {
@@ -1729,6 +1921,10 @@ function average(values) {
   return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
+function sum(values) {
+  return values.filter((value) => Number.isFinite(value)).reduce((total, value) => total + value, 0);
+}
+
 function componentLabel(key) {
   return {
     nursingRate: "nursing",
@@ -1881,6 +2077,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderCountyContext();
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
+  renderChainAnalytics();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -1894,6 +2091,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderCountyContext();
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
+  renderChainAnalytics();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -1907,26 +2105,35 @@ els.tierSelect.addEventListener("change", (event) => {
   renderCountyContext();
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
+  renderChainAnalytics();
 });
 
 els.riskLevelSelect.addEventListener("change", (event) => {
   state.riskLevel = event.target.value;
   renderFacilityRisk();
+  renderChainAnalytics();
 });
 
 els.ownershipSelect.addEventListener("change", (event) => {
   state.ownership = event.target.value;
   renderFacilityRisk();
+  renderChainAnalytics();
 });
 
 els.staffingRatingSelect.addEventListener("change", (event) => {
   state.staffingRating = event.target.value;
   renderFacilityRisk();
+  renderChainAnalytics();
 });
 
 function selectRiskFacility(id) {
   state.selectedRiskFacilityId = id;
   renderFacilityRisk();
+}
+
+function selectChain(id) {
+  state.selectedChainId = id;
+  renderChainAnalytics();
 }
 
 els.illinoisRiskMap.addEventListener("click", (event) => {
@@ -1937,6 +2144,24 @@ els.illinoisRiskMap.addEventListener("click", (event) => {
 els.topRiskFacilities.addEventListener("click", (event) => {
   const row = event.target.closest("[data-risk-row]");
   if (row) selectRiskFacility(row.dataset.riskRow);
+});
+
+els.chainSummaryRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-chain-row]");
+  if (row) selectChain(row.dataset.chainRow);
+});
+
+els.chainWatchlistRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-chain-row]");
+  if (row) selectChain(row.dataset.chainRow);
+});
+
+els.chainFacilityRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-risk-row]");
+  if (!row) return;
+  state.selectedRiskFacilityId = row.dataset.riskRow;
+  setTab("facilityRisk");
+  renderFacilityRisk();
 });
 
 els.riskReimbursementScatter.addEventListener("click", (event) => {
