@@ -4,7 +4,7 @@ const state = {
   countyContext: [],
   countySummaries: [],
   sources: [],
-  activeTab: "records",
+  activeTab: "executive",
   query: "",
   category: "all",
   riskLevel: "all",
@@ -107,6 +107,7 @@ async function loadData() {
   state.records = [...nursingRates, ...starterRecords];
   state.sources = await sourcesResponse.json();
   render();
+  setTab(getInitialTab());
 }
 
 async function fetchOptionalJson(url) {
@@ -132,7 +133,7 @@ function render() {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
-  renderExecutiveFindings();
+  renderPolicyExecutiveFindings();
   renderFacilityRisk();
 }
 
@@ -581,17 +582,112 @@ function markerRadius(score) {
 
 function renderFacilityDrilldown(facility) {
   if (!facility) return '<p class="status">Select a facility marker or row to view details.</p>';
+  const quality = facility.quality || {};
+  const capitalShare = Number.isFinite(facility.components?.capitalRate) && Number.isFinite(facility.publishedAmount) && facility.publishedAmount > 0
+    ? facility.components.capitalRate / facility.publishedAmount
+    : null;
   const factors = facility.risk.factors.length
     ? facility.risk.factors.map((factor) => `<span>${escapeHtml(factor.label)} (+${factor.points})</span>`).join("")
     : "<span>No major risk factors triggered</span>";
   return `
-    <h3>${escapeHtml(facility.facility)}</h3>
-    <p><strong>${facility.risk.risk_level}</strong> / risk score ${facility.risk.risk_score}</p>
-    <p>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.county || "Unknown county")} / ${escapeHtml(facility.geography?.tier || "Unclassified")}</p>
-    <p>Total: <strong>${formatCurrencyOrNA(facility.publishedAmount)}</strong> | Nursing: ${formatCurrencyOrNA(facility.components?.nursingRate)} | Support: ${formatCurrencyOrNA(facility.components?.supportRate)} | Capital: ${formatCurrencyOrNA(facility.components?.capitalRate)}</p>
-    <p>Staffing: <strong>${facility.quality?.staffingStarRating || "N/A"}</strong> | Overall: ${facility.quality?.overallStarRating || "N/A"} | QM: ${facility.quality?.qualityMeasureRating || "N/A"} | RN HPRD: ${formatNumberOrNA(facility.quality?.rnStaffingHoursPerResidentDay, 2)}</p>
-    <p>Ownership: ${escapeHtml(facility.quality?.ownershipType || "Unknown")} | Beds: ${facility.quality?.certifiedBeds || "N/A"}</p>
-    <div class="risk-factor-list">${factors}</div>
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(facility.facility)}</h3>
+        <p>${escapeHtml(quality.address || "Address unavailable")} ${escapeHtml(quality.city || facility.city)}, IL ${escapeHtml(quality.zipCode || "")}</p>
+      </div>
+      <span class="risk-pill ${riskClass(facility.risk.risk_level)}">${escapeHtml(facility.risk.risk_level)} ${facility.risk.risk_score}</span>
+    </div>
+
+    <section class="profile-section">
+      <h4>Facility Snapshot</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("CMS CCN", quality.cmsCertificationNumber)}
+        ${renderProfileMetric("County / Geography", `${quality.county || "Unknown"} / ${facility.geography?.tier || "Unclassified"}`)}
+        ${renderProfileMetric("Ownership", quality.ownershipType)}
+        ${renderProfileMetric("Legal business name", quality.legalBusinessName)}
+        ${renderProfileMetric("Chain", quality.chainName || "Independent / not listed")}
+        ${renderProfileMetric("Facilities in chain", formatIntegerOrNA(quality.numberOfFacilitiesInChain))}
+        ${renderProfileMetric("Certified beds", formatIntegerOrNA(quality.certifiedBeds))}
+        ${renderProfileMetric("Avg residents/day", formatNumberOrNA(quality.averageResidentsPerDay, 1))}
+        ${renderProfileMetric("Provider type", quality.providerType)}
+        ${renderProfileMetric("First approved", quality.dateFirstApproved)}
+      </div>
+    </section>
+
+    <section class="profile-section">
+      <h4>Medication Services</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("In-house pharmacy", "Not available in CMS/HFS dataset")}
+        ${renderProfileMetric("Medication vendor", "Not available in CMS/HFS dataset")}
+        ${renderProfileMetric("Resident/family council", quality.residentFamilyCouncil)}
+        ${renderProfileMetric("Hospital-based provider", quality.providerResidesInHospital)}
+      </div>
+      <p class="profile-note">CMS Care Compare and HFS rate files do not identify the facility pharmacy, consultant pharmacist, medication packaging vendor, or contract pharmacy relationship. To answer “who services their meds,” add pharmacy disclosure records, inspection reports, contracts, NPI relationships, or facility-reported vendor data.</p>
+    </section>
+
+    <section class="profile-section">
+      <h4>Staffing Intensity</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Staffing stars", starLabel(quality.staffingStarRating))}
+        ${renderProfileMetric("RN HPRD", formatNumberOrNA(quality.rnStaffingHoursPerResidentDay, 2))}
+        ${renderProfileMetric("Total nurse HPRD", formatNumberOrNA(quality.totalNurseStaffingHoursPerResidentDay, 2))}
+        ${renderProfileMetric("Nurse aide HPRD", formatNumberOrNA(quality.nurseAideHoursPerResidentDay, 2))}
+        ${renderProfileMetric("LPN HPRD", formatNumberOrNA(quality.lpnHoursPerResidentDay, 2))}
+        ${renderProfileMetric("Licensed staff HPRD", formatNumberOrNA(quality.licensedStaffingHoursPerResidentDay, 2))}
+        ${renderProfileMetric("Weekend total HPRD", formatNumberOrNA(quality.weekendTotalNurseStaffingHoursPerResidentDay, 2))}
+        ${renderProfileMetric("Weekend RN HPRD", formatNumberOrNA(quality.weekendRnHoursPerResidentDay, 2))}
+        ${renderProfileMetric("Total nurse turnover", formatOptionalPercent(quality.totalNursingStaffTurnover))}
+        ${renderProfileMetric("RN turnover", formatOptionalPercent(quality.registeredNurseTurnover))}
+      </div>
+      <p class="profile-note">HPRD means staffing hours per resident day. It is a staffing-intensity measure, not a literal nurse-to-patient headcount.</p>
+    </section>
+
+    <section class="profile-section">
+      <h4>Reimbursement Components</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Total Medicaid per diem", formatCurrencyOrNA(facility.publishedAmount))}
+        ${renderProfileMetric("Nursing rate", formatCurrencyOrNA(facility.components?.nursingRate))}
+        ${renderProfileMetric("Support rate", formatCurrencyOrNA(facility.components?.supportRate))}
+        ${renderProfileMetric("Capital rate", formatCurrencyOrNA(facility.components?.capitalRate))}
+        ${renderProfileMetric("Capital share", capitalShare === null ? "N/A" : formatPercent(capitalShare))}
+        ${renderProfileMetric("Effective date", facility.effectiveDate || "N/A")}
+      </div>
+    </section>
+
+    <section class="profile-section">
+      <h4>Quality, Survey, and Penalty Signals</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Overall stars", starLabel(quality.overallStarRating))}
+        ${renderProfileMetric("Health inspection stars", starLabel(quality.healthInspectionRating))}
+        ${renderProfileMetric("Quality measure stars", starLabel(quality.qualityMeasureRating))}
+        ${renderProfileMetric("Special focus status", quality.specialFocusStatus)}
+        ${renderProfileMetric("Abuse icon", quality.abuseIcon)}
+        ${renderProfileMetric("Ownership changed last 12 mo.", quality.providerChangedOwnershipLast12Months)}
+        ${renderProfileMetric("Cycle 1 deficiencies", formatIntegerOrNA(quality.ratingCycle1HealthDeficiencies))}
+        ${renderProfileMetric("Weighted survey score", formatNumberOrNA(quality.totalWeightedHealthSurveyScore, 1))}
+        ${renderProfileMetric("Infection citations", formatIntegerOrNA(quality.infectionControlCitations))}
+        ${renderProfileMetric("Fines", formatIntegerOrNA(quality.numberOfFines))}
+        ${renderProfileMetric("Fine dollars", formatCurrencyOrNA(quality.totalFinesDollars, 0))}
+        ${renderProfileMetric("Payment denials", formatIntegerOrNA(quality.numberOfPaymentDenials))}
+      </div>
+      <p class="profile-note">These are public CMS quality and enforcement indicators. They are useful screening signals, not complete operating or clinical context.</p>
+    </section>
+
+    <section class="profile-section">
+      <h4>Financial Visibility</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Public rate signal", `${formatCurrencyOrNA(facility.publishedAmount)} per resident day`)}
+        ${renderProfileMetric("Penalty signal", `${formatIntegerOrNA(quality.totalNumberOfPenalties)} penalties / ${formatCurrencyOrNA(quality.totalFinesDollars, 0)} fines`)}
+        ${renderProfileMetric("Financial statements", "Not available in CMS/HFS dataset")}
+        ${renderProfileMetric("Debt/liquidity/cash flow", "Not available in CMS/HFS dataset")}
+      </div>
+      <p class="profile-note">This profile does not show audited financials, profitability, debt, liquidity, lease burden, or vendor contracts. Those would require cost reports, ownership filings, bond disclosures, bankruptcy/court records, or facility/operator disclosures.</p>
+    </section>
+
+    <section class="profile-section">
+      <h4>Risk Factors Triggered</h4>
+      <div class="risk-factor-list">${factors}</div>
+    </section>
   `;
 }
 
@@ -601,11 +697,26 @@ function renderTopRiskFacilityRows(facilities) {
     <article class="table-row compact" data-risk-row="${escapeHtml(getFacilityRiskId(facility))}">
       <div>
         <strong>${escapeHtml(facility.facility)}</strong>
-        <small>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.county || "Unknown county")} / ${escapeHtml(facility.risk.risk_level)}</small>
+        <small>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.county || "Unknown county")} / ${escapeHtml(facility.risk.risk_level)} / Click to open profile</small>
       </div>
       <div class="numeric">${facility.risk.risk_score} / ${formatCurrencyOrNA(facility.components?.capitalRate)} / Staffing ${facility.quality?.staffingStarRating || "N/A"}</div>
     </article>
   `).join("");
+}
+
+function renderProfileMetric(label, value) {
+  const displayValue = value === null || value === undefined || value === "" ? "N/A" : value;
+  return `
+    <div class="profile-metric">
+      <span>${escapeHtml(displayValue)}</span>
+      <small>${escapeHtml(label)}</small>
+    </div>
+  `;
+}
+
+function starLabel(value) {
+  if (!Number.isFinite(value)) return "N/A";
+  return `${value} star${value === 1 ? "" : "s"}`;
 }
 
 function renderRiskDistribution(facilities) {
@@ -713,7 +824,7 @@ function titleCase(value) {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function renderExecutiveFindings() {
+function renderPolicyExecutiveFindings() {
   const countySummaries = getFilteredCountySummaries();
   const qualityRecords = getFilteredQualityRecords();
   const highReimbursementLowQuality = getHighReimbursementLowQualityCounties(countySummaries);
@@ -1566,6 +1677,11 @@ function formatNumberOrNA(value, digits = 1) {
   return value.toFixed(digits);
 }
 
+function formatIntegerOrNA(value) {
+  if (!Number.isFinite(value)) return "N/A";
+  return Math.round(value).toLocaleString("en-US");
+}
+
 function formatOptionalPercent(value) {
   if (!Number.isFinite(value)) return "N/A";
   return value <= 1 ? `${(value * 100).toFixed(1)}%` : `${value.toFixed(1)}%`;
@@ -1635,6 +1751,12 @@ function setTab(tabName) {
   Object.entries(els.panels).forEach(([name, panel]) => {
     panel.classList.toggle("active", name === tabName);
   });
+}
+
+function getInitialTab() {
+  if (typeof window === "undefined") return state.activeTab;
+  const hashTab = window.location.hash.replace("#", "");
+  return els.panels[hashTab] ? hashTab : state.activeTab;
 }
 
 function exportRecords() {
@@ -1757,7 +1879,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
-  renderExecutiveFindings();
+  renderPolicyExecutiveFindings();
   renderFacilityRisk();
 });
 
@@ -1770,7 +1892,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
-  renderExecutiveFindings();
+  renderPolicyExecutiveFindings();
   renderFacilityRisk();
 });
 
@@ -1783,7 +1905,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderQualityCorrelation();
   renderExecutiveSummary();
   renderCountyContext();
-  renderExecutiveFindings();
+  renderPolicyExecutiveFindings();
   renderFacilityRisk();
 });
 

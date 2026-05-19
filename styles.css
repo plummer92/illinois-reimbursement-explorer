@@ -339,6 +339,74 @@ h3 {
   color: var(--ink);
 }
 
+.profile-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.profile-header p {
+  margin-bottom: 0;
+}
+
+.risk-pill {
+  border-radius: 999px;
+  color: #fff;
+  flex: 0 0 auto;
+  font-size: 12px;
+  font-weight: 800;
+  padding: 6px 10px;
+}
+
+.profile-section {
+  border-top: 1px solid var(--line);
+  padding-top: 14px;
+  margin-top: 14px;
+}
+
+.profile-section h4 {
+  margin: 0 0 10px;
+  color: var(--ink);
+  font-size: 13px;
+  text-transform: uppercase;
+}
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.profile-metric {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  min-width: 0;
+  padding: 10px;
+  background: var(--soft);
+}
+
+.profile-metric span {
+  display: block;
+  color: var(--ink);
+  font-size: 13px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.profile-metric small {
+  display: block;
+  margin-top: 3px;
+  color: var(--muted);
+}
+
+.profile-note {
+  margin: 10px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .risk-factor-list {
   display: grid;
   gap: 6px;
@@ -515,6 +583,15 @@ h3 {
 
 .table-row.compact {
   grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.table-row[data-risk-row] {
+  cursor: pointer;
+}
+
+.table-row[data-risk-row]:hover {
+  border-color: var(--accent);
+  background: #f6faf7;
 }
 
 .table-row.watchlist {

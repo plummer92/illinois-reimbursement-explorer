@@ -112,6 +112,8 @@ County-level social data provides context only. It does not prove reimbursement 
 
 ## Facility Risk Intelligence
 
-The Facility Risk tab creates a composite exploratory risk score from reimbursement, CMS quality, staffing, rural/downstate geography, certified bed count, county poverty context, and RN staffing hours. It includes an Illinois facility map, risk distribution, drilldown card, top-risk facilities, county/geography rollups, and risk relationship scatterplots.
+The Facility Risk tab creates a composite exploratory risk score from reimbursement, CMS quality, staffing, rural/downstate geography, certified bed count, county poverty context, and RN staffing hours. It includes an Illinois facility map, risk distribution, facility profile drilldown, top-risk facilities, county/geography rollups, and risk relationship scatterplots.
+
+The facility profile uses public CMS Care Compare fields where available, including ownership, legal business name, chain affiliation, certified beds, average residents per day, staffing hours per resident day, turnover, survey indicators, fines, payment denials, penalties, and ownership-change flags. Pharmacy vendor relationships, consultant pharmacist contracts, full financial statements, debt, liquidity, lease burden, and cash flow are not included in the standard CMS/HFS dataset and should be validated through additional source work.
 
 The score is a risk indicator for review and prioritization. It does not prove financial instability, poor care, infrastructure failure, or causal relationships.
