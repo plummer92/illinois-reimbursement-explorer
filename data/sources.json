@@ -42,6 +42,13 @@
     "bestFor": "Hospital machine-readable files with gross charges, discounted cash prices, and payer-specific negotiated rates."
   },
   {
+    "name": "CMS Hospital General Information",
+    "category": "Hospital Quality",
+    "url": "https://data.cms.gov/provider-data/dataset/xubh-q36u",
+    "public": true,
+    "bestFor": "Medicare-registered hospital master data including hospital type, ownership, emergency services, county, and overall hospital rating."
+  },
+  {
     "name": "CMS Physician Fee Schedule",
     "category": "Medicare",
     "url": "https://www.cms.gov/medicare/physician-fee-schedule/search",

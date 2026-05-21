@@ -123,3 +123,15 @@ The score is a risk indicator for review and prioritization. It does not prove f
 The Chain Analytics tab rolls matched facilities up by CMS chain name or available operator fields. It highlights average risk score, elevated/high-risk share, average reimbursement components, staffing and overall ratings, RN hours, low-capital counts, weak-staffing counts, penalties, fines, counties, geographies, and facilities in the selected operator.
 
 These rollups are portfolio screening signals. CMS chain fields should be validated against current ownership, management agreements, lease structures, cost reports, and operator disclosures before making business, policy, or quality conclusions.
+
+## Hospital Intelligence
+
+The Hospital Intelligence tab extends the project beyond nursing facilities using CMS Hospital General Information. It adds an Illinois hospital master layer with facility ID, hospital name, city, county, hospital type, ownership, emergency services, birthing-friendly designation, overall hospital rating, and measure-group signals for mortality, safety, readmissions, patient experience, and timely/effective care.
+
+Refresh the normalized Illinois hospital dataset with:
+
+```powershell
+python scripts/import_cms_hospital_general.py data/raw/Hospital_General_Information.csv data/cms-hospital-general-illinois.json
+```
+
+This is the first hospital expansion layer. Medicaid hospital reimbursement rates, DRG/APC logic, and hospital price transparency files should be attached as later data layers before presenting hospital reimbursement estimates.

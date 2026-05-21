@@ -596,12 +596,14 @@ h3 {
 }
 
 .table-row[data-risk-row],
-.table-row[data-chain-row] {
+.table-row[data-chain-row],
+.table-row[data-hospital-row] {
   cursor: pointer;
 }
 
 .table-row[data-risk-row]:hover,
-.table-row[data-chain-row]:hover {
+.table-row[data-chain-row]:hover,
+.table-row[data-hospital-row]:hover {
   border-color: var(--accent);
   background: #f6faf7;
 }

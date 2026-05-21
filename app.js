@@ -1,6 +1,7 @@
 const state = {
   records: [],
   qualityRecords: [],
+  hospitalRecords: [],
   countyContext: [],
   countySummaries: [],
   sources: [],
@@ -11,7 +12,8 @@ const state = {
   ownership: "all",
   staffingRating: "all",
   selectedRiskFacilityId: null,
-  selectedChainId: null
+  selectedChainId: null,
+  selectedHospitalId: null
 };
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -45,6 +47,7 @@ const els = {
     county: document.querySelector("#countyPanel"),
     facilityRisk: document.querySelector("#facilityRiskPanel"),
     chain: document.querySelector("#chainPanel"),
+    hospital: document.querySelector("#hospitalPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -100,7 +103,13 @@ Object.assign(els, {
   chainSummaryRows: document.querySelector("#chainSummaryRows"),
   chainDrilldown: document.querySelector("#chainDrilldown"),
   chainWatchlistRows: document.querySelector("#chainWatchlistRows"),
-  chainFacilityRows: document.querySelector("#chainFacilityRows")
+  chainFacilityRows: document.querySelector("#chainFacilityRows"),
+  hospitalInsightCards: document.querySelector("#hospitalInsightCards"),
+  hospitalMetricCards: document.querySelector("#hospitalMetricCards"),
+  hospitalCountyRows: document.querySelector("#hospitalCountyRows"),
+  hospitalDrilldown: document.querySelector("#hospitalDrilldown"),
+  hospitalRiskRows: document.querySelector("#hospitalRiskRows"),
+  hospitalRoadmapCards: document.querySelector("#hospitalRoadmapCards")
 });
 
 async function loadData() {
@@ -112,6 +121,7 @@ async function loadData() {
   const starterRecords = await recordsResponse.json();
   const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
   state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
+  state.hospitalRecords = await fetchOptionalJson("data/cms-hospital-general-illinois.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
   state.records = [...nursingRates, ...starterRecords];
@@ -146,6 +156,7 @@ function render() {
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalIntelligence();
 }
 
 function renderMetrics() {
@@ -455,6 +466,239 @@ function renderChainAnalytics() {
   els.chainDrilldown.innerHTML = renderChainDrilldown(selected);
   els.chainWatchlistRows.innerHTML = renderChainWatchlistRows(chains);
   els.chainFacilityRows.innerHTML = renderChainFacilityRows(selected);
+}
+
+function renderHospitalIntelligence() {
+  const hospitals = getFilteredHospitals();
+  const selected = hospitals.find((hospital) => hospital.facilityId === state.selectedHospitalId) || hospitals[0] || null;
+  state.selectedHospitalId = selected ? selected.facilityId : null;
+  const countyGroups = summarizeHospitalsByCounty(hospitals);
+
+  els.hospitalInsightCards.innerHTML = renderHospitalInsights(hospitals, countyGroups);
+  els.hospitalMetricCards.innerHTML = renderHospitalMetricCards(hospitals, countyGroups);
+  els.hospitalCountyRows.innerHTML = renderHospitalCountyRows(countyGroups);
+  els.hospitalDrilldown.innerHTML = renderHospitalDrilldown(selected);
+  els.hospitalRiskRows.innerHTML = renderHospitalRiskRows(hospitals);
+  els.hospitalRoadmapCards.innerHTML = renderHospitalRoadmapCards();
+}
+
+function getFilteredHospitals() {
+  const query = state.query.toLowerCase().trim();
+  const countyByName = new Map(state.countySummaries.map((county) => [normalizeCountyName(county.county), county]));
+  return state.hospitalRecords
+    .map((hospital) => ({
+      ...hospital,
+      countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null
+    }))
+    .filter((hospital) => {
+      const haystack = [
+        hospital.facilityName,
+        hospital.city,
+        hospital.county,
+        hospital.hospitalType,
+        hospital.hospitalOwnership,
+        hospital.emergencyServices,
+        hospital.countyContext?.ruralUrbanClassification
+      ].join(" ").toLowerCase();
+      return !query || haystack.includes(query);
+    })
+    .sort((a, b) => hospitalPriorityScore(b) - hospitalPriorityScore(a));
+}
+
+function hospitalPriorityScore(hospital) {
+  let score = 0;
+  if (Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2) score += 25;
+  if (hospital.emergencyServices !== "Yes") score += 12;
+  if (hospital.hospitalType === "Critical Access Hospitals") score += 10;
+  if (hospital.countyContext?.ruralUrbanClassification === "Rural") score += 12;
+  if (hospital.countyContext?.povertyRate >= 0.2) score += 10;
+  if (hospital.safetyWorse > 0) score += 8;
+  if (hospital.readmissionWorse > 0) score += 8;
+  if (hospital.mortalityWorse > 0) score += 8;
+  return score;
+}
+
+function summarizeHospitalsByCounty(hospitals) {
+  const groups = new Map();
+  hospitals.forEach((hospital) => {
+    const key = normalizeCountyName(hospital.county) || "UNKNOWN";
+    if (!groups.has(key)) {
+      groups.set(key, {
+        county: titleCase(key),
+        hospitals: [],
+        emergencyCount: 0,
+        criticalAccessCount: 0,
+        lowRatingCount: 0,
+        totalRating: 0,
+        ratedCount: 0,
+        countyContext: hospital.countyContext
+      });
+    }
+    const group = groups.get(key);
+    group.hospitals.push(hospital);
+    if (hospital.emergencyServices === "Yes") group.emergencyCount += 1;
+    if (hospital.hospitalType === "Critical Access Hospitals") group.criticalAccessCount += 1;
+    if (Number.isFinite(hospital.overallRating)) {
+      group.totalRating += hospital.overallRating;
+      group.ratedCount += 1;
+      if (hospital.overallRating <= 2) group.lowRatingCount += 1;
+    }
+    if (!group.countyContext && hospital.countyContext) group.countyContext = hospital.countyContext;
+  });
+  return [...groups.values()]
+    .map((group) => ({
+      ...group,
+      count: group.hospitals.length,
+      averageRating: group.ratedCount ? group.totalRating / group.ratedCount : null,
+      povertyRate: group.countyContext?.povertyRate,
+      age65PlusPercent: group.countyContext?.age65PlusPercent,
+      ruralUrbanClassification: group.countyContext?.ruralUrbanClassification || "Unknown"
+    }))
+    .sort((a, b) => {
+      const riskSpread = hospitalCountyRiskScore(b) - hospitalCountyRiskScore(a);
+      return riskSpread || b.count - a.count;
+    });
+}
+
+function hospitalCountyRiskScore(group) {
+  let score = 0;
+  score += group.lowRatingCount * 12;
+  score += group.emergencyCount === 0 ? 20 : 0;
+  score += group.count <= 1 ? 8 : 0;
+  score += group.ruralUrbanClassification === "Rural" ? 10 : 0;
+  score += Number.isFinite(group.povertyRate) && group.povertyRate >= 0.2 ? 10 : 0;
+  score += Number.isFinite(group.age65PlusPercent) && group.age65PlusPercent >= 0.2 ? 8 : 0;
+  return score;
+}
+
+function renderHospitalInsights(hospitals, countyGroups) {
+  if (!hospitals.length) return '<div class="finding">No Illinois hospital records match the current search.</div>';
+  const lowRated = hospitals.filter((hospital) => Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2);
+  const criticalAccess = hospitals.filter((hospital) => hospital.hospitalType === "Critical Access Hospitals");
+  const emergency = hospitals.filter((hospital) => hospital.emergencyServices === "Yes");
+  const highContextCounty = countyGroups[0];
+  const findings = [
+    `${hospitals.length} Illinois hospitals are available from CMS Hospital General Information in the current view.`,
+    `${emergency.length} hospitals report emergency services, while ${criticalAccess.length} are Critical Access Hospitals, which can be important for rural access analysis.`,
+    `${lowRated.length} hospitals have CMS overall ratings of 1-2 stars where ratings are available. This may indicate quality review priorities, not causal reimbursement conclusions.`,
+    highContextCounty ? `${highContextCounty.county} County appears highest in the hospital access/context screen with ${highContextCounty.count} hospital record${highContextCounty.count === 1 ? "" : "s"}, ${highContextCounty.lowRatingCount} low-rated hospital${highContextCounty.lowRatingCount === 1 ? "" : "s"}, and ${highContextCounty.ruralUrbanClassification.toLowerCase()} county context.` : "County context will populate as hospital records match county data."
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderHospitalMetricCards(hospitals, countyGroups) {
+  const rated = hospitals.filter((hospital) => Number.isFinite(hospital.overallRating));
+  const emergency = hospitals.filter((hospital) => hospital.emergencyServices === "Yes");
+  const criticalAccess = hospitals.filter((hospital) => hospital.hospitalType === "Critical Access Hospitals");
+  const ruralCountyHospitals = hospitals.filter((hospital) => hospital.countyContext?.ruralUrbanClassification === "Rural");
+  const lowRated = hospitals.filter((hospital) => Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2);
+  const ownershipTypes = new Set(hospitals.map((hospital) => hospital.hospitalOwnership).filter(Boolean));
+  const metrics = [
+    ["Illinois hospitals", hospitals.length],
+    ["Rated hospitals", rated.length],
+    ["Avg CMS overall rating", rated.length ? average(rated.map((hospital) => hospital.overallRating)).toFixed(1) : "N/A"],
+    ["Emergency service hospitals", emergency.length],
+    ["Critical access hospitals", criticalAccess.length],
+    ["Rural-county hospitals", ruralCountyHospitals.length],
+    ["Low overall rating", lowRated.length],
+    ["Ownership types", ownershipTypes.size],
+    ["Counties represented", countyGroups.length]
+  ];
+  return metrics.map(([label, value]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(value)}</span>
+      <small>${escapeHtml(label)}</small>
+    </article>
+  `).join("");
+}
+
+function renderHospitalCountyRows(countyGroups) {
+  if (!countyGroups.length) return '<p class="status">No hospital county records match the current search.</p>';
+  return countyGroups.slice(0, 20).map((group) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(group.county)}</strong>
+        <small>${escapeHtml(group.ruralUrbanClassification)} / Poverty ${formatOptionalPercent(group.povertyRate)} / 65+ ${formatOptionalPercent(group.age65PlusPercent)}</small>
+      </div>
+      <div class="numeric">${group.count} hospitals / ${group.emergencyCount} ER / ${formatNumberOrNA(group.averageRating, 1)} avg rating</div>
+    </article>
+  `).join("");
+}
+
+function renderHospitalDrilldown(hospital) {
+  if (!hospital) return '<p class="status">Select or search for a hospital to view details.</p>';
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(hospital.facilityName)}</h3>
+        <p>${escapeHtml(hospital.address || "Address unavailable")} ${escapeHtml(hospital.city)}, IL ${escapeHtml(hospital.zipCode || "")}</p>
+      </div>
+      <span class="risk-pill ${riskClass(riskLevelForScore(hospitalPriorityScore(hospital)))}">${hospitalPriorityScore(hospital)} signal</span>
+    </div>
+    <section class="profile-section">
+      <h4>Hospital Snapshot</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("CMS facility ID", hospital.facilityId)}
+        ${renderProfileMetric("County", hospital.county)}
+        ${renderProfileMetric("Hospital type", hospital.hospitalType)}
+        ${renderProfileMetric("Ownership", hospital.hospitalOwnership)}
+        ${renderProfileMetric("Emergency services", hospital.emergencyServices)}
+        ${renderProfileMetric("Birthing friendly", hospital.birthingFriendly)}
+        ${renderProfileMetric("Overall CMS rating", starLabel(hospital.overallRating))}
+        ${renderProfileMetric("Phone", hospital.telephoneNumber)}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Quality Measure Signals</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Mortality measures", formatIntegerOrNA(hospital.mortalityMeasures))}
+        ${renderProfileMetric("Mortality worse", formatIntegerOrNA(hospital.mortalityWorse))}
+        ${renderProfileMetric("Safety measures", formatIntegerOrNA(hospital.safetyMeasures))}
+        ${renderProfileMetric("Safety worse", formatIntegerOrNA(hospital.safetyWorse))}
+        ${renderProfileMetric("Readmission measures", formatIntegerOrNA(hospital.readmissionMeasures))}
+        ${renderProfileMetric("Readmission worse", formatIntegerOrNA(hospital.readmissionWorse))}
+        ${renderProfileMetric("Patient experience measures", formatIntegerOrNA(hospital.patientExperienceMeasures))}
+        ${renderProfileMetric("Timely/effective care measures", formatIntegerOrNA(hospital.timelyEffectiveCareMeasures))}
+      </div>
+      <p class="profile-note">CMS quality fields are directional screening signals. They should be validated with measure-level data before drawing conclusions.</p>
+    </section>
+    <section class="profile-section">
+      <h4>Reimbursement / Price Transparency Status</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("HFS Medicaid rate sheet", "Next data layer")}
+        ${renderProfileMetric("Hospital price transparency file", "Next data layer")}
+        ${renderProfileMetric("DRG / outpatient code detail", "Next data layer")}
+        ${renderProfileMetric("County context", hospital.countyContext?.ruralUrbanClassification || "Not matched")}
+      </div>
+      <p class="profile-note">This hospital MVP does not yet estimate reimbursement. It establishes the hospital master file and quality/access frame that HFS rates and machine-readable price files can attach to next.</p>
+    </section>
+  `;
+}
+
+function renderHospitalRiskRows(hospitals) {
+  const watchlist = hospitals
+    .filter((hospital) => hospitalPriorityScore(hospital) >= 25)
+    .slice(0, 20);
+  if (!watchlist.length) return '<p class="status">No hospital watchlist records match the current search.</p>';
+  return watchlist.map((hospital) => `
+    <article class="table-row compact" data-hospital-row="${escapeHtml(hospital.facilityId)}">
+      <div>
+        <strong>${escapeHtml(hospital.facilityName)}</strong>
+        <small>${escapeHtml(hospital.city)} / ${escapeHtml(hospital.county)} / ${escapeHtml(hospital.hospitalType)}</small>
+      </div>
+      <div class="numeric">${hospitalPriorityScore(hospital)} signal / ${starLabel(hospital.overallRating)} / ER ${escapeHtml(hospital.emergencyServices || "N/A")}</div>
+    </article>
+  `).join("");
+}
+
+function renderHospitalRoadmapCards() {
+  const roadmap = [
+    "Attach Illinois HFS hospital rate sheets to each hospital where facility-level Medicaid rates are published.",
+    "Add selected hospital price transparency files for gross charge, cash price, and payer negotiated-rate comparisons.",
+    "Bring in CMS measure-level quality data for readmissions, mortality, safety, patient experience, and timely/effective care.",
+    "Add emergency access, obstetric access, rurality, and county social-risk overlays for hospital disparity analysis."
+  ];
+  return roadmap.map((item) => `<div class="finding">${escapeHtml(item)}</div>`).join("");
 }
 
 function summarizeChains(facilities) {
@@ -2078,6 +2322,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalIntelligence();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -2092,6 +2337,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalIntelligence();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -2106,6 +2352,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderPolicyExecutiveFindings();
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalIntelligence();
 });
 
 els.riskLevelSelect.addEventListener("change", (event) => {
@@ -2162,6 +2409,13 @@ els.chainFacilityRows.addEventListener("click", (event) => {
   state.selectedRiskFacilityId = row.dataset.riskRow;
   setTab("facilityRisk");
   renderFacilityRisk();
+});
+
+els.hospitalRiskRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-hospital-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.hospitalRow;
+  renderHospitalIntelligence();
 });
 
 els.riskReimbursementScatter.addEventListener("click", (event) => {

@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Illinois Reimbursement Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=2026-05-18-chain-2">
+    <link rel="stylesheet" href="styles.css?v=2026-05-20-hospital-1">
   </head>
   <body>
     <main class="shell">
@@ -64,6 +64,7 @@
             <button class="tab" data-tab="county">County Context</button>
             <button class="tab" data-tab="facilityRisk">Facility Risk</button>
             <button class="tab" data-tab="chain">Chain Analytics</button>
+            <button class="tab" data-tab="hospital">Hospital Intelligence</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -414,6 +415,46 @@
             </div>
           </section>
 
+          <section id="hospitalPanel" class="panel" aria-labelledby="hospital">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Hospital expansion</p>
+                <h2>Hospital Intelligence</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              Hospital Intelligence starts with CMS Hospital General Information for Illinois. It identifies access, quality, ownership, and county-context signals; Medicaid reimbursement and hospital price transparency are the next data layers.
+            </div>
+            <section class="summary-section">
+              <h3>Hospital Market Signals</h3>
+              <div id="hospitalInsightCards" class="finding-list"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Key Hospital Metrics</h3>
+              <div id="hospitalMetricCards" class="executive-metrics"></div>
+            </section>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Hospital Access by County</h3>
+                <div id="hospitalCountyRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Selected Hospital Profile</h3>
+                <div id="hospitalDrilldown" class="drilldown-card"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Low Rating + Social Risk Watchlist</h3>
+                <div id="hospitalRiskRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Hospital Expansion Roadmap</h3>
+                <div id="hospitalRoadmapCards" class="finding-list"></div>
+              </section>
+            </div>
+          </section>
+
           <section id="sourcesPanel" class="panel" aria-labelledby="sources">
             <div class="panel-head">
               <div>
@@ -456,6 +497,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=2026-05-18-chain-2"></script>
+    <script src="app.js?v=2026-05-20-hospital-1"></script>
   </body>
 </html>
