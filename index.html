@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Illinois Reimbursement Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=2026-05-21-hospital-values-1">
+    <link rel="stylesheet" href="styles.css?v=2026-05-21-payment-explorer-1">
   </head>
   <body>
     <main class="shell">
@@ -65,6 +65,7 @@
             <button class="tab" data-tab="facilityRisk">Facility Risk</button>
             <button class="tab" data-tab="chain">Chain Analytics</button>
             <button class="tab" data-tab="hospital">Hospital Intelligence</button>
+            <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
             <button class="tab" data-tab="methodology">Methodology</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
@@ -462,6 +463,46 @@
             </div>
           </section>
 
+          <section id="paymentPanel" class="panel" aria-labelledby="payment">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Payment analytics</p>
+                <h2>Hospital Payment Explorer</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              Explore parsed Illinois HFS hospital rate-sheet parameters by hospital. These values are reimbursement inputs for analysis, not guaranteed payment amounts or patient bills.
+            </div>
+            <section class="summary-section">
+              <h3>Payment Explorer Findings</h3>
+              <div id="paymentExplorerFindings" class="finding-list"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Selected Hospital Comparison</h3>
+              <div id="paymentComparisonCards" class="executive-metrics"></div>
+            </section>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Hospitals with Parsed HFS Payments</h3>
+                <div id="paymentHospitalRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Selected Payment Profile</h3>
+                <div id="paymentDrilldown" class="drilldown-card"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Peer Group Benchmarks</h3>
+                <div id="paymentPeerRows" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Payment Field Dictionary</h3>
+                <div id="paymentDictionaryRows" class="data-table"></div>
+              </section>
+            </div>
+          </section>
+
           <section id="methodologyPanel" class="panel" aria-labelledby="methodology">
             <div class="panel-head">
               <div>
@@ -538,6 +579,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=2026-05-21-hospital-values-1"></script>
+    <script src="app.js?v=2026-05-21-payment-explorer-1"></script>
   </body>
 </html>

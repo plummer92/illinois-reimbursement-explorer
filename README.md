@@ -150,6 +150,8 @@ The PDF parser requires `pypdf`. The downloaded PDF cache is stored under `data/
 
 The current hospital reimbursement layer links to the HFS rate sheet PDFs and shows match status, provider ID, effective date, match score, and parsed payment fields such as IP acute DRG rate, psych/rehab per diem rates, outpatient EAPG base rates, wage index, CCR, trauma/perinatal level, and high-cost drug/device add-on eligibility. These are rate-sheet parameters, not full claim-specific payment estimates. DRG/APC grouper logic, diagnosis/procedure context, managed-care rules, outpatient claim logic, and hospital price transparency files should still be added before presenting scenario-level hospital reimbursement estimates.
 
+The Hospital Payment Explorer tab turns these parsed fields into a facility-level comparison workflow. It lets users compare a selected hospital against statewide and hospital-type peer averages, review core inpatient/outpatient payment parameters, and read a plain-English data dictionary for DRG, EAPG, CCR, wage index, outlier, and add-on fields.
+
 ## Data Coverage + Methodology
 
 The Methodology tab summarizes live dataset coverage, interpretation limits, known data gaps, and recommended next layers. It is designed to make the project defensible in portfolio and interview settings by separating loaded evidence from pending research layers.

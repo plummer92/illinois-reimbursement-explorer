@@ -50,6 +50,7 @@ const els = {
     facilityRisk: document.querySelector("#facilityRiskPanel"),
     chain: document.querySelector("#chainPanel"),
     hospital: document.querySelector("#hospitalPanel"),
+    payment: document.querySelector("#paymentPanel"),
     methodology: document.querySelector("#methodologyPanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
@@ -114,6 +115,12 @@ Object.assign(els, {
   hospitalRiskRows: document.querySelector("#hospitalRiskRows"),
   hospitalRateValueRows: document.querySelector("#hospitalRateValueRows"),
   hospitalRoadmapCards: document.querySelector("#hospitalRoadmapCards"),
+  paymentExplorerFindings: document.querySelector("#paymentExplorerFindings"),
+  paymentComparisonCards: document.querySelector("#paymentComparisonCards"),
+  paymentHospitalRows: document.querySelector("#paymentHospitalRows"),
+  paymentDrilldown: document.querySelector("#paymentDrilldown"),
+  paymentPeerRows: document.querySelector("#paymentPeerRows"),
+  paymentDictionaryRows: document.querySelector("#paymentDictionaryRows"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
   coverageRows: document.querySelector("#coverageRows"),
   methodologyNotes: document.querySelector("#methodologyNotes"),
@@ -168,6 +175,7 @@ function render() {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalIntelligence();
+  renderHospitalPaymentExplorer();
   renderMethodology();
 }
 
@@ -493,6 +501,18 @@ function renderHospitalIntelligence() {
   els.hospitalRiskRows.innerHTML = renderHospitalRiskRows(hospitals);
   els.hospitalRateValueRows.innerHTML = renderHospitalRateValueRows(hospitals);
   els.hospitalRoadmapCards.innerHTML = renderHospitalRoadmapCards();
+}
+
+function renderHospitalPaymentExplorer() {
+  const hospitals = getFilteredHospitals().filter((hospital) => hospital.hfsPayment);
+  const selected = hospitals.find((hospital) => hospital.facilityId === state.selectedHospitalId) || hospitals[0] || null;
+  state.selectedHospitalId = selected ? selected.facilityId : state.selectedHospitalId;
+  els.paymentExplorerFindings.innerHTML = renderPaymentExplorerFindings(hospitals, selected);
+  els.paymentComparisonCards.innerHTML = renderPaymentComparisonCards(hospitals, selected);
+  els.paymentHospitalRows.innerHTML = renderPaymentHospitalRows(hospitals);
+  els.paymentDrilldown.innerHTML = renderPaymentDrilldown(selected, hospitals);
+  els.paymentPeerRows.innerHTML = renderPaymentPeerRows(selected, hospitals);
+  els.paymentDictionaryRows.innerHTML = renderPaymentDictionaryRows();
 }
 
 function renderMethodology() {
@@ -965,6 +985,190 @@ function renderHospitalRateValueRows(hospitals) {
       </article>
     `;
   }).join("");
+}
+
+function renderPaymentExplorerFindings(hospitals, selected) {
+  if (!hospitals.length) return '<div class="finding">No parsed HFS hospital payment records match the current search.</div>';
+  const acuteDrgRates = getPaymentValues(hospitals, "ipCos20AcuteDrgRate");
+  const opEapgRates = getPaymentValues(hospitals, "opCos24AcuteEapgConversionFactorBaseRate");
+  const rehabPerDiems = getPaymentValues(hospitals, "ipCos22RehabPerDiemRate");
+  const selectedFields = selected?.hfsPayment?.paymentFields || {};
+  const findings = [
+    `${hospitals.length} hospitals in the current view have parsed HFS payment parameters from public 2026 rate sheets.`,
+    acuteDrgRates.length ? `The average available IP COS 20 Acute DRG Rate in this view is ${formatCurrencyOrNA(average(acuteDrgRates))}, with a range of ${formatCurrencyOrNA(Math.min(...acuteDrgRates))} to ${formatCurrencyOrNA(Math.max(...acuteDrgRates))}.` : "Acute DRG rates are not available for the current filtered hospital set.",
+    opEapgRates.length ? `The average outpatient acute EAPG base rate is ${formatCurrencyOrNA(average(opEapgRates))}, which can support outpatient reimbursement benchmarking once service-level logic is added.` : "Outpatient acute EAPG fields are not available for the current filtered hospital set.",
+    rehabPerDiems.length ? `${rehabPerDiems.length} hospitals have inpatient rehab per-diem values, useful for separating specialty hospital payment parameters from acute-care comparisons.` : "Rehab per-diem fields are mostly N/A in this filtered view, which is expected for many acute-care hospitals.",
+    selected ? `${selected.facilityName} is selected. Its acute DRG rate is ${formatCurrencyOrNA(selectedFields.ipCos20AcuteDrgRate)} and its OP acute EAPG base rate is ${formatCurrencyOrNA(selectedFields.opCos24AcuteEapgConversionFactorBaseRate)}.` : "Select a hospital to compare its HFS payment parameters to statewide and peer benchmarks.",
+    "These comparisons are exploratory rate-sheet analytics and do not estimate a final reimbursement amount without DRG/APC grouping, claim details, modifiers, managed-care rules, and validation."
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderPaymentComparisonCards(hospitals, selected) {
+  const fields = selected?.hfsPayment?.paymentFields || {};
+  const peerHospitals = getPaymentPeers(selected, hospitals);
+  const metrics = [
+    buildPaymentComparisonMetric("IP acute DRG rate", fields.ipCos20AcuteDrgRate, hospitals, peerHospitals, "ipCos20AcuteDrgRate"),
+    buildPaymentComparisonMetric("IP psych per diem", fields.ipCos21PsychPerDiemRate, hospitals, peerHospitals, "ipCos21PsychPerDiemRate"),
+    buildPaymentComparisonMetric("IP rehab per diem", fields.ipCos22RehabPerDiemRate, hospitals, peerHospitals, "ipCos22RehabPerDiemRate"),
+    buildPaymentComparisonMetric("OP acute EAPG base", fields.opCos24AcuteEapgConversionFactorBaseRate, hospitals, peerHospitals, "opCos24AcuteEapgConversionFactorBaseRate"),
+    buildPaymentComparisonMetric("OP psych EAPG base", fields.opCos2728PsychEapgConversionFactorBaseRate, hospitals, peerHospitals, "opCos2728PsychEapgConversionFactorBaseRate"),
+    buildPaymentComparisonMetric("OP rehab EAPG base", fields.opCos29RehabEapgConversionFactorBaseRate, hospitals, peerHospitals, "opCos29RehabEapgConversionFactorBaseRate"),
+    buildPaymentComparisonMetric("Medicare IPPS CCR", fields.medicareIppsAggregateCcr, hospitals, peerHospitals, "medicareIppsAggregateCcr", false),
+    buildPaymentComparisonMetric("IP wage index", fields.ipCos20AcuteWageIndex, hospitals, peerHospitals, "ipCos20AcuteWageIndex", false)
+  ];
+  return metrics.map((metric) => `
+    <article class="metric-card">
+      <span>${escapeHtml(metric.value)}</span>
+      <small>${escapeHtml(metric.label)} / ${escapeHtml(metric.detail)}</small>
+    </article>
+  `).join("");
+}
+
+function buildPaymentComparisonMetric(label, value, hospitals, peerHospitals, field, isCurrency = true) {
+  const allValues = getPaymentValues(hospitals, field);
+  const peerValues = getPaymentValues(peerHospitals, field);
+  const formatter = isCurrency ? formatCurrencyOrNA : (raw) => formatNumberOrNA(raw, field.includes("Ccr") ? 3 : 4);
+  const allAverage = allValues.length ? average(allValues) : null;
+  const peerAverage = peerValues.length ? average(peerValues) : null;
+  const spread = Number.isFinite(value) && Number.isFinite(allAverage) ? value - allAverage : null;
+  const spreadText = Number.isFinite(spread)
+    ? `${spread >= 0 ? "+" : "-"}${formatter(Math.abs(spread))} vs state`
+    : "";
+  return {
+    label,
+    value: formatter(value),
+    detail: `state avg ${formatter(allAverage)} / peer avg ${formatter(peerAverage)}${spreadText ? ` / ${spreadText}` : ""}`
+  };
+}
+
+function renderPaymentHospitalRows(hospitals) {
+  if (!hospitals.length) return '<p class="status">No parsed HFS hospital payment records match the current search.</p>';
+  return hospitals
+    .slice()
+    .sort((a, b) => {
+      const aRate = a.hfsPayment?.paymentFields?.ipCos20AcuteDrgRate || 0;
+      const bRate = b.hfsPayment?.paymentFields?.ipCos20AcuteDrgRate || 0;
+      return bRate - aRate;
+    })
+    .slice(0, 40)
+    .map((hospital) => {
+      const fields = hospital.hfsPayment?.paymentFields || {};
+      return `
+        <article class="table-row compact" data-payment-hospital-row="${escapeHtml(hospital.facilityId)}">
+          <div>
+            <strong>${escapeHtml(hospital.facilityName)}</strong>
+            <small>${escapeHtml(hospital.city)} / ${escapeHtml(hospital.county)} / ${escapeHtml(hospital.hospitalType)}</small>
+          </div>
+          <div class="numeric">DRG ${formatCurrencyOrNA(fields.ipCos20AcuteDrgRate)} / OP ${formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate)}</div>
+        </article>
+      `;
+    }).join("");
+}
+
+function renderPaymentDrilldown(hospital, hospitals) {
+  if (!hospital) return '<p class="status">Select a hospital with parsed HFS payment parameters.</p>';
+  const fields = hospital.hfsPayment?.paymentFields || {};
+  const peerHospitals = getPaymentPeers(hospital, hospitals);
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(hospital.facilityName)}</h3>
+        <p>${escapeHtml(hospital.city)}, IL / ${escapeHtml(hospital.county)} County / ${escapeHtml(hospital.hospitalType)}</p>
+      </div>
+      <span class="tag">HFS ${escapeHtml(hospital.hfsPayment?.hfsProviderId || "N/A")}</span>
+    </div>
+    <section class="profile-section">
+      <h4>Core Payment Parameters</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("IP acute DRG rate", formatCurrencyOrNA(fields.ipCos20AcuteDrgRate))}
+        ${renderProfileMetric("Acute standardized amount", formatCurrencyOrNA(fields.ipCos20AcuteStandardizedAmount))}
+        ${renderProfileMetric("Psych per diem", formatCurrencyOrNA(fields.ipCos21PsychPerDiemRate))}
+        ${renderProfileMetric("Rehab per diem", formatCurrencyOrNA(fields.ipCos22RehabPerDiemRate))}
+        ${renderProfileMetric("OP acute EAPG base", formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("OP psych EAPG base", formatCurrencyOrNA(fields.opCos2728PsychEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("OP rehab EAPG base", formatCurrencyOrNA(fields.opCos29RehabEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("Outlier fixed-loss", formatCurrencyOrNA(fields.ipCos20AcuteOutlierFixedLossAmount))}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Adjustment / Context Fields</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("IP wage index", formatNumberOrNA(fields.ipCos20AcuteWageIndex, 4))}
+        ${renderProfileMetric("OP wage index", formatNumberOrNA(fields.opWageIndex, 4))}
+        ${renderProfileMetric("Medicare IPPS CCR", formatNumberOrNA(fields.medicareIppsAggregateCcr, 3))}
+        ${renderProfileMetric("SMART Act factor", formatNumberOrNA(fields.smartActAdjustmentFactor, 3))}
+        ${renderProfileMetric("Trauma level", fields.traumaLevel || "N/A")}
+        ${renderProfileMetric("Perinatal level", fields.perinatalLevel || "N/A")}
+        ${renderProfileMetric("Rate enhancement", fields.rateEnhancementType || "N/A")}
+        ${renderProfileMetric("Drug/device add-on", fields.eligibleHighCostDrugDeviceAddOn || "N/A")}
+      </div>
+      <p class="profile-note">${peerHospitals.length} peer hospitals are included using the selected hospital type within the current search/filter context.</p>
+    </section>
+  `;
+}
+
+function renderPaymentPeerRows(selected, hospitals) {
+  if (!selected) return '<p class="status">Select a hospital to view peer benchmarks.</p>';
+  const fields = selected.hfsPayment?.paymentFields || {};
+  const peers = getPaymentPeers(selected, hospitals);
+  const rows = [
+    ["IP acute DRG rate", "ipCos20AcuteDrgRate", true],
+    ["IP psych per diem", "ipCos21PsychPerDiemRate", true],
+    ["IP rehab per diem", "ipCos22RehabPerDiemRate", true],
+    ["OP acute EAPG base", "opCos24AcuteEapgConversionFactorBaseRate", true],
+    ["OP psych EAPG base", "opCos2728PsychEapgConversionFactorBaseRate", true],
+    ["OP rehab EAPG base", "opCos29RehabEapgConversionFactorBaseRate", true],
+    ["Medicare IPPS CCR", "medicareIppsAggregateCcr", false],
+    ["IP wage index", "ipCos20AcuteWageIndex", false]
+  ];
+  return rows.map(([label, field, isCurrency]) => {
+    const selectedValue = fields[field];
+    const stateValues = getPaymentValues(hospitals, field);
+    const peerValues = getPaymentValues(peers, field);
+    const format = isCurrency ? formatCurrencyOrNA : (value) => formatNumberOrNA(value, field === "medicareIppsAggregateCcr" ? 3 : 4);
+    return `
+      <article class="table-row compact">
+        <div>
+          <strong>${escapeHtml(label)}</strong>
+          <small>Selected ${format(selectedValue)} / State avg ${format(stateValues.length ? average(stateValues) : null)}</small>
+        </div>
+        <div class="numeric">Peer avg ${format(peerValues.length ? average(peerValues) : null)} / n=${peerValues.length}</div>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderPaymentDictionaryRows() {
+  const rows = [
+    ["IP acute DRG rate", "Facility-specific inpatient acute rate parameter before claim-specific grouping and policy logic."],
+    ["Psych / rehab per diem", "Daily inpatient payment parameter for psychiatric or rehabilitation service categories where applicable."],
+    ["EAPG base rate", "Outpatient base payment parameter used with outpatient grouping logic and service-specific adjustments."],
+    ["CCR", "Cost-to-charge ratio signal used in Medicare/IPPS context and outlier or cost-based analytics."],
+    ["Wage index", "Geographic labor-cost adjustment factor that can affect payment rates."],
+    ["Outlier fixed-loss", "Threshold-style parameter related to unusually high-cost inpatient cases."],
+    ["SMART Act factor", "Illinois policy adjustment factor shown on the HFS rate sheet."],
+    ["Drug/device add-on", "Indicator that high-cost drug or device add-on payments may apply under HFS rules."]
+  ];
+  return rows.map(([term, definition]) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(term)}</strong>
+        <small>${escapeHtml(definition)}</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+function getPaymentValues(hospitals, field) {
+  return hospitals
+    .map((hospital) => hospital.hfsPayment?.paymentFields?.[field])
+    .filter((value) => Number.isFinite(value));
+}
+
+function getPaymentPeers(selected, hospitals) {
+  if (!selected) return [];
+  return hospitals.filter((hospital) => hospital.hospitalType === selected.hospitalType && hospital.facilityId !== selected.facilityId);
 }
 
 function renderHospitalRoadmapCards() {
@@ -2599,6 +2803,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalIntelligence();
+  renderHospitalPaymentExplorer();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -2635,18 +2840,21 @@ els.riskLevelSelect.addEventListener("change", (event) => {
   state.riskLevel = event.target.value;
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalPaymentExplorer();
 });
 
 els.ownershipSelect.addEventListener("change", (event) => {
   state.ownership = event.target.value;
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalPaymentExplorer();
 });
 
 els.staffingRatingSelect.addEventListener("change", (event) => {
   state.staffingRating = event.target.value;
   renderFacilityRisk();
   renderChainAnalytics();
+  renderHospitalPaymentExplorer();
 });
 
 function selectRiskFacility(id) {
@@ -2692,6 +2900,24 @@ els.hospitalRiskRows.addEventListener("click", (event) => {
   if (!row) return;
   state.selectedHospitalId = row.dataset.hospitalRow;
   renderHospitalIntelligence();
+  renderHospitalPaymentExplorer();
+});
+
+els.hospitalRateValueRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-hospital-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.hospitalRow;
+  setTab("payment");
+  renderHospitalIntelligence();
+  renderHospitalPaymentExplorer();
+});
+
+els.paymentHospitalRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-payment-hospital-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.paymentHospitalRow;
+  renderHospitalIntelligence();
+  renderHospitalPaymentExplorer();
 });
 
 els.riskReimbursementScatter.addEventListener("click", (event) => {
