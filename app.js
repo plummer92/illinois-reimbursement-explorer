@@ -2,6 +2,7 @@ const state = {
   records: [],
   qualityRecords: [],
   hospitalRecords: [],
+  hospitalRateSheets: [],
   countyContext: [],
   countySummaries: [],
   sources: [],
@@ -128,6 +129,7 @@ async function loadData() {
   const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
   state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
   state.hospitalRecords = await fetchOptionalJson("data/cms-hospital-general-illinois.json");
+  state.hospitalRateSheets = await fetchOptionalJson("data/hfs-hospital-rate-sheets-2026.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
   state.records = [...nursingRates, ...starterRecords];
@@ -504,6 +506,8 @@ function buildCoverageSummary() {
   const matchedCmsFacilities = state.qualityRecords.length;
   const countyCount = state.countySummaries.length || state.countyContext.length;
   const hospitalCount = state.hospitalRecords.length;
+  const hospitalRateSheetCount = state.hospitalRateSheets.length;
+  const matchedHospitalRateSheets = state.hospitalRateSheets.filter((sheet) => sheet.cmsFacilityId).length;
   const chainCount = summarizeChains(getRiskFacilities()).filter((chain) => chain.count >= 2).length;
   const sourceCount = state.sources.length;
   return {
@@ -512,6 +516,8 @@ function buildCoverageSummary() {
     matchedCmsFacilities,
     countyCount,
     hospitalCount,
+    hospitalRateSheetCount,
+    matchedHospitalRateSheets,
     chainCount,
     sourceCount,
     layers: [
@@ -552,10 +558,10 @@ function buildCoverageSummary() {
       },
       {
         layer: "HFS hospital Medicaid rates",
-        records: 0,
-        coverage: "Hospital reimbursement layer",
-        status: "Next",
-        interpretation: "Needed before hospital reimbursement comparisons can be treated as payment analysis."
+        records: hospitalRateSheetCount,
+        coverage: `${matchedHospitalRateSheets} matched to CMS hospitals`,
+        status: "Indexed",
+        interpretation: "Current HFS hospital rate sheet PDFs are linked to hospitals where name matching is strong enough."
       },
       {
         layer: "Hospital price transparency files",
@@ -576,8 +582,10 @@ function renderCoverageMetricCards(coverage) {
     ["CMS/HFS matches", coverage.matchedCmsFacilities],
     ["County context rows", coverage.countyCount],
     ["Illinois hospitals", coverage.hospitalCount],
+    ["HFS hospital rate sheets", coverage.hospitalRateSheetCount],
+    ["Matched hospital sheets", coverage.matchedHospitalRateSheets],
     ["Multi-facility operators", coverage.chainCount],
-    ["Pending hospital rate layers", 2]
+    ["Pending price layers", 1]
   ];
   return metrics.map(([label, value]) => `
     <article class="metric-card">
@@ -607,7 +615,7 @@ function renderMethodologyNotes() {
     "Capital rate is used as a proxy for capital funding pressure. It is not proof of deferred maintenance, modernization need, or ownership investment decisions.",
     "CMS quality, staffing, survey, and penalty fields are screening signals. They support prioritization, not causal conclusions.",
     "County social data provides context for disparity analysis, but county poverty, income, rurality, and age structure do not prove facility-level behavior.",
-    "Hospital Intelligence currently supports access and quality context. Hospital reimbursement estimates require HFS hospital rates and/or price transparency data."
+    "Hospital Intelligence now links available HFS hospital rate sheet PDFs, but reimbursement estimates still require parsing rate sheet values and adding price transparency data."
   ];
   return notes.map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("");
 }
@@ -616,7 +624,7 @@ function renderDataGapRows() {
   const gaps = [
     ["Pharmacy vendor / consultant pharmacist", "Not in CMS/HFS standard files", "Requires facility disclosures, contracts, inspection reports, or NPI/vendor matching."],
     ["True financial condition", "Not in current dashboard", "Requires cost reports, audited financials, ownership filings, bond disclosures, leases, or court records."],
-    ["Hospital Medicaid reimbursement", "Pending", "Attach Illinois HFS hospital rate sheets and define DRG/APC/service-line fields."],
+    ["Hospital Medicaid reimbursement values", "Partially covered", "HFS hospital rate sheet PDFs are indexed and linked; numeric rate fields still need PDF/table extraction."],
     ["Hospital negotiated prices", "Pending", "Add selected hospital machine-readable files and normalize payer, plan, CPT/HCPCS, DRG, cash price, and negotiated rate."],
     ["Facility ownership/control complexity", "Partially covered", "CMS chain name may not capture management agreements, real-estate ownership, leases, or private equity structures."],
     ["Longitudinal trends", "Pending", "Add multiple CMS/HFS releases to distinguish persistent signals from one-period variation."]
@@ -634,7 +642,7 @@ function renderDataGapRows() {
 
 function renderNextLayerCards() {
   const layers = [
-    "Hospital Medicaid Rate Sheet integration: connect HFS hospital payment context to the CMS hospital master file.",
+    "Hospital rate sheet parser: extract numeric DRG, per-diem, add-on, and outpatient fields from linked HFS PDFs.",
     "Hospital Price Transparency parser: start with 5-10 Illinois hospitals and normalize shoppable services, CPT/HCPCS, DRGs, cash prices, and payer negotiated rates.",
     "Cost report and ownership intelligence: add cost reports, ownership changes, related-party/lease indicators, and operator-level finance signals.",
     "Longitudinal trend module: compare CMS quality, staffing, penalties, rates, and county context across multiple releases.",
@@ -646,10 +654,16 @@ function renderNextLayerCards() {
 function getFilteredHospitals() {
   const query = state.query.toLowerCase().trim();
   const countyByName = new Map(state.countySummaries.map((county) => [normalizeCountyName(county.county), county]));
+  const rateSheetByCmsId = new Map(
+    state.hospitalRateSheets
+      .filter((sheet) => sheet.cmsFacilityId)
+      .map((sheet) => [String(sheet.cmsFacilityId), sheet])
+  );
   return state.hospitalRecords
     .map((hospital) => ({
       ...hospital,
-      countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null
+      countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null,
+      hfsRateSheet: rateSheetByCmsId.get(String(hospital.facilityId)) || null
     }))
     .filter((hospital) => {
       const haystack = [
@@ -659,6 +673,8 @@ function getFilteredHospitals() {
         hospital.hospitalType,
         hospital.hospitalOwnership,
         hospital.emergencyServices,
+        hospital.hfsRateSheet?.hfsProviderId,
+        hospital.hfsRateSheet?.hospitalName,
         hospital.countyContext?.ruralUrbanClassification
       ].join(" ").toLowerCase();
       return !query || haystack.includes(query);
@@ -737,10 +753,12 @@ function renderHospitalInsights(hospitals, countyGroups) {
   const lowRated = hospitals.filter((hospital) => Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2);
   const criticalAccess = hospitals.filter((hospital) => hospital.hospitalType === "Critical Access Hospitals");
   const emergency = hospitals.filter((hospital) => hospital.emergencyServices === "Yes");
+  const rateSheetMatches = hospitals.filter((hospital) => hospital.hfsRateSheet);
   const highContextCounty = countyGroups[0];
   const findings = [
     `${hospitals.length} Illinois hospitals are available from CMS Hospital General Information in the current view.`,
     `${emergency.length} hospitals report emergency services, while ${criticalAccess.length} are Critical Access Hospitals, which can be important for rural access analysis.`,
+    `${rateSheetMatches.length} hospitals in the current view have a matched 2026 HFS Medicaid hospital rate sheet PDF. These links provide reimbursement context, but numeric rate extraction is still a next step.`,
     `${lowRated.length} hospitals have CMS overall ratings of 1-2 stars where ratings are available. This may indicate quality review priorities, not causal reimbursement conclusions.`,
     highContextCounty ? `${highContextCounty.county} County appears highest in the hospital access/context screen with ${highContextCounty.count} hospital record${highContextCounty.count === 1 ? "" : "s"}, ${highContextCounty.lowRatingCount} low-rated hospital${highContextCounty.lowRatingCount === 1 ? "" : "s"}, and ${highContextCounty.ruralUrbanClassification.toLowerCase()} county context.` : "County context will populate as hospital records match county data."
   ];
@@ -753,6 +771,7 @@ function renderHospitalMetricCards(hospitals, countyGroups) {
   const criticalAccess = hospitals.filter((hospital) => hospital.hospitalType === "Critical Access Hospitals");
   const ruralCountyHospitals = hospitals.filter((hospital) => hospital.countyContext?.ruralUrbanClassification === "Rural");
   const lowRated = hospitals.filter((hospital) => Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2);
+  const rateSheetMatches = hospitals.filter((hospital) => hospital.hfsRateSheet);
   const ownershipTypes = new Set(hospitals.map((hospital) => hospital.hospitalOwnership).filter(Boolean));
   const metrics = [
     ["Illinois hospitals", hospitals.length],
@@ -760,6 +779,7 @@ function renderHospitalMetricCards(hospitals, countyGroups) {
     ["Avg CMS overall rating", rated.length ? average(rated.map((hospital) => hospital.overallRating)).toFixed(1) : "N/A"],
     ["Emergency service hospitals", emergency.length],
     ["Critical access hospitals", criticalAccess.length],
+    ["Matched HFS rate sheets", rateSheetMatches.length],
     ["Rural-county hospitals", ruralCountyHospitals.length],
     ["Low overall rating", lowRated.length],
     ["Ownership types", ownershipTypes.size],
@@ -788,6 +808,7 @@ function renderHospitalCountyRows(countyGroups) {
 
 function renderHospitalDrilldown(hospital) {
   if (!hospital) return '<p class="status">Select or search for a hospital to view details.</p>';
+  const rateSheet = hospital.hfsRateSheet;
   return `
     <div class="profile-header">
       <div>
@@ -826,12 +847,16 @@ function renderHospitalDrilldown(hospital) {
     <section class="profile-section">
       <h4>Reimbursement / Price Transparency Status</h4>
       <div class="profile-grid">
-        ${renderProfileMetric("HFS Medicaid rate sheet", "Next data layer")}
+        ${renderProfileMetric("HFS Medicaid rate sheet", rateSheet ? "Available" : "Not matched")}
+        ${renderProfileMetric("HFS provider ID", rateSheet?.hfsProviderId || "N/A")}
+        ${renderProfileMetric("Rate sheet effective", rateSheet?.effectiveDate || "N/A")}
+        ${renderProfileMetric("Rate sheet match score", Number.isFinite(rateSheet?.matchScore) ? formatNumberOrNA(rateSheet.matchScore, 2) : "N/A")}
         ${renderProfileMetric("Hospital price transparency file", "Next data layer")}
         ${renderProfileMetric("DRG / outpatient code detail", "Next data layer")}
         ${renderProfileMetric("County context", hospital.countyContext?.ruralUrbanClassification || "Not matched")}
       </div>
-      <p class="profile-note">This hospital MVP does not yet estimate reimbursement. It establishes the hospital master file and quality/access frame that HFS rates and machine-readable price files can attach to next.</p>
+      ${rateSheet ? `<p class="profile-note"><a href="${escapeHtml(rateSheet.url)}" target="_blank" rel="noreferrer">Open HFS 2026 hospital rate sheet PDF</a></p>` : ""}
+      <p class="profile-note">This hospital layer links current HFS rate sheet PDFs where matched. Numeric reimbursement fields still need PDF/table extraction before the dashboard should estimate hospital payments.</p>
     </section>
   `;
 }
@@ -854,7 +879,7 @@ function renderHospitalRiskRows(hospitals) {
 
 function renderHospitalRoadmapCards() {
   const roadmap = [
-    "Attach Illinois HFS hospital rate sheets to each hospital where facility-level Medicaid rates are published.",
+    "Parse linked Illinois HFS hospital rate sheet PDFs into structured Medicaid reimbursement fields.",
     "Add selected hospital price transparency files for gross charge, cash price, and payer negotiated-rate comparisons.",
     "Bring in CMS measure-level quality data for readmissions, mortality, safety, patient experience, and timely/effective care.",
     "Add emergency access, obstetric access, rurality, and county social-risk overlays for hospital disparity analysis."

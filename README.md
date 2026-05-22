@@ -134,7 +134,13 @@ Refresh the normalized Illinois hospital dataset with:
 python scripts/import_cms_hospital_general.py data/raw/Hospital_General_Information.csv data/cms-hospital-general-illinois.json
 ```
 
-This is the first hospital expansion layer. Medicaid hospital reimbursement rates, DRG/APC logic, and hospital price transparency files should be attached as later data layers before presenting hospital reimbursement estimates.
+The dashboard also indexes HFS Hospital Rate Sheets Effective January 1, 2026 and matches those public PDF rate sheets to CMS hospital records where name similarity is strong enough:
+
+```powershell
+python scripts/import_hfs_hospital_rate_sheets.py data/raw/hfs_hospital_rates_2026_list.json data/cms-hospital-general-illinois.json data/hfs-hospital-rate-sheets-2026.json
+```
+
+The current hospital reimbursement layer links to the HFS rate sheet PDFs and shows match status, provider ID, effective date, and match score. Numeric Medicaid reimbursement values, DRG/APC logic, outpatient fee logic, and hospital price transparency files should still be parsed as later data layers before presenting hospital reimbursement estimates.
 
 ## Data Coverage + Methodology
 
