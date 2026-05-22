@@ -623,6 +623,10 @@ h3 {
   min-width: 980px;
 }
 
+.table-row.methodology-row {
+  grid-template-columns: minmax(240px, 1.4fr) minmax(180px, 0.8fr) 90px 90px;
+}
+
 .table-row.header {
   background: var(--soft);
   color: var(--muted);
@@ -813,7 +817,8 @@ h3 {
   .table-row.compact,
   .table-row.watchlist,
   .table-row.county-row,
-  .table-row.county-risk-row {
+  .table-row.county-risk-row,
+  .table-row.methodology-row {
     grid-template-columns: 1fr;
   }
 

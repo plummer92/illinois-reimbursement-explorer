@@ -135,3 +135,9 @@ python scripts/import_cms_hospital_general.py data/raw/Hospital_General_Informat
 ```
 
 This is the first hospital expansion layer. Medicaid hospital reimbursement rates, DRG/APC logic, and hospital price transparency files should be attached as later data layers before presenting hospital reimbursement estimates.
+
+## Data Coverage + Methodology
+
+The Methodology tab summarizes live dataset coverage, interpretation limits, known data gaps, and recommended next layers. It is designed to make the project defensible in portfolio and interview settings by separating loaded evidence from pending research layers.
+
+Use this tab to explain which signals are reimbursement data, which are quality/access context, which are risk proxies, and which conclusions require additional validation.
