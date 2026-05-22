@@ -1061,8 +1061,8 @@ function renderFacilityRisk() {
   els.riskBreakdown.innerHTML = renderRiskBreakdown(selected);
   els.highestRiskCounties.innerHTML = renderHighestRiskCountyRows(facilities);
   els.riskByGeography.innerHTML = renderRiskByGeographyRows(facilities);
-  els.riskReimbursementScatter.innerHTML = renderRiskScatter(facilities, "publishedAmount", "Total Medicaid per diem");
-  els.riskStaffingScatter.innerHTML = renderRiskScatter(facilities, "staffing", "CMS staffing stars");
+  els.riskReimbursementScatter.innerHTML = renderRiskScatter(facilities, "publishedAmount", "Per diem");
+  els.riskStaffingScatter.innerHTML = renderRiskScatter(facilities, "staffing", "Staffing stars");
 }
 
 function renderChainAnalytics() {
