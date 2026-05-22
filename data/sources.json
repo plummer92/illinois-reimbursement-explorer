@@ -42,6 +42,13 @@
     "bestFor": "Hospital and long-term care cost reports for deeper financial analysis."
   },
   {
+    "name": "CMS Hospital Provider Cost Report",
+    "category": "Facility Finance",
+    "url": "https://data.cms.gov/provider-compliance/cost-reports/hospital-provider-cost-report",
+    "public": true,
+    "bestFor": "Facility-reported hospital cost-report economics including revenue, expenses, beds, utilization, charges, assets, liabilities, and cost-to-charge context."
+  },
+  {
     "name": "CMS Hospital Price Transparency",
     "category": "Hospital Prices",
     "url": "https://www.cms.gov/priorities/key-initiatives/hospital-price-transparency",

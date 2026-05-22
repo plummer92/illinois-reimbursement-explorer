@@ -85,9 +85,10 @@
     "evidenceType": "cost_report",
     "pipelineRole": "Facility Economics",
     "accessLevel": "Public download, high-complexity files",
-    "importStatus": "planned",
+    "importStatus": "scaffolded",
     "whyItMatters": "Turns the project from rate lookup into facility finance analysis by exposing costs, charges, utilization, and settlement data.",
-    "limitations": "Files are large and complex, require form-specific worksheet mapping, and reported costs are not the same as claim-level allowed amounts."
+    "limitations": "Files are large and complex, require form-specific worksheet mapping, and reported costs are not the same as claim-level allowed amounts.",
+    "currentCoverage": "Taylorville Memorial Hospital CCN 141339 is attached from the CMS Hospital Provider Cost Report public-use API as the first facility economics proof layer."
   },
   {
     "priority": 7,

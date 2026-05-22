@@ -1870,6 +1870,72 @@ h3 {
   line-height: 1.35;
 }
 
+.cost-report-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(170px, 1fr));
+  gap: 10px;
+}
+
+.cost-report-card,
+.cost-report-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  min-width: 0;
+}
+
+.cost-report-card {
+  display: grid;
+  gap: 6px;
+}
+
+.cost-report-card span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.cost-report-card strong,
+.cost-report-card small,
+.cost-report-note p {
+  overflow-wrap: anywhere;
+}
+
+.cost-report-card strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.cost-report-card small,
+.cost-report-note p {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.cost-report-note {
+  display: grid;
+  gap: 8px;
+  grid-column: 1 / -1;
+}
+
+.cost-report-note p {
+  margin: 0;
+}
+
+.cost-report-note a {
+  justify-self: start;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .finding-done {
   border-color: #b9d8cc;
   background: #f3fbf7;
@@ -2051,6 +2117,7 @@ h3 {
     .binder-layer-grid,
     .binder-id-grid,
     .binder-stack,
+    .cost-report-grid,
     .scenario-grid,
     .system-summary,
     .system-peer-grid,
@@ -2083,6 +2150,7 @@ h3 {
   .binder-layer-grid,
   .binder-id-grid,
   .binder-stack,
+  .cost-report-grid,
   .scenario-grid,
   .system-summary,
   .system-peer-grid,

@@ -57,10 +57,10 @@
       {
         "layer": "Facility Economics",
         "evidenceName": "CMS HCRIS and Illinois Medicaid hospital cost reports",
-        "status": "next import",
+        "status": "loaded",
         "source": "CMS HCRIS cost reports and Illinois HFS hospital cost report archive",
         "sourceUrl": "https://www.cms.gov/data-research/statistics-trends-and-reports/cost-reports",
-        "detail": "Map Taylorville's reporting identifiers to cost-report worksheets for revenue, expense, beds, utilization, wage, cost-to-charge, and margin signals.",
+        "detail": "CMS Hospital Provider Cost Report row for CCN 141339 is attached for fiscal year 2022-10-01 through 2023-09-30, including revenue, expense, beds, utilization, assets, liabilities, cost-to-charge, and margin signals.",
         "proves": "Reported cost-report economics, utilization, and facility operating context.",
         "doesNotProve": "Exact service-line profitability, real-time cash position, private payer profitability, or system subsidy flows."
       },

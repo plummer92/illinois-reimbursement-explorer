@@ -11,6 +11,7 @@ const state = {
   hospitalSystems: [],
   hospitalDataAttachments: [],
   facilityEvidenceBinders: [],
+  hcrisCostReports: [],
   priceTransparencySources: [],
   priceTransparencyRecords: [],
   facilityCareers: [],
@@ -148,6 +149,7 @@ Object.assign(els, {
   binderEvidenceStack: document.querySelector("#binderEvidenceStack"),
   binderServiceExamples: document.querySelector("#binderServiceExamples"),
   binderPaymentRows: document.querySelector("#binderPaymentRows"),
+  binderCostReportRows: document.querySelector("#binderCostReportRows"),
   binderClinicalWorkbench: document.querySelector("#binderClinicalWorkbench"),
   binderProofTasks: document.querySelector("#binderProofTasks"),
   paymentExplorerFindings: document.querySelector("#paymentExplorerFindings"),
@@ -192,6 +194,7 @@ async function loadData() {
   state.hospitalSystems = await fetchOptionalJson("data/hospital-systems.json");
   state.hospitalDataAttachments = await fetchOptionalJson("data/hospital-data-attachments.json");
   state.facilityEvidenceBinders = await fetchOptionalJson("data/facility-evidence-binders.json");
+  state.hcrisCostReports = await fetchOptionalJson("data/hcris-cost-report-economics.json");
   state.priceTransparencySources = await fetchOptionalJson("data/price-transparency-sources.json");
   state.priceTransparencyRecords = await fetchOptionalJson("data/price-transparency-records.json");
   state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
@@ -1103,6 +1106,7 @@ function renderFacilityBinderPage() {
     els.binderEvidenceStack.innerHTML = '<p class="status">No hospital record is available for the evidence binder.</p>';
     els.binderServiceExamples.innerHTML = "";
     els.binderPaymentRows.innerHTML = "";
+    els.binderCostReportRows.innerHTML = "";
     els.binderClinicalWorkbench.innerHTML = "";
     els.binderProofTasks.innerHTML = "";
     return;
@@ -1112,15 +1116,17 @@ function renderFacilityBinderPage() {
   const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(selected.facilityId));
   const paymentRows = getProviderPaymentRowsForHospital(selected);
   const enrollmentContext = getHfsEnrollmentContextForHospital(selected);
+  const costReport = getCostReportForHospital(selected);
   const rateSheet = selected.hfsRateSheet;
   const hfsPayment = selected.hfsPayment;
 
-  els.binderSnapshotCards.innerHTML = renderBinderSnapshotCards(selected, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment);
-  els.binderEvidenceStack.innerHTML = renderBinderEvidenceStack(selected, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment);
+  els.binderSnapshotCards.innerHTML = renderBinderSnapshotCards(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
+  els.binderEvidenceStack.innerHTML = renderBinderEvidenceStack(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
   els.binderServiceExamples.innerHTML = renderBinderServiceExampleRows(priceRows);
   els.binderPaymentRows.innerHTML = renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment);
+  els.binderCostReportRows.innerHTML = renderBinderCostReportRows(selected, costReport);
   els.binderClinicalWorkbench.innerHTML = renderBinderClinicalWorkbench(selected, binder);
-  els.binderProofTasks.innerHTML = renderBinderProofTasks(selected, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment);
+  els.binderProofTasks.innerHTML = renderBinderProofTasks(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
 }
 
 function renderHospitalPaymentExplorer() {
@@ -2288,10 +2294,26 @@ function getFacilityEvidenceBinder(hospital) {
   )) || null;
 }
 
+function getCostReportRecords() {
+  return Array.isArray(state.hcrisCostReports)
+    ? state.hcrisCostReports
+    : state.hcrisCostReports.records || [];
+}
+
+function getCostReportForHospital(hospital) {
+  const facilityId = String(hospital?.facilityId || "");
+  const name = normalizeFacilityText(hospital?.facilityName);
+  return getCostReportRecords().find((record) => (
+    String(record.facilityId || record.providerCcn || "") === facilityId
+    || normalizeFacilityText(record.facilityName) === name
+  )) || null;
+}
+
 function renderFacilityEvidenceBinder(hospital) {
   const binder = getFacilityEvidenceBinder(hospital);
   const priceExamples = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
   const providerRows = getProviderPaymentRowsForHospital(hospital);
+  const costReport = getCostReportForHospital(hospital);
   const system = hospital.systemAffiliation;
 
   if (!binder) {
@@ -2327,6 +2349,10 @@ function renderFacilityEvidenceBinder(hospital) {
         ${renderBinderProviderPaymentRows(hospital, providerRows)}
       </section>
       <section class="binder-subsection">
+        <h5>Cost Report Economics</h5>
+        ${renderProfileCostReportRows(hospital, costReport)}
+      </section>
+      <section class="binder-subsection">
         <h5>Public Payer Enrollment Context</h5>
         ${renderBinderEnrollmentContext(hospital)}
       </section>
@@ -2340,14 +2366,15 @@ function renderFacilityEvidenceBinder(hospital) {
   `;
 }
 
-function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment) {
+function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment) {
   const totalPaid = sum(paymentRows.map((record) => record.totalPaid));
   const patientCount = sum(paymentRows.map((record) => record.patientsServed));
   const loadedLayers = [
     priceRows.length > 0,
     paymentRows.length > 0 || rateSheet || hfsPayment,
-    Boolean(enrollmentContext),
-    Boolean(hospital.systemAffiliation)
+    Boolean(costReport),
+    Boolean(hospital.systemAffiliation),
+    Boolean(binder?.clinicalScenarios?.length)
   ].filter(Boolean).length;
 
   const cards = [
@@ -2377,6 +2404,13 @@ function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enr
       detail: rateSheet?.hfsProviderId ? `HFS provider ${rateSheet.hfsProviderId}` : "Facility-level Medicaid rate context"
     },
     {
+      label: "Cost report economics",
+      value: costReport ? formatCurrencyOrNA(costReport.netPatientRevenue, 0) : "Not loaded",
+      detail: costReport
+        ? `${formatIntegerOrNA(costReport.numberOfBeds)} beds / ${formatOptionalPercent(costReport.derived?.operatingMargin)} operating margin`
+        : "CMS HCRIS facility economics layer"
+    },
+    {
       label: "System",
       value: hospital.systemAffiliation?.systemName || binder?.systemName || "Not mapped",
       detail: "System context must stay separate from facility CCN evidence"
@@ -2392,7 +2426,7 @@ function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enr
   `).join("");
 }
 
-function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment) {
+function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment) {
   const layers = [
     {
       title: "Prices",
@@ -2414,8 +2448,10 @@ function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enr
     },
     {
       title: "Facility Economics",
-      status: "next",
-      evidence: "CMS HCRIS / HFS cost report economics still need imported",
+      status: costReport ? "loaded" : "next",
+      evidence: costReport
+        ? `CMS HCRIS FY ${costReport.sourceYear || "N/A"} cost report attached: ${formatCurrencyOrNA(costReport.netPatientRevenue, 0)} net patient revenue, ${formatCurrencyOrNA(costReport.totalOperatingExpense, 0)} operating expense`
+        : "CMS HCRIS / HFS cost report economics still need imported",
       proves: "Revenue, expense, utilization, beds, wages, cost-to-charge, and margin signals.",
       limit: "Does not prove service-line profitability or real-time cash position."
     },
@@ -2516,6 +2552,72 @@ function renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment) {
   `).join("");
 }
 
+function renderBinderCostReportRows(hospital, costReport) {
+  if (!costReport) {
+    return `
+      <div class="binder-empty">
+        <strong>No HCRIS cost report row is attached yet</strong>
+        <p>Query CMS Hospital Provider Cost Report by CCN ${escapeHtml(hospital.facilityId)} to add revenue, expenses, beds, utilization, assets, liabilities, and cost-to-charge context.</p>
+        <a href="https://data.cms.gov/provider-compliance/cost-reports/hospital-provider-cost-report" target="_blank" rel="noreferrer">Open CMS cost report source</a>
+      </div>
+    `;
+  }
+
+  const items = [
+    ["Fiscal year", `${costReport.fiscalYearBeginDate || "N/A"} to ${costReport.fiscalYearEndDate || "N/A"}`, "Reporting period"],
+    ["Beds", formatIntegerOrNA(costReport.numberOfBeds), `${formatNumberOrNA(costReport.derived?.averageDailyCensus, 2)} average daily census / ${formatOptionalPercent(costReport.derived?.occupancyRate)} occupancy`],
+    ["Payroll FTE", formatNumberOrNA(costReport.fteEmployeesOnPayroll, 1), `${formatNumberOrNA(costReport.derived?.ftePerOccupiedBed, 2)} FTE per occupied bed signal`],
+    ["Net patient revenue", formatCurrencyOrNA(costReport.netPatientRevenue, 0), `${formatCurrencyOrNA(costReport.totalPatientRevenue, 0)} total patient revenue before contractual allowances`],
+    ["Operating expense", formatCurrencyOrNA(costReport.totalOperatingExpense, 0), `${formatCurrencyOrNA(costReport.totalCosts, 0)} total costs reported`],
+    ["Net income from service", formatCurrencyOrNA(costReport.netIncomeFromServiceToPatients, 0), `${formatOptionalPercent(costReport.derived?.operatingMargin)} operating margin on net patient revenue`],
+    ["Net income", formatCurrencyOrNA(costReport.netIncome, 0), `${formatOptionalPercent(costReport.derived?.totalMarginOnPatientRevenue)} total margin on patient revenue`],
+    ["Cost-to-charge ratio", formatNumberOrNA(costReport.costToChargeRatio, 3), `${formatCurrencyOrNA(costReport.combinedOutpatientInpatientCharges, 0)} combined charges`],
+    ["Medicaid net revenue", formatCurrencyOrNA(costReport.netRevenueFromMedicaid, 0), `${formatOptionalPercent(costReport.derived?.medicaidNetToChargeRatio)} Medicaid net-to-charge ratio`],
+    ["Uncompensated care", formatCurrencyOrNA(costReport.totalUnreimbursedAndUncompensatedCare, 0), `${formatCurrencyOrNA(costReport.totalBadDebtExpense, 0)} bad debt / ${formatCurrencyOrNA(costReport.costOfCharityCare, 0)} charity care`],
+    ["Assets", formatCurrencyOrNA(costReport.totalAssets, 0), `${formatCurrencyOrNA(costReport.totalFixedAssets, 0)} fixed assets / ${formatCurrencyOrNA(costReport.investments, 0)} investments`],
+    ["Liabilities", formatCurrencyOrNA(costReport.totalLiabilities, 0), `${formatOptionalPercent(costReport.derived?.liabilitiesToAssets)} liabilities to assets / current ratio ${formatNumberOrNA(costReport.derived?.currentRatio, 2)}`]
+  ];
+
+  return `
+    ${items.map(([label, value, detail]) => `
+      <article class="cost-report-card">
+        <span>${escapeHtml(label)}</span>
+        <strong>${escapeHtml(value)}</strong>
+        <small>${escapeHtml(detail)}</small>
+      </article>
+    `).join("")}
+    <article class="cost-report-note">
+      <strong>What this proves</strong>
+      <p>CMS HCRIS gives facility-reported cost-report economics for the CCN: revenue, expense, assets, liabilities, charges, utilization, beds, FTE, and cost-to-charge context.</p>
+      <strong>What it does not prove</strong>
+      <p>${escapeHtml(costReport.limitations || "It does not prove service-line profitability, claim-level reimbursement, private payer contract performance, or real-time cash position.")}</p>
+      <a href="${escapeHtml(costReport.sourceUrl || "https://data.cms.gov/provider-compliance/cost-reports/hospital-provider-cost-report")}" target="_blank" rel="noreferrer">Open CMS HCRIS source</a>
+    </article>
+  `;
+}
+
+function renderProfileCostReportRows(hospital, costReport) {
+  if (!costReport) {
+    return `
+      <div class="binder-empty">
+        <strong>No cost-report economics attached yet</strong>
+        <p>Attach CMS HCRIS by CCN ${escapeHtml(hospital.facilityId)} to add facility-reported revenue, expense, utilization, assets, liabilities, and cost-to-charge context.</p>
+      </div>
+    `;
+  }
+  return `
+    <div class="profile-grid">
+      ${renderProfileMetric("Net patient revenue", formatCurrencyOrNA(costReport.netPatientRevenue, 0))}
+      ${renderProfileMetric("Operating expense", formatCurrencyOrNA(costReport.totalOperatingExpense, 0))}
+      ${renderProfileMetric("Net income", formatCurrencyOrNA(costReport.netIncome, 0))}
+      ${renderProfileMetric("Beds", formatIntegerOrNA(costReport.numberOfBeds))}
+      ${renderProfileMetric("Occupancy", formatOptionalPercent(costReport.derived?.occupancyRate))}
+      ${renderProfileMetric("Cost-to-charge ratio", formatNumberOrNA(costReport.costToChargeRatio, 3))}
+    </div>
+    <p class="profile-note">CMS HCRIS is cost-report context. It helps compare price, payment, cost, and margin signals but does not prove claim-level reimbursement or service-line profitability.</p>
+  `;
+}
+
 function renderBinderClinicalWorkbench(hospital, binder) {
   const scenarios = Array.isArray(binder?.clinicalScenarios) ? binder.clinicalScenarios : [];
   const fallback = [
@@ -2539,11 +2641,11 @@ function renderBinderClinicalWorkbench(hospital, binder) {
   `).join("");
 }
 
-function renderBinderProofTasks(hospital, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment) {
+function renderBinderProofTasks(hospital, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment) {
   const tasks = [
     {
       label: "Import CMS HCRIS cost report economics",
-      done: false,
+      done: Boolean(costReport),
       detail: "Attach revenue, expense, beds, utilization, wage, cost-to-charge, and operating margin fields."
     },
     {
@@ -2977,6 +3079,7 @@ function renderHospitalAuditLayerMap(hospital) {
   const system = hospital.systemAffiliation;
   const priceSource = getPriceTransparencySources().find((source) => String(source.facilityId) === String(hospital.facilityId));
   const priceExamples = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const costReport = getCostReportForHospital(hospital);
   const layers = [
     {
       title: "Prices",
@@ -2996,8 +3099,10 @@ function renderHospitalAuditLayerMap(hospital) {
     },
     {
       title: "Facility Economics",
-      status: "next",
-      detail: "Attach cost reports, beds, revenue, expense, utilization",
+      status: costReport ? "loaded" : "next",
+      detail: costReport
+        ? `${formatCurrencyOrNA(costReport.netPatientRevenue, 0)} net patient revenue / ${formatCurrencyOrNA(costReport.totalOperatingExpense, 0)} operating expense`
+        : "Attach cost reports, beds, revenue, expense, utilization",
       warning: "Cost is not margin."
     },
     {
