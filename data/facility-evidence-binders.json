@@ -1,0 +1,106 @@
+[
+  {
+    "facilityId": "141339",
+    "facilityName": "TAYLORVILLE MEMORIAL HOSPITAL",
+    "systemName": "Memorial Health",
+    "binderTitle": "Taylorville Memorial Hospital Evidence Binder",
+    "binderStatus": "starter binder",
+    "lastUpdated": "2026-05-21",
+    "auditQuestion": "Can public evidence connect Taylorville Memorial Hospital's prices, public-payer payment rules, cost-report economics, system affiliation, and clinical reimbursement logic without confusing price, payment, cost, and margin?",
+    "facilityIdentifiers": [
+      {
+        "label": "CMS Certification Number",
+        "value": "141339",
+        "source": "CMS Hospital General Information",
+        "status": "loaded"
+      },
+      {
+        "label": "System affiliation",
+        "value": "Memorial Health",
+        "source": "Memorial Health public facility pages",
+        "status": "mapped"
+      },
+      {
+        "label": "Price transparency EIN/file prefix",
+        "value": "370661250",
+        "source": "Memorial Health machine-readable standard charges file",
+        "status": "mapped"
+      },
+      {
+        "label": "Hospital type",
+        "value": "Critical Access Hospitals",
+        "source": "CMS Hospital General Information",
+        "status": "loaded"
+      }
+    ],
+    "evidenceRows": [
+      {
+        "layer": "Prices",
+        "evidenceName": "Taylorville Memorial Hospital standard charges CSV",
+        "status": "mapped",
+        "source": "Memorial Health Price Transparency",
+        "sourceUrl": "https://memorial.health/financial/price-transparency/",
+        "detail": "Machine-readable hospital price file is mapped for Taylorville Memorial Hospital. The app can preview service examples from the CSV through the Price Transparency importer.",
+        "proves": "Publicly posted price signals such as gross charge, cash price, and payer negotiated-rate fields where parsed.",
+        "doesNotProve": "Actual payment, claim volume, patient responsibility, denials, Medicaid/Medicare reimbursement, or margin."
+      },
+      {
+        "layer": "Public Payer Payment",
+        "evidenceName": "Illinois HFS hospital rate sheets and provider-level payment data",
+        "status": "next import",
+        "source": "Illinois HFS hospital reimbursement and Transparency Law files",
+        "sourceUrl": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hrs.html",
+        "detail": "Match Taylorville by CMS ID, legal/provider name, county, and Memorial Health affiliation across HFS rate sheet and provider-payment files.",
+        "proves": "Published Medicaid hospital rate context and aggregate public payment flow where Taylorville or its legal/provider entity appears.",
+        "doesNotProve": "Claim-level allowed amount, managed-care contract terms, severity, coding, denials, or patient-specific payment."
+      },
+      {
+        "layer": "Facility Economics",
+        "evidenceName": "CMS HCRIS and Illinois Medicaid hospital cost reports",
+        "status": "next import",
+        "source": "CMS HCRIS cost reports and Illinois HFS hospital cost report archive",
+        "sourceUrl": "https://www.cms.gov/data-research/statistics-trends-and-reports/cost-reports",
+        "detail": "Map Taylorville's reporting identifiers to cost-report worksheets for revenue, expense, beds, utilization, wage, cost-to-charge, and margin signals.",
+        "proves": "Reported cost-report economics, utilization, and facility operating context.",
+        "doesNotProve": "Exact service-line profitability, real-time cash position, private payer profitability, or system subsidy flows."
+      },
+      {
+        "layer": "Clinical Reimbursement Logic",
+        "evidenceName": "ED, observation, inpatient, transfer, LOS, outlier, HAC/POA, and readmission rule bridge",
+        "status": "rule scaffold",
+        "source": "Illinois HFS inpatient rules and CMS MS-DRG/IPPS rule files",
+        "sourceUrl": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hospitalinpatient.html",
+        "detail": "Use test clinical scenarios to connect diagnosis/procedure coding, LOS, transfer status, outliers, and quality/payment-risk rules to the public price/payment/cost layers.",
+        "proves": "How rules can change expected reimbursement under a defined scenario.",
+        "doesNotProve": "Whether any real encounter was coded, billed, denied, or paid correctly without claim and medical-record evidence."
+      }
+    ],
+    "clinicalScenarios": [
+      {
+        "name": "ED visit discharged home",
+        "logic": "Outpatient ED level, labs, imaging, drug, and facility-charge logic.",
+        "neededEvidence": "CPT/HCPCS, revenue code, payer price rows, Medicaid outpatient rule, and volume/payment file."
+      },
+      {
+        "name": "ED to observation",
+        "logic": "Observation status, hourly/packaged outpatient payment logic, ancillary services, and discharge disposition.",
+        "neededEvidence": "Observation code rows, outpatient reimbursement rules, price rows, and HFS/CMS payment benchmarks."
+      },
+      {
+        "name": "ED to inpatient admission",
+        "logic": "Principal diagnosis, procedure coding, DRG/APR-DRG assignment, severity, LOS, and discharge status.",
+        "neededEvidence": "DRG/APR-DRG rule file, expected LOS, transfer/outlier rules, and payer payment source."
+      },
+      {
+        "name": "Transfer to higher level of care",
+        "logic": "Critical Access Hospital access role, transfer status, short-stay logic, ambulance/ancillary questions, and downstream receiving-hospital payment.",
+        "neededEvidence": "Discharge status, transfer rule, cost report utilization, and regional access context."
+      },
+      {
+        "name": "Hospital-acquired complication risk",
+        "logic": "POA/HAC status, infection or pressure-injury documentation, quality penalty exposure, avoidable LOS, and denial risk.",
+        "neededEvidence": "CMS HAC/POA/readmission rules, measure-level quality data, claims or medical-record validation."
+      }
+    ]
+  }
+]

@@ -1,0 +1,58 @@
+[
+  {
+    "id": "hfs-hospital-reimbursement",
+    "label": "HFS hospital reimbursement",
+    "layer": "Public Payer Payment",
+    "status": "next",
+    "primarySource": "Illinois HFS Hospital Rate Sheets",
+    "sourceUrl": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hrs.html",
+    "secondarySource": "Illinois HFS Transparency Law Provider-Level Data",
+    "secondarySourceUrl": "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+    "attachGoal": "Attach Illinois hospital Medicaid rate sheet and provider-level payment records.",
+    "canProve": "Published Medicaid hospital rate context and aggregate HFS payment flow where the public files include the facility.",
+    "cannotProve": "Claim-level payment, managed-care contract terms, patient severity, denials, or actual allowed amount for a specific encounter.",
+    "nextAction": "Find Taylorville Memorial Hospital in the latest HFS hospital rate sheet package and map HFS provider payment rows by facility/system identity."
+  },
+  {
+    "id": "machine-readable-price-file",
+    "label": "Machine-readable price file",
+    "layer": "Prices",
+    "status": "mapped",
+    "primarySource": "Memorial Health Price Transparency",
+    "sourceUrl": "https://memorial.health/financial/price-transparency/",
+    "secondarySource": "Taylorville Memorial Hospital standard charges CSV",
+    "secondarySourceUrl": "https://memorial.health/Resources/fa78bf96-0368-4cd1-8b83-ef42eaa4f0ab/370661250_Taylorville_Memorial_Hospital_standardcharges.csv",
+    "attachGoal": "Find payer/plan rates for DRG, CPT/HCPCS, revenue-code, pharmacy, lab, imaging, ED, and observation examples.",
+    "canProve": "Gross charge, cash price, min/max negotiated-rate, and selected payer/plan price signals when parsed.",
+    "cannotProve": "Actual reimbursement, public payer payment, claim volume, medical necessity, denials, patient responsibility, or margin.",
+    "nextAction": "Expand the price parser to extract payer-specific negotiated columns, not only gross-charge preview examples."
+  },
+  {
+    "id": "cost-report-economics",
+    "label": "Cost report economics",
+    "layer": "Facility Economics",
+    "status": "next",
+    "primarySource": "Illinois HFS Medicaid Hospital Archive Cost Reports",
+    "sourceUrl": "https://hfs.illinois.gov/medicalproviders/costreports/medicaidhospitalarchive.html",
+    "secondarySource": "CMS HCRIS hospital cost reports",
+    "secondarySourceUrl": "https://www.cms.gov/data-research/statistics-trends-and-reports/cost-reports",
+    "attachGoal": "Attach CMS HCRIS revenue, expense, utilization, wage, cost-to-charge, and margin fields.",
+    "canProve": "Reported facility cost, charge, utilization, wage, bed, and cost-center economics from required cost reports.",
+    "cannotProve": "Exact service-line profitability, real-time liquidity, commercial contract profitability, or system subsidy flows without more disclosures.",
+    "nextAction": "Map Taylorville's Medicare provider number to HCRIS and HFS cost report archive files."
+  },
+  {
+    "id": "clinical-reimbursement-bridge",
+    "label": "Clinical reimbursement bridge",
+    "layer": "Inpatient Logic",
+    "status": "next",
+    "primarySource": "Illinois HFS Hospital Inpatient reimbursement logic",
+    "sourceUrl": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hospitalinpatient.html",
+    "secondarySource": "CMS MS-DRG classifications and IPPS rules",
+    "secondarySourceUrl": "https://www.cms.gov/medicare/payment/prospective-payment-systems/acute-inpatient-pps/ms-drg-classifications-and-software",
+    "attachGoal": "Attach DRG/APR-DRG, LOS, transfer, outlier, HAC/POA, and readmission logic.",
+    "canProve": "How diagnosis/procedure groupers, length of stay, transfer status, high-cost outliers, POA/HAC, and readmission logic can affect payment under specific rules.",
+    "cannotProve": "Whether a particular encounter was coded correctly or paid correctly without claim, medical-record, and payer adjudication data.",
+    "nextAction": "Create test clinical scenarios for ED-to-observation, ED-to-inpatient, transfer, readmission, and complication/HAC risk."
+  }
+]

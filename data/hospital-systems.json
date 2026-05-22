@@ -1,0 +1,25 @@
+[
+  {
+    "systemId": "memorial-health-central-il",
+    "systemName": "Memorial Health",
+    "systemType": "Community-based non-profit health system",
+    "homepageUrl": "https://memorial.health/",
+    "careersUrl": "https://jobs.memorial.health/",
+    "sourceUrl": "https://memorial.health/taylorville-memorial-hospital/overview/",
+    "sourceNote": "Memorial Health identifies Taylorville Memorial Hospital as part of Memorial Health. Memorial Health contact pages list its Illinois hospitals, including Decatur, Jacksonville, Lincoln, Springfield, and Taylorville Memorial hospitals.",
+    "facilityIds": ["140135", "140148", "141322", "141339", "141352"],
+    "facilityNamePatterns": [
+      "DECATUR MEMORIAL HOSPITAL",
+      "JACKSONVILLE MEMORIAL HOSPITAL",
+      "ABRAHAM LINCOLN MEMORIAL HOSPITAL",
+      "MEMORIAL MEDICAL CENTER",
+      "SPRINGFIELD MEMORIAL HOSPITAL",
+      "TAYLORVILLE MEMORIAL HOSPITAL"
+    ],
+    "auditNotes": [
+      "System affiliation may move careers, price transparency, billing, revenue cycle, financial reporting, transfer patterns, and some service-line strategy above the individual hospital level.",
+      "For reimbursement analysis, distinguish the hospital CMS CCN from system-level ownership, management, shared services, and consolidated financial statements.",
+      "For workforce analysis, query system-level careers pages and then filter postings by Taylorville, Decatur, Jacksonville, Lincoln, Springfield, or facility-specific location text."
+    ]
+  }
+]

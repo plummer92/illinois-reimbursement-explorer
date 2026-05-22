@@ -38,6 +38,65 @@ Use language like **published rate**, **estimated reimbursement**, or **price tr
 4. Compare rural vs urban facilities using county and ZIP classifications.
 5. Add Medicare benchmarks for the same CPT/HCPCS or payment category.
 
+## Audit Framework
+
+The long-term project question is:
+
+**How does the healthcare system reimburse facilities, where does public money flow, and what can public data actually prove?**
+
+The dashboard uses this pipeline to keep each data source in scope:
+
+1. Money Flow: who got paid, by which payer, for which facility or service type.
+2. Rate Rules: the fee schedule, per diem, DRG, APC, capitation, rate sheet, or policy method behind payment.
+3. Inpatient Logic: ED admission path, principal diagnosis, procedures, CC/MCCs, length of stay, discharge status, transfer rules, and outlier logic.
+4. Quality & Payment Risk: Present on Admission, hospital-acquired conditions, infections, pressure injuries, readmissions, staffing, penalties, and denials exposure.
+5. Facility Economics: cost reports, revenue, expenses, beds, occupancy, service lines, payer mix, capital, and staffing.
+6. Evidence Strength: published rate, reported payment, allowed amount, charge, cost report value, quality signal, or derived estimate.
+
+The next expansion queue is tracked in `data/source-registry.json`:
+
+1. HFS provider-level Medicaid payment data.
+2. HFS fee schedules beyond nursing facilities.
+3. Illinois hospital rate sheets.
+4. Hospital Report Card API.
+5. HFSRB revenue/expense and facility inventory data.
+6. CMS HCRIS cost reports.
+7. Medicare utilization/payment files.
+8. Inpatient DRG/LOS rule files.
+9. HAC/POA/readmission/quality penalty data.
+10. Facility careers pages and public job-opening counts as workforce-demand signals.
+
+## Workforce Demand Signals
+
+Facility career pages can add useful operating context. Public job openings may suggest staffing pressure, service-line growth, recruitment difficulty, or broader labor demand around a hospital or nursing facility.
+
+The dashboard treats job openings as a `labor_market_signal`, not as proof of actual vacancy rate, budgeted headcount, turnover, unsafe staffing, or financial distress. Counts should be stored with:
+
+- facility identifier and facility name
+- facility homepage URL
+- careers page URL
+- hiring platform, such as Workday, iCIMS, Oracle, UKG, Greenhouse, or a health-system portal
+- job-opening count
+- clinical and non-clinical role counts where available
+- observation date
+- source URL and confidence notes
+
+The placeholder file is `data/facility-careers.json`. Illinois Hospital Report Card hospital records include website fields that can seed homepage discovery before careers-page crawling.
+
+Refresh the careers-page observations with:
+
+```powershell
+python scripts/import_facility_careers.py --cms-hospitals data/cms-hospital-general-illinois.json --output data/facility-careers.json
+```
+
+Use `--limit 10` for a quick pilot run. The importer uses standard-library HTTP and static HTML parsing only; pages that require JavaScript or platform-specific APIs will be retained with a low-confidence note rather than forced into a false count.
+
+The Workforce Demand tab also includes a **Query Careers Data** button. In the static app, the button loads live Hospital Report Card hospital website seeds, then attempts a browser-side careers crawl using direct fetch first and a public CORS proxy fallback for public pages. Counts are captured only when the careers page exposes static count text or job-like links. Sites that require JavaScript, authentication, bot protection, or platform-specific APIs are retained with low-confidence notes instead of forced into false counts.
+
+Click a facility in the Workforce Demand table to open the role drilldown. When the public careers page exposes role titles in static HTML, the app groups captured roles into categories such as Nursing, Pharmacy, EVS, Business/Admin, Therapy/Rehab, Imaging, Lab, Respiratory, Food/Nutrition, Security, Provider, and Other.
+
+The Workforce Demand tab also rolls captured jobs into a market landscape: roles by category, most open roles by facility, open roles by county, and hiring platforms found. Use the **View Roles** button on a row for in-app drilldown; use Homepage, Careers, or individual role links only when you want to open the external site.
+
 ## Local Use
 
 Run a local static server from this folder, then open the dashboard:
@@ -48,9 +107,31 @@ python -m http.server 8000
 
 Then visit http://localhost:8000.
 
+For the Workforce Demand button, use the local Node server instead of a static file server:
+
+```powershell
+node scripts/serve_dashboard.js
+```
+
+Then visit http://127.0.0.1:8765. The server exposes `/api/query-careers?limit=25`, which lets the app request homepages and careers pages from the local server instead of being blocked by browser cross-origin rules.
+
 The dashboard can import JSON arrays or CSV files. For CSV imports, use these column names when possible:
 
 `facility`, `city`, `category`, `payer`, `service`, `codeType`, `code`, `publishedAmount`, `amountLabel`, `effectiveDate`, `source`, `confidence`, `notes`
+
+## Money Flow: HFS Provider Payments
+
+The Money Flow tab is designed for Illinois HFS Transparency Law provider-level Medicaid payment data. HFS describes this data as provider/vendor names, county, patients served, payments, average costs, adjustments, and total money received from HFS.
+
+Download the provider-level CSV from HFS Transparency Law Data, then normalize it with:
+
+```powershell
+python scripts/import_hfs_provider_payments.py data/raw/2023_provider_level_data.csv data/hfs-provider-payments.json --year 2023
+```
+
+The resulting records are `reported_payment` evidence. They show aggregate public payment flow, not patient-level claim detail, managed care contract terms, denials, complete service locations, or medical necessity context.
+
+The Taylorville evidence binder automatically attempts to query the HFS provider-level source through the local dashboard server when the hospital profile opens. The **Query HFS Payments** button is retained as a retry control. If a workplace network blocks the live HFS download, the dashboard's **Import data** picker can still detect tab-delimited HFS provider-payment files, normalize them into Money Flow records, and match Taylorville/Memorial Health rows into the binder.
 
 ## Refresh Illinois Nursing Facility Rates
 

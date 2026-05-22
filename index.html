@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Illinois Reimbursement Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=2026-05-21-payment-explorer-1">
+    <link rel="stylesheet" href="styles.css?v=2026-05-22-synced-binder-1">
   </head>
   <body>
     <main class="shell">
@@ -55,6 +55,9 @@
         <section class="content">
           <nav class="tabs" aria-label="Dashboard sections">
             <button class="tab active" data-tab="executive">Executive Summary</button>
+            <button class="tab" data-tab="audit">Audit Framework</button>
+            <button class="tab" data-tab="moneyFlow">Money Flow</button>
+            <button class="tab" data-tab="priceTransparency">Price Transparency</button>
             <button class="tab" data-tab="findings">Executive Findings</button>
             <button class="tab" data-tab="records">Records</button>
             <button class="tab" data-tab="geography">Geography</button>
@@ -67,6 +70,7 @@
             <button class="tab" data-tab="hospital">Hospital Intelligence</button>
             <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
             <button class="tab" data-tab="methodology">Methodology</button>
+            <button class="tab" data-tab="workforce">Workforce Demand</button>
             <button class="tab" data-tab="sources">Sources</button>
             <button class="tab" data-tab="model">Estimate Model</button>
           </nav>
@@ -101,6 +105,101 @@
             <div class="callout muted-callout">
               This tool identifies associations and risk signals, not causation. Capital reimbursement is a proxy for capital funding pressure, not proof of actual capital spending.
             </div>
+          </section>
+
+          <section id="auditPanel" class="panel" aria-labelledby="audit">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Audit spine</p>
+                <h2>Healthcare Reimbursement Audit Framework</h2>
+              </div>
+            </div>
+            <section class="summary-section">
+              <h3>Guiding Question</h3>
+              <p class="summary-copy">How does the healthcare system reimburse facilities, where does public money flow, and what can public data actually prove?</p>
+            </section>
+            <section class="summary-section">
+              <h3>Audit Evidence Map</h3>
+              <div id="auditEvidenceMap" class="audit-evidence-map"></div>
+            </section>
+            <div id="auditPipeline" class="audit-pipeline"></div>
+            <section class="summary-section">
+              <h3>Evidence Types</h3>
+              <div id="evidenceTypeCards" class="evidence-grid"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Data Expansion Queue</h3>
+              <div id="sourceRegistryRows" class="source-registry"></div>
+            </section>
+            <div class="callout muted-callout">
+              The goal is compliant reimbursement intelligence: complete documentation, accurate coding, care progression, avoidable-complication prevention, and clear limits on what public data can prove.
+            </div>
+          </section>
+
+          <section id="moneyFlowPanel" class="panel" aria-labelledby="moneyFlow">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Reported payment flow</p>
+                <h2>Medicaid Money Flow</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              HFS provider-level transparency data shows aggregate public payment flow by provider, county, provider type, and service year. It is reported payment evidence, not claim-level detail.
+            </div>
+            <section class="summary-section">
+              <h3>Money Flow Summary</h3>
+              <div id="moneyFlowMetricCards" class="executive-metrics"></div>
+            </section>
+            <div class="money-flow-grid">
+              <section>
+                <h3>Top Paid Providers</h3>
+                <div id="topPaidProviders" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Payments by Provider Type</h3>
+                <div id="providerTypePayments" class="data-table"></div>
+              </section>
+            </div>
+            <div class="money-flow-grid">
+              <section>
+                <h3>Payments by County</h3>
+                <div id="countyPayments" class="data-table"></div>
+              </section>
+              <section>
+                <h3>Evidence Limits</h3>
+                <div id="moneyFlowLimits" class="finding-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section id="priceTransparencyPanel" class="panel" aria-labelledby="priceTransparency">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Hospital standard charges</p>
+                <h2>Price Transparency Importer</h2>
+              </div>
+              <button id="queryPriceTransparencyButton" class="button">Query Price Files</button>
+            </div>
+            <div class="callout muted-callout">
+              Hospital machine-readable files can show gross charges, cash prices, and payer negotiated-rate signals. They do not prove actual paid claims, patient responsibility, volume, medical necessity, or Medicaid/Medicare payment when those public programs are excluded.
+            </div>
+            <p id="priceTransparencyStatus" class="status" aria-live="polite"></p>
+            <section class="summary-section">
+              <h3>Price File Summary</h3>
+              <div id="priceTransparencyMetricCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Source Files</h3>
+              <div id="priceTransparencySourceRows" class="data-table"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Service Examples Found</h3>
+              <div id="priceTransparencyExampleRows" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Evidence Limits</h3>
+              <div id="priceTransparencyLimitCards" class="finding-list"></div>
+            </section>
           </section>
 
           <section id="findingsPanel" class="panel" aria-labelledby="findings">
@@ -296,6 +395,14 @@
               County-level social data provides context only and does not prove that reimbursement causes quality or access differences. Poverty uses County Health Rankings' child poverty measure as the county poverty proxy.
             </div>
             <div id="countyFindingList" class="finding-list"></div>
+            <section class="summary-section">
+              <h3>Look-Closer Counties</h3>
+              <div id="countyPriorityCards" class="county-priority-grid"></div>
+            </section>
+            <section class="summary-section">
+              <h3>County Drilldown</h3>
+              <div id="countyDrilldown" class="county-drilldown"></div>
+            </section>
             <section class="summary-section">
               <h3>County Summary</h3>
               <div id="countySummaryRows" class="data-table wide"></div>
@@ -537,6 +644,36 @@
             </section>
           </section>
 
+          <section id="workforcePanel" class="panel" aria-labelledby="workforce">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Labor market signal</p>
+                <h2>Workforce Demand</h2>
+              </div>
+              <button id="refreshCareersButton" class="button">Query Careers Data</button>
+            </div>
+            <div class="callout muted-callout">
+              Careers pages and job-opening counts are operating context. They can suggest workforce demand or staffing pressure, but they do not prove vacancy rate, turnover, unsafe staffing, or budgeted headcount.
+            </div>
+            <p id="careersStatus" class="status" aria-live="polite"></p>
+            <section class="summary-section">
+              <h3>Workforce Signal Summary</h3>
+              <div id="careersMetricCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Market Landscape</h3>
+              <div id="careerLandscape" class="workforce-landscape"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Facility Careers Observations</h3>
+              <div id="careersRows" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Selected Facility Roles</h3>
+              <div id="careerDrilldown" class="drilldown-card"></div>
+            </section>
+          </section>
+
           <section id="sourcesPanel" class="panel" aria-labelledby="sources">
             <div class="panel-head">
               <div>
@@ -579,6 +716,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=2026-05-21-payment-explorer-1"></script>
+    <script src="app.js?v=2026-05-22-synced-binder-1"></script>
   </body>
 </html>

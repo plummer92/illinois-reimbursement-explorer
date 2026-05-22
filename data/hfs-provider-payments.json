@@ -1,0 +1,97 @@
+{
+  "description": "Illinois HFS provider-level Medicaid payment data. This layer tracks aggregate public payment flow by provider, county, provider type, and reporting year.",
+  "lastUpdated": "2026-05-21",
+  "source": "Illinois HFS Transparency Law Provider-Level Data",
+  "sourceUrl": "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+  "dataFile": "2023transparencyproviderdata.txt",
+  "serviceYear": 2023,
+  "records": [
+    {
+      "providerName": "TAYLORVILLE MEMORIAL HOSPITAL",
+      "providerId": "1101521018",
+      "npi": "1144292020",
+      "county": "Christian",
+      "providerType": "General Hospitals",
+      "providerTypeCode": "030",
+      "reimbursementType": "Hospitals reimbursed under our Diagnosis Related Group (DRG) system.",
+      "reimbursementTypeCode": "DRG         ",
+      "serviceYear": 2023,
+      "patientsServed": 1526,
+      "claimCount": null,
+      "totalPaid": 614142,
+      "averageCost": 402.45,
+      "adjustments": null,
+      "paymentPerPatient": 402.45,
+      "capitationPayments": 0,
+      "hospitalEncounterAddOnPayment": 0,
+      "criticalAccess": true,
+      "serviceRecipients": {
+        "ER": 761,
+        "InpatientCare": 36,
+        "OutPatient": 729
+      },
+      "serviceCosts": {
+        "ER": 255884,
+        "InpatientCare": 12471,
+        "OutPatient": 345787,
+        "Total": 614142
+      },
+      "evidenceType": "reported_payment",
+      "source": "Illinois HFS Transparency Law Provider-Level Data",
+      "sourceUrl": "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+      "dataFile": "2023transparencyproviderdata.txt",
+      "limitations": "Provider-level aggregate payment data does not include patient-level acuity, full claim detail, managed care contract terms, denials, or medical necessity context.",
+      "matchedFacilityId": "141339",
+      "matchedFacilityName": "TAYLORVILLE MEMORIAL HOSPITAL",
+      "matchScore": 115,
+      "matchReasons": [
+        "exact hospital name",
+        "county match",
+        "critical access flag"
+      ]
+    },
+    {
+      "providerName": "TAYLORVILLE MEM CHILDRENS HOSP",
+      "providerId": "1101378945",
+      "npi": "1881729036",
+      "county": "Christian",
+      "providerType": "General Hospitals",
+      "providerTypeCode": "030",
+      "reimbursementType": "Hospital designated as childrens hospitals and paid a Per Diem rate.",
+      "reimbursementTypeCode": "CHILDRENS   ",
+      "serviceYear": 2023,
+      "patientsServed": 117,
+      "claimCount": null,
+      "totalPaid": 18035,
+      "averageCost": 154.15,
+      "adjustments": null,
+      "paymentPerPatient": 154.15,
+      "capitationPayments": 0,
+      "hospitalEncounterAddOnPayment": 0,
+      "criticalAccess": true,
+      "serviceRecipients": {
+        "ER": 79,
+        "OutPatient": 38
+      },
+      "serviceCosts": {
+        "ER": 16252,
+        "OutPatient": 1783,
+        "Total": 18035
+      },
+      "evidenceType": "reported_payment",
+      "source": "Illinois HFS Transparency Law Provider-Level Data",
+      "sourceUrl": "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+      "dataFile": "2023transparencyproviderdata.txt",
+      "limitations": "Provider-level aggregate payment data does not include patient-level acuity, full claim detail, managed care contract terms, denials, or medical necessity context.",
+      "matchedFacilityId": "141339",
+      "matchedFacilityName": "TAYLORVILLE MEMORIAL HOSPITAL",
+      "matchScore": 90,
+      "matchReasons": [
+        "Taylorville Memorial related hospital row",
+        "county match",
+        "critical access flag"
+      ]
+    }
+  ],
+  "notes": "Extracted 2 Taylorville Memorial HFS provider-level payment row(s) from the 2023 provider-level data file."
+}

@@ -1,0 +1,118 @@
+{
+  "description": "2024 Illinois HFS program enrollment and demographics context. This is public payer population context, not facility payment evidence.",
+  "lastUpdated": "2026-05-21",
+  "source": "Illinois HFS Transparency Law Program Enrollment and Demographics Data",
+  "sourceUrl": "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+  "dataFile": "2024hfsprogramenrollmentdatatextform.txt",
+  "readmeFile": "2024hfsprogramenrollmentreadmeanddata.xlsx",
+  "legalAuthorityFile": "0960941.pdf",
+  "records": [
+    {
+      "facilityId": "141339",
+      "facilityName": "TAYLORVILLE MEMORIAL HOSPITAL",
+      "zipCode": "62568",
+      "serviceYear": 2024,
+      "zipRecipients": 113.66,
+      "zipSourceRows": 22,
+      "hfsCountyCodesObservedForZip": [
+        {
+          "label": "200",
+          "value": 113.66
+        }
+      ],
+      "zipByHighLevelGroup": [
+        {
+          "label": "ACA Adult - 100% Match",
+          "value": 91.22
+        },
+        {
+          "label": "Family Assist (w/o cash) & All Kids",
+          "value": 9.35
+        },
+        {
+          "label": "AABD",
+          "value": 9.35
+        },
+        {
+          "label": "AABD - 50% Match",
+          "value": 1.87
+        },
+        {
+          "label": "ACA Adult - 50% Match",
+          "value": 1.87
+        }
+      ],
+      "zipByAgeCategory": [
+        {
+          "label": "2 FAdult19t64NoD",
+          "value": 96.83
+        },
+        {
+          "label": "3 FAdult19t64Dis",
+          "value": 9.35
+        },
+        {
+          "label": "1 FChild0t18",
+          "value": 3.74
+        },
+        {
+          "label": "4 FSenior65up",
+          "value": 3.74
+        }
+      ],
+      "zipTopDetailGroups": [
+        {
+          "label": "ACA Eligible FPL < 138% not receiving SSI or SSDI",
+          "value": 91.22
+        },
+        {
+          "label": "FamilyCare Assist w/o cash",
+          "value": 5.61
+        },
+        {
+          "label": "AABD - Blind/Disabled under Age 65 years",
+          "value": 5.61
+        },
+        {
+          "label": "All Kids Income <= 138%",
+          "value": 3.74
+        },
+        {
+          "label": "AABD - Age 65 years old and older",
+          "value": 3.74
+        },
+        {
+          "label": "ACA Not Newly Eligible Adults - < 103% FPL Receiving SSDI Income",
+          "value": 1.87
+        },
+        {
+          "label": "ACA Eligible FPL 103-138% receiving SSDI",
+          "value": 1.87
+        }
+      ],
+      "zipByUndocumentedIndicator": [
+        {
+          "label": "0",
+          "value": 111.79
+        },
+        {
+          "label": "1",
+          "value": 1.87
+        }
+      ],
+      "zipByGenderCode": [
+        {
+          "label": "1",
+          "value": 108.05
+        },
+        {
+          "label": "2",
+          "value": 5.61
+        }
+      ],
+      "evidenceType": "public_payer_population_context",
+      "canProve": "Approximate HFS program enrollment counts for ZIP 62568 by category after HIPAA suppression/masking rules are applied.",
+      "cannotProve": "Hospital utilization, market share, patient origin, reimbursement, claims volume, acuity, payer mix, or Taylorville Memorial Hospital patient counts."
+    }
+  ]
+}

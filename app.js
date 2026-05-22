@@ -1,12 +1,23 @@
 const state = {
   records: [],
   qualityRecords: [],
+  providerPayments: [],
+  hfsProviderPaymentStatus: "",
+  hfsAutoQueryAttempts: {},
+  hfsEnrollmentContext: [],
   hospitalRecords: [],
   hospitalRateSheets: [],
   hospitalRateValues: [],
+  hospitalSystems: [],
+  hospitalDataAttachments: [],
+  facilityEvidenceBinders: [],
+  priceTransparencySources: [],
+  priceTransparencyRecords: [],
+  facilityCareers: [],
   countyContext: [],
   countySummaries: [],
   sources: [],
+  sourceRegistry: [],
   activeTab: "executive",
   query: "",
   category: "all",
@@ -15,7 +26,9 @@ const state = {
   staffingRating: "all",
   selectedRiskFacilityId: null,
   selectedChainId: null,
-  selectedHospitalId: null
+  selectedHospitalId: null,
+  selectedCareerFacilityId: null,
+  selectedCountyName: null
 };
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -40,6 +53,9 @@ const els = {
   tabs: document.querySelectorAll(".tab"),
   panels: {
     executive: document.querySelector("#executivePanel"),
+    audit: document.querySelector("#auditPanel"),
+    moneyFlow: document.querySelector("#moneyFlowPanel"),
+    priceTransparency: document.querySelector("#priceTransparencyPanel"),
     findings: document.querySelector("#findingsPanel"),
     records: document.querySelector("#recordsPanel"),
     geography: document.querySelector("#geographyPanel"),
@@ -52,6 +68,7 @@ const els = {
     hospital: document.querySelector("#hospitalPanel"),
     payment: document.querySelector("#paymentPanel"),
     methodology: document.querySelector("#methodologyPanel"),
+    workforce: document.querySelector("#workforcePanel"),
     sources: document.querySelector("#sourcesPanel"),
     model: document.querySelector("#modelPanel")
   },
@@ -78,6 +95,8 @@ const els = {
   strategicImplications: document.querySelector("#strategicImplications"),
   recommendedActions: document.querySelector("#recommendedActions"),
   countyFindingList: document.querySelector("#countyFindingList"),
+  countyPriorityCards: document.querySelector("#countyPriorityCards"),
+  countyDrilldown: document.querySelector("#countyDrilldown"),
   countySummaryRows: document.querySelector("#countySummaryRows"),
   countyRiskRows: document.querySelector("#countyRiskRows"),
   riskLevelSelect: document.querySelector("#riskLevelSelect"),
@@ -99,10 +118,19 @@ const els = {
   highReimbursementLowQualityCounties: document.querySelector("#highReimbursementLowQualityCounties"),
   lowReimbursementHighRiskCounties: document.querySelector("#lowReimbursementHighRiskCounties"),
   highCapitalWeakStaffingFacilities: document.querySelector("#highCapitalWeakStaffingFacilities"),
-  ruralLimitedCoverageCounties: document.querySelector("#ruralLimitedCoverageCounties")
+  ruralLimitedCoverageCounties: document.querySelector("#ruralLimitedCoverageCounties"),
+  auditPipeline: document.querySelector("#auditPipeline"),
+  auditEvidenceMap: document.querySelector("#auditEvidenceMap"),
+  evidenceTypeCards: document.querySelector("#evidenceTypeCards"),
+  sourceRegistryRows: document.querySelector("#sourceRegistryRows")
 };
 
 Object.assign(els, {
+  moneyFlowMetricCards: document.querySelector("#moneyFlowMetricCards"),
+  topPaidProviders: document.querySelector("#topPaidProviders"),
+  providerTypePayments: document.querySelector("#providerTypePayments"),
+  countyPayments: document.querySelector("#countyPayments"),
+  moneyFlowLimits: document.querySelector("#moneyFlowLimits"),
   chainInsightCards: document.querySelector("#chainInsightCards"),
   chainSummaryRows: document.querySelector("#chainSummaryRows"),
   chainDrilldown: document.querySelector("#chainDrilldown"),
@@ -125,7 +153,19 @@ Object.assign(els, {
   coverageRows: document.querySelector("#coverageRows"),
   methodologyNotes: document.querySelector("#methodologyNotes"),
   dataGapRows: document.querySelector("#dataGapRows"),
-  nextLayerCards: document.querySelector("#nextLayerCards")
+  nextLayerCards: document.querySelector("#nextLayerCards"),
+  queryPriceTransparencyButton: document.querySelector("#queryPriceTransparencyButton"),
+  priceTransparencyStatus: document.querySelector("#priceTransparencyStatus"),
+  priceTransparencyMetricCards: document.querySelector("#priceTransparencyMetricCards"),
+  priceTransparencySourceRows: document.querySelector("#priceTransparencySourceRows"),
+  priceTransparencyExampleRows: document.querySelector("#priceTransparencyExampleRows"),
+  priceTransparencyLimitCards: document.querySelector("#priceTransparencyLimitCards"),
+  refreshCareersButton: document.querySelector("#refreshCareersButton"),
+  careersStatus: document.querySelector("#careersStatus"),
+  careersMetricCards: document.querySelector("#careersMetricCards"),
+  careerLandscape: document.querySelector("#careerLandscape"),
+  careersRows: document.querySelector("#careersRows"),
+  careerDrilldown: document.querySelector("#careerDrilldown")
 });
 
 async function loadData() {
@@ -136,12 +176,21 @@ async function loadData() {
 
   const starterRecords = await recordsResponse.json();
   const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
+  state.providerPayments = await fetchOptionalJson("data/hfs-provider-payments.json");
+  state.hfsEnrollmentContext = await fetchOptionalJson("data/hfs-program-enrollment-context.json");
   state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
   state.hospitalRecords = await fetchOptionalJson("data/cms-hospital-general-illinois.json");
   state.hospitalRateSheets = await fetchOptionalJson("data/hfs-hospital-rate-sheets-2026.json");
   state.hospitalRateValues = await fetchOptionalJson("data/hfs-hospital-rate-values-2026.json");
+  state.hospitalSystems = await fetchOptionalJson("data/hospital-systems.json");
+  state.hospitalDataAttachments = await fetchOptionalJson("data/hospital-data-attachments.json");
+  state.facilityEvidenceBinders = await fetchOptionalJson("data/facility-evidence-binders.json");
+  state.priceTransparencySources = await fetchOptionalJson("data/price-transparency-sources.json");
+  state.priceTransparencyRecords = await fetchOptionalJson("data/price-transparency-records.json");
+  state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
+  state.sourceRegistry = await fetchOptionalJson("data/source-registry.json");
   state.records = [...nursingRates, ...starterRecords];
   state.sources = await sourcesResponse.json();
   render();
@@ -165,6 +214,9 @@ function render() {
   renderRiskFilterOptions();
   renderRecords();
   renderSources();
+  renderAuditFramework();
+  renderMoneyFlow();
+  renderPriceTransparency();
   renderGeography();
   renderAnalysis();
   renderCapitalEquity();
@@ -177,6 +229,7 @@ function render() {
   renderHospitalIntelligence();
   renderHospitalPaymentExplorer();
   renderMethodology();
+  renderWorkforceDemand();
 }
 
 function renderMetrics() {
@@ -347,6 +400,522 @@ function renderSources() {
   `).join("");
 }
 
+function renderAuditFramework() {
+  const pipeline = [
+    ["Money Flow", "Who got paid, by which payer, for which facility or service type, and at what scale."],
+    ["Rate Rules", "The published fee schedule, per diem, DRG, APC, capitation, rate sheet, or policy method behind payment."],
+    ["Inpatient Logic", "How ED admission path, principal diagnosis, procedures, CC/MCCs, LOS, discharge status, transfers, and outliers affect reimbursement."],
+    ["Quality & Payment Risk", "How POA, HACs, infections, pressure injuries, readmissions, staffing, and penalties create avoidable payment loss or accountability risk."],
+    ["Facility Economics", "How costs, charges, revenue, expenses, beds, occupancy, service lines, payer mix, capital, and staffing describe facility reality."],
+    ["Evidence Strength", "Whether a number is a published rate, reported payment, allowed amount, charge, cost report value, quality signal, or derived estimate."]
+  ];
+
+  const evidenceTypes = [
+    ["official_rule", "Official rule", "Payment system logic or coding rule published by a payer or regulator."],
+    ["published_rate", "Published rate", "A posted rate, fee schedule, per diem, or facility rate sheet amount."],
+    ["reported_payment", "Reported payment", "Aggregate money paid or received according to public reporting."],
+    ["allowed_amount", "Allowed amount", "A payer-recognized amount from Medicare or transparency files."],
+    ["charge", "Charge", "A billed or listed facility price, not necessarily paid."],
+    ["cost_report", "Cost report", "Facility-reported costs, charges, utilization, settlement, or finance data."],
+    ["quality_penalty", "Quality penalty", "Payment risk tied to HACs, POA, readmissions, safety, or value-based programs."],
+    ["quality_signal", "Quality/context signal", "Related evidence around quality, access, staffing, ownership, or geography."],
+    ["labor_market_signal", "Labor market signal", "Careers pages and public job counts that suggest workforce demand or staffing pressure."]
+  ];
+
+  els.auditPipeline.innerHTML = pipeline.map(([title, copy], index) => `
+    <article class="audit-step">
+      <span>${index + 1}</span>
+      <div>
+        <strong>${escapeHtml(title)}</strong>
+        <p>${escapeHtml(copy)}</p>
+      </div>
+    </article>
+  `).join("");
+
+  els.auditEvidenceMap.innerHTML = renderAuditEvidenceMap();
+
+  els.evidenceTypeCards.innerHTML = evidenceTypes.map(([key, label, copy]) => `
+    <article class="evidence-card">
+      <span>${escapeHtml(key)}</span>
+      <strong>${escapeHtml(label)}</strong>
+      <p>${escapeHtml(copy)}</p>
+    </article>
+  `).join("");
+
+  els.sourceRegistryRows.innerHTML = state.sourceRegistry
+    .slice()
+    .sort((a, b) => a.priority - b.priority)
+    .map((source) => `
+      <article class="registry-row">
+        <div>
+          <span class="registry-priority">${escapeHtml(source.priority)}</span>
+          <strong>${escapeHtml(source.name)}</strong>
+          <small>${escapeHtml(source.agency)} / ${escapeHtml(source.pipelineRole)} / ${escapeHtml(source.evidenceType)}</small>
+          <p>${escapeHtml(source.whyItMatters)}</p>
+        </div>
+        <div class="registry-meta">
+          <span>${escapeHtml(source.importStatus)}</span>
+          <small>${escapeHtml(source.accessLevel)}</small>
+          <a href="${source.url}" target="_blank" rel="noreferrer">Source</a>
+        </div>
+      </article>
+    `).join("");
+}
+
+function renderAuditEvidenceMap() {
+  const layers = getAuditEvidenceLayers();
+  return `
+    <div class="audit-equation">
+      <strong>price</strong>
+      <span>≠</span>
+      <strong>payment</strong>
+      <span>≠</span>
+      <strong>cost</strong>
+      <span>≠</span>
+      <strong>margin</strong>
+    </div>
+    <div class="audit-layer-grid">
+      ${layers.map((layer, index) => `
+        <article class="audit-layer-card">
+          <div class="audit-layer-head">
+            <span>${index + 1}</span>
+            <div>
+              <strong>${escapeHtml(layer.title)}</strong>
+              <small>${escapeHtml(layer.source)}</small>
+            </div>
+            <em class="status-dot status-${escapeHtml(layer.statusKey)}">${escapeHtml(layer.status)}</em>
+          </div>
+          <dl>
+            <div>
+              <dt>Can prove</dt>
+              <dd>${escapeHtml(layer.proves)}</dd>
+            </div>
+            <div>
+              <dt>Cannot prove alone</dt>
+              <dd>${escapeHtml(layer.limits)}</dd>
+            </div>
+            <div>
+              <dt>Current app connection</dt>
+              <dd>${escapeHtml(layer.connection)}</dd>
+            </div>
+          </dl>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getAuditEvidenceLayers() {
+  const priceSourceCount = getPriceTransparencySources().length;
+  const priceRecordCount = getPriceTransparencyRecords().length;
+  const paymentRecordCount = getProviderPaymentRecords().length;
+  const systemCount = Array.isArray(state.hospitalSystems) ? state.hospitalSystems.length : 0;
+
+  return [
+    {
+      title: "Prices",
+      source: "Hospital price transparency CSV",
+      status: priceSourceCount ? (priceRecordCount ? "loaded" : "mapped") : "next",
+      statusKey: priceSourceCount ? (priceRecordCount ? "loaded" : "partial") : "next",
+      proves: "Public gross charges, cash prices, min/max negotiated-rate signals, and payer/plan price fields where the file is parsed.",
+      limits: "Actual paid claims, Medicaid/Medicare payment, volume, denials, patient responsibility, medical necessity, or margin.",
+      connection: priceRecordCount
+        ? `${formatIntegerOrNA(priceRecordCount)} Taylorville examples parsed in Price Transparency.`
+        : priceSourceCount
+          ? `${formatIntegerOrNA(priceSourceCount)} machine-readable file mapped; click Query Price Files.`
+          : "Map hospital machine-readable files."
+    },
+    {
+      title: "Public Payer Payment",
+      source: "Medicare/HFS payment and rate files",
+      status: paymentRecordCount ? "loaded" : "scaffolded",
+      statusKey: paymentRecordCount ? "loaded" : "partial",
+      proves: "Reported public-payer payment totals, published rates, fee schedules, provider payments, and rule-based payer benchmarks.",
+      limits: "Commercial contract terms, individual patient claims, full adjudication logic, denials, or cost of care.",
+      connection: paymentRecordCount
+        ? `${formatIntegerOrNA(paymentRecordCount)} HFS provider-payment records loaded.`
+        : "Money Flow tab is scaffolded for HFS provider-level payment import."
+    },
+    {
+      title: "Facility Economics",
+      source: "Cost reports, revenue, expenses, beds, utilization",
+      status: "next",
+      statusKey: "next",
+      proves: "Facility-level operating context such as revenue, expenses, utilization, beds, cost centers, wages, cost-to-charge, and occupancy when imported.",
+      limits: "Exact service-line profitability, real-time cash position, private payer contracts, or system-level subsidy flows.",
+      connection: "Next importer should attach CMS HCRIS and Illinois cost report fields to each hospital/facility."
+    },
+    {
+      title: "System Financials",
+      source: "Form 990, audited statements, bond disclosures",
+      status: systemCount ? "mapped" : "next",
+      statusKey: systemCount ? "partial" : "next",
+      proves: "Parent/system revenue, expenses, executive compensation, community benefit, debt disclosures, consolidated statements, and related organizations.",
+      limits: "Clean Taylorville-only margin unless the system discloses facility-level schedules or cost reports can bridge the gap.",
+      connection: systemCount
+        ? `${formatIntegerOrNA(systemCount)} system crosswalk seeded; Memorial Health is mapped for Taylorville.`
+        : "Add IRS 990/audited-statement/bond disclosure sources."
+    }
+  ];
+}
+
+function renderMoneyFlow() {
+  const records = getProviderPaymentRecords();
+  const paidRecords = records.filter((record) => Number.isFinite(record.totalPaid));
+  const totalPaid = sum(paidRecords.map((record) => record.totalPaid));
+  const totalPatients = sum(records.map((record) => record.patientsServed));
+  const years = [...new Set(records.map((record) => record.serviceYear).filter(Boolean))].sort();
+
+  els.moneyFlowMetricCards.innerHTML = renderWorkforceMetricCards([
+    ["Provider records", records.length],
+    ["Total paid", formatCurrencyOrNA(totalPaid, 0)],
+    ["Patients served", formatIntegerOrNA(totalPatients)],
+    ["Service years", years.length ? `${years[0]}-${years.at(-1)}` : "Not imported"]
+  ]);
+  els.topPaidProviders.innerHTML = renderProviderPaymentRows(
+    [...paidRecords].sort((a, b) => b.totalPaid - a.totalPaid).slice(0, 20),
+    "provider"
+  );
+  els.providerTypePayments.innerHTML = renderPaymentGroupRows(summarizePaymentsBy(records, (record) => record.providerType || "Unknown provider type"));
+  els.countyPayments.innerHTML = renderPaymentGroupRows(summarizePaymentsBy(records, (record) => record.county || "Unknown county"));
+  els.moneyFlowLimits.innerHTML = renderMoneyFlowLimits(records);
+}
+
+function getProviderPaymentRecords() {
+  return Array.isArray(state.providerPayments)
+    ? state.providerPayments
+    : state.providerPayments.records || [];
+}
+
+function summarizePaymentsBy(records, getKey) {
+  const groups = new Map();
+  records.forEach((record) => {
+    const key = getKey(record);
+    if (!groups.has(key)) {
+      groups.set(key, { key, records: 0, totalPaid: 0, patientsServed: 0 });
+    }
+    const group = groups.get(key);
+    group.records += 1;
+    group.totalPaid += Number.isFinite(record.totalPaid) ? record.totalPaid : 0;
+    group.patientsServed += Number.isFinite(record.patientsServed) ? record.patientsServed : 0;
+  });
+  return [...groups.values()].sort((a, b) => b.totalPaid - a.totalPaid).slice(0, 20);
+}
+
+function renderProviderPaymentRows(records) {
+  if (!records.length) {
+    return '<p class="status">No HFS provider payment records imported yet. Download the provider-level CSV from HFS Transparency Law Data and run the importer.</p>';
+  }
+  return records.map((record) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(record.providerName || "Unknown provider")}</strong>
+        <small>${escapeHtml(record.providerType || "Unknown type")} / ${escapeHtml(record.county || "Unknown county")} / ${escapeHtml(record.serviceYear || "Unknown year")}</small>
+      </div>
+      <div class="numeric">${formatCurrencyOrNA(record.totalPaid, 0)} / ${formatIntegerOrNA(record.patientsServed)} patients</div>
+    </article>
+  `).join("");
+}
+
+function renderPaymentGroupRows(groups) {
+  if (!groups.length) {
+    return '<p class="status">No payment groups available yet.</p>';
+  }
+  return groups.map((group) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(group.key)}</strong>
+        <small>${formatIntegerOrNA(group.records)} provider records / ${formatIntegerOrNA(group.patientsServed)} patients served</small>
+      </div>
+      <div class="numeric">${formatCurrencyOrNA(group.totalPaid, 0)}</div>
+    </article>
+  `).join("");
+}
+
+function renderMoneyFlowLimits(records) {
+  const items = records.length
+    ? [
+      "This is reported aggregate payment evidence, not patient-level claim detail.",
+      "Managed care, medical necessity, denials, modifiers, and contract terms are not fully visible in this layer.",
+      "Provider location may represent a primary address and may not capture every service location."
+    ]
+    : [
+      "Import HFS provider-level payment data to show where Illinois Medicaid dollars flowed.",
+      "The source is designed to disclose provider/vendor names, county, patients served, payments, average costs, adjustments, and total money received.",
+      "Use this as Money Flow evidence; connect it later to fee schedules, cost reports, quality, and facility economics."
+    ];
+  return items.map((item) => `<div class="finding">${escapeHtml(item)}</div>`).join("");
+}
+
+function renderPriceTransparency() {
+  const sources = getPriceTransparencySources();
+  const records = getPriceTransparencyRecords();
+  const facilities = new Set(sources.map((source) => source.facilityId || source.facilityName).filter(Boolean));
+  const categories = summarizePriceTransparencyCategories(records);
+
+  els.priceTransparencyMetricCards.innerHTML = renderWorkforceMetricCards([
+    ["Tracked source files", sources.length],
+    ["Facilities mapped", facilities.size],
+    ["Preview rows parsed", records.length],
+    ["Service categories found", categories.length]
+  ]);
+  els.priceTransparencySourceRows.innerHTML = renderPriceTransparencySourceRows(sources);
+  els.priceTransparencyExampleRows.innerHTML = renderPriceTransparencyExampleRows(records);
+  els.priceTransparencyLimitCards.innerHTML = renderPriceTransparencyLimits(sources);
+}
+
+function getPriceTransparencySources() {
+  return Array.isArray(state.priceTransparencySources)
+    ? state.priceTransparencySources
+    : state.priceTransparencySources.records || [];
+}
+
+function getPriceTransparencyRecords() {
+  return Array.isArray(state.priceTransparencyRecords) ? state.priceTransparencyRecords : [];
+}
+
+function renderPriceTransparencySourceRows(sources) {
+  if (!sources.length) {
+    return '<p class="status">No price transparency sources are mapped yet.</p>';
+  }
+
+  return sources.map((source) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(source.facilityName || "Unknown facility")}</strong>
+        <small>${escapeHtml(source.systemName || "Unknown system")} / ${escapeHtml(source.updatedAsOf || "Unknown update date")} / ${escapeHtml(source.fileFormat || "unknown format")}</small>
+        <small>${escapeHtml(source.sourceNote || "")}</small>
+      </div>
+      <div class="source-actions">
+        <a href="${escapeHtml(source.priceTransparencyPageUrl)}" target="_blank" rel="noreferrer">Page</a>
+        <a href="${escapeHtml(source.machineReadableFileUrl)}" target="_blank" rel="noreferrer">CSV</a>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderPriceTransparencyExampleRows(records) {
+  if (!records.length) {
+    return '<p class="status">Click Query Price Files to preview Memorial Health standard-charge rows. Browser security may block direct CSV reading; source links remain available for manual download or future server-side import.</p>';
+  }
+
+  const rows = records.slice(0, 80).map((record) => `
+    <article class="table-row price-example-row">
+      <div>
+        <strong>${escapeHtml(record.description || "Unknown item/service")}</strong>
+        <small>${escapeHtml(record.category)} / ${escapeHtml(record.code || "No code found")} / ${escapeHtml(record.setting || "Unknown setting")}</small>
+      </div>
+      <div>${escapeHtml(record.chargeType || "Price field")}</div>
+      <div class="numeric">${formatCurrencyOrNA(record.amount)}</div>
+      <div>${escapeHtml(record.payer || "N/A")}</div>
+    </article>
+  `).join("");
+
+  return `
+    <article class="table-row price-example-row header">
+      <div>Service / Code</div>
+      <div>Charge Type</div>
+      <div class="numeric">Amount</div>
+      <div>Payer</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function summarizePriceTransparencyCategories(records) {
+  const counts = new Map();
+  records.forEach((record) => counts.set(record.category, (counts.get(record.category) || 0) + 1));
+  return [...counts.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function renderPriceTransparencyLimits(sources) {
+  const items = [
+    sources[0]?.sourceNote || "Machine-readable files are a price transparency source, not claim-level reimbursement evidence.",
+    "Traditional Medicare and Medicaid may be excluded from Memorial Health's file, so HFS and CMS reimbursement rules still need separate imports.",
+    "Negotiated rates can be percent-of-charge, per diem, DRG/APR-DRG, APC/EAPG, fee schedule, or other contract logic, so a row may not equal a final expected payment.",
+    "This layer should be tied to service examples, payer names, code systems, and observation dates before being used in finance conclusions."
+  ];
+
+  return items.map((item) => `<div class="finding">${escapeHtml(item)}</div>`).join("");
+}
+
+async function queryPriceTransparencyData() {
+  const sources = getPriceTransparencySources();
+  els.queryPriceTransparencyButton.disabled = true;
+  state.priceTransparencyRecords = [];
+
+  try {
+    if (!sources.length) {
+      els.priceTransparencyStatus.textContent = "No price transparency source files are mapped yet.";
+      renderPriceTransparency();
+      return;
+    }
+
+    try {
+      els.priceTransparencyStatus.textContent = "Asking local app server to query price transparency files...";
+      const response = await fetch("/api/query-price-transparency");
+      if (response.ok) {
+        const payload = await response.json();
+        state.priceTransparencySources = payload.sources || sources;
+        state.priceTransparencyRecords = payload.records || [];
+        els.priceTransparencyStatus.textContent = payload.status || `Server parsed ${formatIntegerOrNA(state.priceTransparencyRecords.length)} service examples.`;
+        renderPriceTransparency();
+        renderAuditFramework();
+        return;
+      }
+    } catch {
+      // Fall back to browser-side preview below when the local API is unavailable.
+    }
+
+    const collected = [];
+    for (const source of sources) {
+      els.priceTransparencyStatus.textContent = `Querying ${source.facilityName}: reading CSV preview...`;
+      try {
+        const previewText = await fetchTextPreview(source.machineReadableFileUrl, 900000);
+        const rows = parseCsvPreview(previewText, 2000);
+        collected.push(...extractPriceTransparencyExamples(rows, source));
+        els.priceTransparencyStatus.textContent = `Loaded ${formatIntegerOrNA(rows.length)} preview rows from ${source.facilityName}; captured ${formatIntegerOrNA(collected.length)} service examples.`;
+      } catch (error) {
+        els.priceTransparencyStatus.textContent = `Could not read the CSV directly from the browser (${error.message}). Source links are loaded; a server-side importer can parse the full file next.`;
+      }
+    }
+
+    state.priceTransparencyRecords = collected;
+    renderPriceTransparency();
+    renderAuditFramework();
+  } finally {
+    els.queryPriceTransparencyButton.disabled = false;
+  }
+}
+
+async function fetchTextPreview(url, maxBytes = 900000) {
+  const response = await fetch(url);
+  if (!response.ok) throw new Error(`HTTP ${response.status}`);
+  if (!response.body?.getReader) return (await response.text()).slice(0, maxBytes);
+
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let received = "";
+  while (received.length < maxBytes) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    received += decoder.decode(value, { stream: true });
+  }
+  await reader.cancel().catch(() => {});
+  return received;
+}
+
+function parseCsvPreview(text, maxRows = 2000) {
+  const rows = [];
+  let row = [];
+  let field = "";
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+    const next = text[i + 1];
+    if (char === '"' && inQuotes && next === '"') {
+      field += '"';
+      i += 1;
+    } else if (char === '"') {
+      inQuotes = !inQuotes;
+    } else if (char === "," && !inQuotes) {
+      row.push(field);
+      field = "";
+    } else if ((char === "\n" || char === "\r") && !inQuotes) {
+      if (char === "\r" && next === "\n") i += 1;
+      row.push(field);
+      if (row.some((value) => value.trim() !== "")) rows.push(row);
+      row = [];
+      field = "";
+      if (rows.length >= maxRows) break;
+    } else {
+      field += char;
+    }
+  }
+
+  if (rows.length < maxRows && (field || row.length)) {
+    row.push(field);
+    rows.push(row);
+  }
+
+  if (rows.length < 2) return [];
+  const headerIndex = rows.findIndex((candidate) => {
+    const normalized = candidate.map((header) => normalizeHeader(header));
+    return normalized.includes("description") && normalized.some((header) => header.includes("standard_charge"));
+  });
+  const headers = rows[Math.max(headerIndex, 0)].map((header) => normalizeHeader(header));
+  return rows.slice(Math.max(headerIndex, 0) + 1).map((values) => Object.fromEntries(headers.map((header, index) => [header || `column_${index}`, values[index] || ""])));
+}
+
+function extractPriceTransparencyExamples(rows, source) {
+  const examples = [];
+  const seen = new Set();
+  rows.forEach((row) => {
+    const description = getFirstField(row, ["description", "item_description", "service_description", "billing_description", "standard_charge_description", "line_item"]);
+    const code = getFirstField(row, ["code", "code_1", "code_2", "billing_code", "hcpcs_cpt", "cpt_hcpcs", "ms_drg", "apr_drg", "drg", "revenue_code"]);
+    const setting = getFirstField(row, ["setting", "patient_type", "inpatient_outpatient", "service_setting"]);
+    const billingClass = getFirstField(row, ["billing_class", "billing_classification"]);
+    const haystack = `${description} ${code} ${setting} ${billingClass}`.toLowerCase();
+    const category = classifyPriceTransparencyRow(haystack);
+    if (!category) return;
+
+    const amount = getPriceAmount(row);
+    const payer = getFirstField(row, ["payer", "payer_name", "plan", "plan_name", "third_party_payer_name"]);
+    const chargeType = getChargeType(row);
+    const key = `${category}|${description}|${code}|${chargeType}|${amount}|${payer}`;
+    if (seen.has(key)) return;
+    seen.add(key);
+    examples.push({
+      facilityId: source.facilityId,
+      facilityName: source.facilityName,
+      category,
+      description: description || "Matched price transparency row",
+      code,
+      amount,
+      payer,
+      chargeType,
+      setting
+    });
+  });
+
+  return examples.sort((a, b) => a.category.localeCompare(b.category) || (b.amount || 0) - (a.amount || 0)).slice(0, 120);
+}
+
+function classifyPriceTransparencyRow(text) {
+  if (/\b(emergency|ed visit|emerg dept|9928[1-5])\b/.test(text)) return "Emergency";
+  if (/\b(observation|obs)\b/.test(text)) return "Observation";
+  if (/\b(ct |computed tomography|mri|xray|x-ray|ultrasound|mammography|radiology|imaging)\b/.test(text)) return "Imaging";
+  if (/\b(lab|laboratory|metabolic|blood count|cbc|troponin|culture|panel)\b/.test(text)) return "Lab";
+  if (/\b(pharmacy|drug|injection|infusion|j[0-9]{4}|ndc)\b/.test(text)) return "Drug/Pharmacy";
+  if (/\b(drg|apr-drg|apr drg|ms-drg|inpatient)\b/.test(text)) return "Inpatient/DRG";
+  return null;
+}
+
+function getFirstField(row, names) {
+  for (const name of names) {
+    const value = row[normalizeHeader(name)];
+    if (value !== undefined && String(value).trim() !== "") return String(value).trim();
+  }
+  return "";
+}
+
+function getPriceAmount(row) {
+  const keys = Object.keys(row);
+  const preferred = keys.find((key) => /cash|gross|negotiated|standard|charge|rate|price|amount/.test(key));
+  return toNumberOrNull(preferred ? row[preferred] : "");
+}
+
+function getChargeType(row) {
+  const keys = Object.keys(row);
+  const preferred = keys.find((key) => /cash|gross|negotiated|standard|charge|rate|price|amount/.test(key));
+  return preferred ? titleCase(preferred.replace(/_/g, " ")) : "Price field";
+}
+
+function normalizeHeader(value) {
+  return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+}
+
 function renderGeography() {
   const records = getFilteredRecords().filter((record) => Number.isFinite(record.publishedAmount));
   const tierGroups = summarizeBy(records, (record) => record.geography?.tier || "Unclassified");
@@ -407,12 +976,14 @@ function renderExecutiveSummary() {
   const records = getFilteredRecords().filter((record) => Number.isFinite(record.publishedAmount));
   const qualityRecords = getFilteredQualityRecords();
   const tierGroups = summarizeBy(records, (record) => record.geography?.tier || "Unclassified");
+  const classifiedTierGroups = tierGroups.filter((group) => group.key !== "Unclassified");
+  const missingGeographyGroup = tierGroups.find((group) => group.key === "Unclassified") || null;
   const capitalGroups = summarizeCapitalByGeography(getCapitalRecords());
   const lowCapitalLowStaffing = getLowCapitalLowStaffing(qualityRecords);
   const highRateLowQuality = getHighRateLowQuality(qualityRecords);
   const components = averageComponents(records);
-  const lowestGeography = tierGroups[tierGroups.length - 1];
-  const highestGeography = tierGroups[0];
+  const lowestGeography = classifiedTierGroups[classifiedTierGroups.length - 1] || null;
+  const highestGeography = classifiedTierGroups[0] || null;
 
   els.projectPurpose.textContent = "This tool analyzes Illinois nursing facility Medicaid reimbursement, geographic reimbursement patterns, capital reimbursement components, and CMS Care Compare quality data to identify possible healthcare disparity signals, infrastructure-risk patterns, and planning questions for long-term care leaders.";
   els.executiveMetricCards.innerHTML = renderExecutiveMetricCards({
@@ -423,11 +994,13 @@ function renderExecutiveSummary() {
     averageSupport: components.supportRate,
     averageCapital: components.capitalRate,
     lowestGeography,
-    highestGeography
+    highestGeography,
+    missingGeographyGroup
   });
   els.executiveFindings.innerHTML = renderExecutiveFindings({
     records,
-    tierGroups,
+    tierGroups: classifiedTierGroups,
+    missingGeographyGroup,
     capitalGroups,
     lowCapitalLowStaffing,
     highRateLowQuality
@@ -453,8 +1026,16 @@ function renderExecutiveSummary() {
 function renderCountyContext() {
   const countySummaries = getFilteredCountySummaries();
   const riskFlags = buildCountyRiskFlags(countySummaries);
+  const priorityCounties = getLookCloserCounties(countySummaries, riskFlags);
+  const selectedCounty = countySummaries.find((county) => normalizeCountyName(county.county) === normalizeCountyName(state.selectedCountyName))
+    || priorityCounties[0]
+    || countySummaries[0]
+    || null;
+  state.selectedCountyName = selectedCounty ? selectedCounty.county : null;
 
   els.countyFindingList.innerHTML = renderCountyFindings(countySummaries, riskFlags);
+  els.countyPriorityCards.innerHTML = renderLookCloserCountyCards(priorityCounties, riskFlags);
+  els.countyDrilldown.innerHTML = renderCountyDrilldown(selectedCounty, riskFlags);
   els.countySummaryRows.innerHTML = renderCountySummaryRows(countySummaries);
   els.countyRiskRows.innerHTML = renderCountyRiskRows(riskFlags);
 }
@@ -498,6 +1079,7 @@ function renderHospitalIntelligence() {
   els.hospitalMetricCards.innerHTML = renderHospitalMetricCards(hospitals, countyGroups);
   els.hospitalCountyRows.innerHTML = renderHospitalCountyRows(countyGroups);
   els.hospitalDrilldown.innerHTML = renderHospitalDrilldown(selected);
+  scheduleAutomaticHfsPaymentQuery(selected);
   els.hospitalRiskRows.innerHTML = renderHospitalRiskRows(hospitals);
   els.hospitalRateValueRows.innerHTML = renderHospitalRateValueRows(hospitals);
   els.hospitalRoadmapCards.innerHTML = renderHospitalRoadmapCards();
@@ -632,6 +1214,50 @@ function renderCoverageMetricCards(coverage) {
   `).join("");
 }
 
+function scheduleAutomaticHfsPaymentQuery(hospital) {
+  if (!hospital || !getFacilityEvidenceBinder(hospital)) return;
+  if (getProviderPaymentRowsForHospital(hospital).length) return;
+  const facilityId = String(hospital.facilityId || "");
+  if (!facilityId || state.hfsAutoQueryAttempts[facilityId]) return;
+  state.hfsAutoQueryAttempts[facilityId] = true;
+  Promise.resolve().then(() => queryHfsProviderPaymentsForHospital(facilityId, { automatic: true }));
+}
+
+function renderWorkforceDemand() {
+  const records = getCareerRecords();
+  const counted = records.filter((record) => Number.isFinite(record.jobOpeningCount));
+  const linked = records.filter((record) => record.careerPageUrl);
+  const totalOpenings = sum(counted.map((record) => record.jobOpeningCount));
+  const observedDates = [...new Set(records.map((record) => record.observedDate).filter(Boolean))].sort();
+
+  els.careersMetricCards.innerHTML = renderWorkforceMetricCards([
+    ["Facilities tracked", records.length],
+    ["Careers pages linked", linked.length],
+    ["Open roles counted", formatIntegerOrNA(totalOpenings)],
+    ["Latest observation", observedDates.at(-1) || "Not queried"]
+  ]);
+  els.careerLandscape.innerHTML = renderCareerMarketLandscape(records);
+  els.careersRows.innerHTML = renderCareerRows(records);
+  const selected = records.find((record) => getCareerFacilityId(record) === state.selectedCareerFacilityId) || records[0] || null;
+  state.selectedCareerFacilityId = selected ? getCareerFacilityId(selected) : null;
+  els.careerDrilldown.innerHTML = renderCareerDrilldown(selected);
+}
+
+function getCareerRecords() {
+  return Array.isArray(state.facilityCareers)
+    ? state.facilityCareers
+    : state.facilityCareers.records || [];
+}
+
+function renderWorkforceMetricCards(cards) {
+  return cards.map(([label, value]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(value)}</span>
+      <small>${escapeHtml(label)}</small>
+    </article>
+  `).join("");
+}
+
 function renderCoverageRows(layers) {
   return layers.map((layer) => `
     <article class="table-row methodology-row">
@@ -688,6 +1314,604 @@ function renderNextLayerCards() {
   return layers.map((layer) => `<div class="finding">${escapeHtml(layer)}</div>`).join("");
 }
 
+function renderCareerRows(records) {
+  if (!records.length) {
+    return '<p class="status">No careers observations loaded yet. Use Query Careers Data to fetch public hospital website seeds or run the careers importer for deeper counts.</p>';
+  }
+
+  return records.slice(0, 100).map((record) => {
+    const homepageLink = record.facilityHomepageUrl
+      ? `<a href="${escapeHtml(record.facilityHomepageUrl)}" target="_blank" rel="noreferrer">Homepage</a>`
+      : "No homepage";
+    const careersLink = record.careerPageUrl
+      ? `<a href="${escapeHtml(record.careerPageUrl)}" target="_blank" rel="noreferrer">Careers</a>`
+      : "Not found";
+    return `
+      <article class="table-row careers-row" data-career-row="${escapeHtml(getCareerFacilityId(record))}">
+        <div>
+          <strong>${escapeHtml(record.facilityName || record.reportCardName || "Unknown facility")}</strong>
+          <small>${escapeHtml(record.city || "Unknown city")} / ${escapeHtml(record.county || "Unknown county")} / ${escapeHtml(record.platform || "Unknown platform")}</small>
+          <small>${homepageLink} / ${careersLink}</small>
+        </div>
+        <div class="numeric">${Number.isFinite(record.jobOpeningCount) ? formatIntegerOrNA(record.jobOpeningCount) : "Not counted"}</div>
+        <div>${escapeHtml(record.confidence || "low")}</div>
+        <div>${escapeHtml(record.observedDate || "N/A")}</div>
+        <button class="mini-button" type="button" data-career-view="${escapeHtml(getCareerFacilityId(record))}">View Roles</button>
+      </article>
+    `;
+  }).join("");
+}
+
+function renderCareerMarketLandscape(records) {
+  const roles = records.flatMap((record) => (Array.isArray(record.roles) ? record.roles : []).map((role) => ({
+    ...role,
+    facilityName: record.facilityName || record.reportCardName || "Unknown facility",
+    county: record.county || "Unknown county",
+    platform: record.platform || "Unknown platform"
+  })));
+  const countedRecords = records.filter((record) => Number.isFinite(record.jobOpeningCount));
+  const roleTotalsByCategory = summarizeCareerMarketItems(roles, (role) => role.category || "Other", "roles");
+  const openRolesByFacility = summarizeCareerMarketItems(countedRecords, (record) => record.facilityName || record.reportCardName || "Unknown facility", "jobOpeningCount");
+  const openRolesByCounty = summarizeCareerMarketItems(countedRecords, (record) => record.county || "Unknown county", "jobOpeningCount");
+  const facilitiesByPlatform = summarizeCareerMarketItems(records.filter((record) => record.careerPageUrl), (record) => record.platform || "Unknown platform", "facilities");
+
+  return `
+    <div class="landscape-grid">
+      <section>
+        <h4>Roles by Category</h4>
+        ${renderLandscapeBars(roleTotalsByCategory, "No role titles captured yet.")}
+      </section>
+      <section>
+        <h4>Most Open Roles by Facility</h4>
+        ${renderLandscapeBars(openRolesByFacility, "No static job counts captured yet.")}
+      </section>
+      <section>
+        <h4>Open Roles by County</h4>
+        ${renderLandscapeBars(openRolesByCounty, "No county-level job counts captured yet.")}
+      </section>
+      <section>
+        <h4>Hiring Platforms Found</h4>
+        ${renderLandscapeBars(facilitiesByPlatform, "No careers platforms found yet.")}
+      </section>
+    </div>
+  `;
+}
+
+function summarizeCareerMarketItems(items, getKey, valueKey) {
+  const groups = new Map();
+  items.forEach((item) => {
+    const key = getKey(item);
+    const increment = valueKey === "jobOpeningCount"
+      ? item.jobOpeningCount
+      : 1;
+    if (!Number.isFinite(increment)) return;
+    groups.set(key, (groups.get(key) || 0) + increment);
+  });
+  return [...groups.entries()]
+    .map(([label, value]) => ({ label, value }))
+    .sort((a, b) => b.value - a.value)
+    .slice(0, 8);
+}
+
+function renderLandscapeBars(groups, emptyText) {
+  if (!groups.length) return `<p class="status">${escapeHtml(emptyText)}</p>`;
+  const max = Math.max(...groups.map((group) => group.value), 1);
+  return groups.map((group) => `
+    <div class="landscape-bar">
+      <div>
+        <strong>${escapeHtml(group.label)}</strong>
+        <small>${formatIntegerOrNA(group.value)}</small>
+      </div>
+      <span><i style="width: ${(group.value / max) * 100}%"></i></span>
+    </div>
+  `).join("");
+}
+
+function renderCareerDrilldown(record) {
+  if (!record) return '<p class="status">Query careers data, then select a facility to view open-role categories.</p>';
+  const roles = Array.isArray(record.roles) ? record.roles : [];
+  const categories = summarizeRolesByCategory(roles);
+  const categoryCards = Object.entries(categories).length
+    ? Object.entries(categories).map(([category, items]) => `
+      <article class="profile-metric">
+        <span>${items.length}</span>
+        <small>${escapeHtml(category)}</small>
+      </article>
+    `).join("")
+    : '<p class="status">No role titles were extractable from the public static careers page. The careers page may require JavaScript or platform-specific API handling.</p>';
+  const roleRows = roles.length
+    ? roles.slice(0, 50).map((role) => `
+      <article class="role-row">
+        <div>
+          <strong>${escapeHtml(role.title)}</strong>
+          <small>${escapeHtml(role.category)}${role.location ? ` / ${escapeHtml(role.location)}` : ""}</small>
+        </div>
+        ${role.url ? `<a href="${escapeHtml(role.url)}" target="_blank" rel="noreferrer">Open</a>` : "<span></span>"}
+      </article>
+    `).join("")
+    : "";
+
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(record.facilityName || record.reportCardName || "Unknown facility")}</h3>
+        <p>${escapeHtml(record.city || "Unknown city")} / ${escapeHtml(record.county || "Unknown county")} / ${escapeHtml(record.platform || "Unknown platform")}</p>
+      </div>
+      <span class="risk-pill risk-moderate">${Number.isFinite(record.jobOpeningCount) ? formatIntegerOrNA(record.jobOpeningCount) : "N/A"} roles</span>
+    </div>
+    <section class="profile-section">
+      <h4>Role Categories</h4>
+      <div class="profile-grid">${categoryCards}</div>
+    </section>
+    <section class="profile-section">
+      <h4>Open Roles</h4>
+      <div class="role-list">${roleRows || '<p class="status">No role titles captured yet.</p>'}</div>
+      <p class="profile-note">${record.careerPageUrl ? `<a href="${escapeHtml(record.careerPageUrl)}" target="_blank" rel="noreferrer">Open careers page</a>. ` : ""}${escapeHtml(record.notes || "Role extraction depends on public page structure and may miss JavaScript-rendered postings.")}</p>
+    </section>
+  `;
+}
+
+function summarizeRolesByCategory(roles) {
+  return roles.reduce((groups, role) => {
+    const category = role.category || "Other";
+    groups[category] = groups[category] || [];
+    groups[category].push(role);
+    return groups;
+  }, {});
+}
+
+function getCareerFacilityId(record) {
+  return String(record.facilityId || record.reportCardEntityId || record.facilityName || record.reportCardName || "").trim();
+}
+
+async function refreshCareersData() {
+  els.careersStatus.textContent = "Querying public facility website data...";
+  els.refreshCareersButton.disabled = true;
+  try {
+    const serverPayload = await fetchServerCareerObservations();
+    if (serverPayload) {
+      state.facilityCareers = serverPayload;
+      const serverRecords = getCareerRecords();
+      const counted = serverRecords.filter((record) => Number.isFinite(record.jobOpeningCount)).length;
+      els.careersStatus.textContent = `Queried ${serverRecords.length} facility careers source${serverRecords.length === 1 ? "" : "s"} through the local server; ${counted} had static job counts.`;
+    } else {
+      const liveRecords = await fetchHospitalReportCardWebsiteSeeds();
+      els.careersStatus.textContent = `Loaded ${liveRecords.length} hospital website seed${liveRecords.length === 1 ? "" : "s"}. Scanning public homepages for careers links and static job counts...`;
+      renderWorkforceDemand();
+      const scannedRecords = await scanCareersInBrowser(liveRecords);
+      state.facilityCareers = {
+        description: "Browser-side careers crawl from Hospital Report Card website seeds. Counts are labor-market signals, not proof of staffing levels or vacancy rates.",
+        lastUpdated: new Date().toISOString().slice(0, 10),
+        records: scannedRecords
+      };
+      const linked = scannedRecords.filter((record) => record.careerPageUrl).length;
+      const counted = scannedRecords.filter((record) => Number.isFinite(record.jobOpeningCount)).length;
+      els.careersStatus.textContent = `Scanned ${scannedRecords.length} hospital website seed${scannedRecords.length === 1 ? "" : "s"} in the browser; found ${linked} careers page${linked === 1 ? "" : "s"} and ${counted} static job count${counted === 1 ? "" : "s"}.`;
+    }
+  } catch (error) {
+    state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
+    const cachedRecords = getCareerRecords();
+    els.careersStatus.textContent = cachedRecords.length
+      ? `Live query failed, so loaded ${cachedRecords.length} cached careers observation${cachedRecords.length === 1 ? "" : "s"}. ${error.message}`
+      : `Live query failed and no cached careers observations are available yet. ${error.message}`;
+  } finally {
+    els.refreshCareersButton.disabled = false;
+    renderWorkforceDemand();
+    renderHospitalIntelligence();
+  }
+}
+
+async function fetchServerCareerObservations() {
+  try {
+    const response = await fetch("/api/query-careers?limit=25");
+    if (!response.ok) return null;
+    return await response.json();
+  } catch {
+    return null;
+  }
+}
+
+async function fetchHospitalReportCardWebsiteSeeds() {
+  const records = [];
+  let url = "https://healthcarereportcard.illinois.gov/api/hospitals?per_page=100";
+  const seenUrls = new Set();
+
+  while (url && !seenUrls.has(url) && records.length < 500) {
+    seenUrls.add(url);
+    const response = await fetch(url);
+    if (!response.ok) throw new Error(`Hospital Report Card request failed with status ${response.status}.`);
+    const payload = await response.json();
+    const hospitals = Array.isArray(payload) ? payload : payload.data || payload.hospitals || [];
+    hospitals.forEach((hospital) => {
+      const matched = state.hospitalRecords.find((record) => (
+        String(record.facilityId || "") === String(hospital.mpn_id || "")
+      ));
+      records.push({
+        facilityId: matched?.facilityId || String(hospital.mpn_id || ""),
+        reportCardEntityId: hospital.entity_id,
+        facilityName: matched?.facilityName || hospital.name,
+        reportCardName: hospital.name,
+        city: matched?.city || hospital.city,
+        county: matched?.county || hospital.county_name,
+        facilityHomepageUrl: normalizeUrl(hospital.website),
+        careerPageUrl: null,
+        platform: "Unknown",
+        jobOpeningCount: null,
+        countMethod: "not-counted",
+        discoveryMethod: "website-seed",
+        observedDate: new Date().toISOString().slice(0, 10),
+        source: "Illinois Hospital Report Card API",
+        sourceUrl: "https://healthcarereportcard.illinois.gov/api/docs/hospitals",
+        confidence: hospital.website ? "medium" : "low",
+        notes: hospital.website
+          ? "Website seed loaded from Hospital Report Card. Careers page discovery requires server-side fetch or importer run."
+          : "Hospital Report Card did not include a website."
+      });
+    });
+    url = payload.next_page_url || null;
+  }
+
+  return records;
+}
+
+function normalizeUrl(value) {
+  const text = String(value || "").trim();
+  if (!text) return null;
+  return /^https?:\/\//i.test(text) ? text : `https://${text}`;
+}
+
+async function scanCareersInBrowser(records) {
+  const scanned = [];
+  const concurrency = 4;
+  let nextIndex = 0;
+
+  async function worker() {
+    while (nextIndex < records.length) {
+      const index = nextIndex;
+      nextIndex += 1;
+      const record = records[index];
+      const observation = await enrichCareerRecordInBrowser(record);
+      scanned[index] = observation;
+
+      if ((index + 1) % 10 === 0 || index + 1 === records.length) {
+        const linked = scanned.filter((item) => item?.careerPageUrl).length;
+        const counted = scanned.filter((item) => Number.isFinite(item?.jobOpeningCount)).length;
+        els.careersStatus.textContent = `Scanning careers pages ${index + 1}/${records.length}: ${linked} links found, ${counted} counts captured.`;
+        state.facilityCareers = {
+          description: "Partial browser-side careers crawl in progress.",
+          lastUpdated: new Date().toISOString().slice(0, 10),
+          records: scanned.filter(Boolean)
+        };
+        renderWorkforceDemand();
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: concurrency }, worker));
+  return scanned.filter(Boolean);
+}
+
+async function enrichCareerRecordInBrowser(record) {
+  const observedDate = new Date().toISOString().slice(0, 10);
+  if (!record.facilityHomepageUrl) {
+    return {
+      ...record,
+      observedDate,
+      confidence: "low",
+      notes: "Hospital Report Card did not include a website."
+    };
+  }
+
+  const discovery = await discoverCareersInBrowser(record.facilityHomepageUrl);
+  const count = await countCareersInBrowser(discovery.careerPageUrl);
+
+  return {
+    ...record,
+    careerPageUrl: discovery.careerPageUrl,
+    platform: platformForCareersUrl(discovery.careerPageUrl),
+    jobOpeningCount: count.jobOpeningCount,
+    roles: count.roles || [],
+    countMethod: count.countMethod,
+    discoveryMethod: discovery.discoveryMethod,
+    observedDate,
+    source: "Illinois Hospital Report Card API plus browser-side public careers crawl",
+    sourceUrl: discovery.careerPageUrl || record.facilityHomepageUrl,
+    confidence: count.jobOpeningCount === null ? (discovery.careerPageUrl ? "medium" : "low") : "medium",
+    notes: [discovery.notes, count.notes].filter(Boolean).join("; ")
+  };
+}
+
+async function discoverCareersInBrowser(homepageUrl) {
+  const htmlResult = await fetchPublicPageText(homepageUrl);
+  if (!htmlResult.ok) {
+    return {
+      careerPageUrl: null,
+      discoveryMethod: "homepage-fetch-failed",
+      notes: htmlResult.error
+    };
+  }
+
+  const ranked = extractLinks(htmlResult.text, homepageUrl)
+    .map((link) => ({ score: scoreCareerLink(link), link }))
+    .sort((a, b) => b.score - a.score);
+  if (ranked[0]?.score > 0) {
+    return {
+      careerPageUrl: ranked[0].link.href,
+      discoveryMethod: "homepage-link",
+      notes: htmlResult.viaProxy ? "Homepage read through public CORS proxy." : ""
+    };
+  }
+
+  for (const suffix of ["/careers", "/career", "/jobs", "/employment"]) {
+    const candidate = new URL(suffix, `${homepageUrl}/`).href;
+    const candidateResult = await fetchPublicPageText(candidate);
+    if (candidateResult.ok) {
+      return {
+        careerPageUrl: candidate,
+        discoveryMethod: "guessed-path",
+        notes: candidateResult.viaProxy ? "Careers path read through public CORS proxy." : ""
+      };
+    }
+  }
+
+  return {
+    careerPageUrl: null,
+    discoveryMethod: "not-found",
+    notes: "No careers link or common careers path found in static homepage HTML."
+  };
+}
+
+async function countCareersInBrowser(careerPageUrl) {
+  if (!careerPageUrl) {
+    return {
+      jobOpeningCount: null,
+      countMethod: "not-counted",
+      roles: [],
+      notes: "No careers URL available."
+    };
+  }
+
+  const htmlResult = await fetchPublicPageText(careerPageUrl);
+  if (!htmlResult.ok) {
+    return {
+      jobOpeningCount: null,
+      countMethod: "careers-fetch-failed",
+      roles: [],
+      notes: htmlResult.error
+    };
+  }
+
+  return {
+    ...extractJobCountFromHtml(htmlResult.text, htmlResult.viaProxy),
+    roles: extractRolesFromHtml(htmlResult.text, careerPageUrl)
+  };
+}
+
+async function fetchPublicPageText(url) {
+  const direct = await fetchWithTimeout(url);
+  if (direct.ok) return direct;
+
+  const proxiedUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(url)}`;
+  const proxied = await fetchWithTimeout(proxiedUrl);
+  if (proxied.ok) {
+    return {
+      ok: true,
+      text: proxied.text,
+      viaProxy: true
+    };
+  }
+
+  return {
+    ok: false,
+    error: `Fetch blocked or failed. Direct: ${direct.error}; proxy: ${proxied.error}`
+  };
+}
+
+async function fetchWithTimeout(url, timeoutMs = 12000) {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow"
+    });
+    if (!response.ok) {
+      return {
+        ok: false,
+        error: `HTTP ${response.status}`
+      };
+    }
+    return {
+      ok: true,
+      text: await response.text(),
+      viaProxy: false
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error.message || String(error)
+    };
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
+function extractLinks(html, baseUrl) {
+  const document = new DOMParser().parseFromString(html, "text/html");
+  const seen = new Set();
+  return [...document.querySelectorAll("a[href]")]
+    .map((link) => {
+      try {
+        return {
+          href: new URL(link.getAttribute("href"), baseUrl).href,
+          text: link.textContent.trim()
+        };
+      } catch {
+        return null;
+      }
+    })
+    .filter((link) => {
+      if (!link || seen.has(link.href)) return false;
+      seen.add(link.href);
+      return true;
+    });
+}
+
+function scoreCareerLink(link) {
+  const haystack = `${link.text} ${link.href}`.toLowerCase();
+  let score = 0;
+  ["career", "careers", "employment", "jobs", "job openings", "join our team", "work with us", "opportunities"].forEach((keyword) => {
+    if (haystack.includes(keyword)) score += ["careers", "employment", "jobs"].includes(keyword) ? 5 : 3;
+  });
+  Object.keys(careerPlatformHints()).forEach((domain) => {
+    if (haystack.includes(domain)) score += 8;
+  });
+  if (haystack.includes("volunteer")) score -= 4;
+  if (haystack.includes("provider directory")) score -= 3;
+  return score;
+}
+
+function platformForCareersUrl(url) {
+  if (!url) return "Unknown";
+  const lowered = url.toLowerCase();
+  const hints = careerPlatformHints();
+  const matched = Object.keys(hints).find((domain) => lowered.includes(domain));
+  return matched ? hints[matched] : "Facility website";
+}
+
+function careerPlatformHints() {
+  return {
+    "myworkdayjobs.com": "Workday",
+    "myworkdaysite.com": "Workday",
+    "icims.com": "iCIMS",
+    "oraclecloud.com": "Oracle Recruiting",
+    "taleo.net": "Oracle Taleo",
+    "ultipro.com": "UKG",
+    "ukg.com": "UKG",
+    "greenhouse.io": "Greenhouse",
+    "lever.co": "Lever",
+    "smartrecruiters.com": "SmartRecruiters",
+    "successfactors": "SAP SuccessFactors",
+    "healthcaresource.com": "HealthcareSource",
+    "symplr.com": "symplr"
+  };
+}
+
+function extractJobCountFromHtml(html, viaProxy) {
+  const text = html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  const patterns = [
+    /(\d{1,5})\s+(?:open\s+)?(?:jobs|positions|openings|opportunities|results)/i,
+    /(?:jobs|positions|openings|opportunities|results)\s+\(?(\d{1,5})\)?/i,
+    /showing\s+\d+\s*[-–]\s*\d+\s+of\s+(\d{1,5})/i
+  ];
+  for (const pattern of patterns) {
+    const match = text.match(pattern);
+    if (match) {
+      return {
+        jobOpeningCount: Number(match[1]),
+        countMethod: "page-text-count",
+        notes: `${viaProxy ? "Careers page read through public CORS proxy. " : ""}Matched count text in static page.`
+      };
+    }
+  }
+
+  const jobLinks = new Set(
+    [...html.matchAll(/href=["']([^"']*(?:job|career|requisition|opening)[^"']*)["']/gi)]
+      .map((match) => match[1])
+      .filter((href) => !/privacy|terms|login|talent|alert|benefit/i.test(href))
+  );
+  if (jobLinks.size) {
+    return {
+      jobOpeningCount: jobLinks.size,
+      countMethod: "job-link-count",
+      notes: `${viaProxy ? "Careers page read through public CORS proxy. " : ""}Counted unique job-like links in static HTML.`
+    };
+  }
+
+  return {
+    jobOpeningCount: null,
+    countMethod: "not-counted",
+    notes: "No reliable static job count found; page may require JavaScript or a platform-specific API."
+  };
+}
+
+function extractRolesFromHtml(html, baseUrl) {
+  const document = new DOMParser().parseFromString(html, "text/html");
+  const candidates = [];
+  const seenTitles = new Set();
+  const selectors = [
+    "a[href*='job']",
+    "a[href*='career']",
+    "a[href*='requisition']",
+    "a[href*='opening']",
+    "[class*='job'] a",
+    "[class*='career'] a",
+    "[data-testid*='job']"
+  ];
+
+  selectors.forEach((selector) => {
+    document.querySelectorAll(selector).forEach((element) => {
+      const title = cleanRoleTitle(element.textContent);
+      if (!isLikelyRoleTitle(title) || seenTitles.has(title.toLowerCase())) return;
+      seenTitles.add(title.toLowerCase());
+      candidates.push({
+        title,
+        category: categorizeRoleTitle(title),
+        location: extractNearbyLocation(element),
+        url: extractRoleUrl(element, baseUrl)
+      });
+    });
+  });
+
+  return candidates.slice(0, 200);
+}
+
+function cleanRoleTitle(value) {
+  return String(value || "")
+    .replace(/\s+/g, " ")
+    .replace(/\b(apply|view job|learn more|read more|details|job details)\b/ig, "")
+    .trim();
+}
+
+function isLikelyRoleTitle(title) {
+  if (!title || title.length < 4 || title.length > 120) return false;
+  if (/^(careers?|jobs?|employment|apply|search|submit|login|privacy|terms|benefits?)$/i.test(title)) return false;
+  return /nurse|rn|lpn|cna|pharmac|tech|therap|evs|housekeep|clean|cook|diet|food|business|billing|coding|revenue|admin|clerk|registr|lab|imaging|rad|respiratory|security|social|case|surg|medical|patient|assistant|manager|director|coordinator|specialist|analyst/i.test(title);
+}
+
+function categorizeRoleTitle(title) {
+  const text = title.toLowerCase();
+  if (/\b(rn|registered nurse|nurse|lpn|cna|patient care|care partner|nursing assistant|scrub)\b/.test(text)) return "Nursing";
+  if (/pharmac|rx|sterile compounding/.test(text)) return "Pharmacy";
+  if (/evs|environmental|housekeep|janitor|clean|laundry|floor tech/.test(text)) return "EVS";
+  if (/business|billing|coding|revenue|finance|account|admin|office|clerk|registr|scheduler|customer service|hr|human resources|analyst/.test(text)) return "Business/Admin";
+  if (/therap|physical therapy|occupational therapy|speech|rehab/.test(text)) return "Therapy/Rehab";
+  if (/imaging|radiology|x-ray|ct|mri|ultrasound|mammography/.test(text)) return "Imaging";
+  if (/lab|laboratory|phlebotom|pathology/.test(text)) return "Lab";
+  if (/respiratory|rt\b/.test(text)) return "Respiratory";
+  if (/food|diet|nutrition|cook|cafeteria/.test(text)) return "Food/Nutrition";
+  if (/security|public safety/.test(text)) return "Security";
+  if (/physician|provider|advanced practice|np\b|pa\b/.test(text)) return "Provider";
+  return "Other";
+}
+
+function extractNearbyLocation(element) {
+  const container = element.closest("li, article, tr, div") || element.parentElement;
+  const text = container ? container.textContent.replace(/\s+/g, " ") : "";
+  const match = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*(IL|Illinois)\b/);
+  return match ? match[0] : "";
+}
+
+function extractRoleUrl(element, baseUrl) {
+  const hrefElement = element.matches("a[href]") ? element : element.closest("a[href]");
+  if (!hrefElement) return null;
+  try {
+    return new URL(hrefElement.getAttribute("href"), baseUrl).href;
+  } catch {
+    return null;
+  }
+}
+
 function getFilteredHospitals() {
   const query = state.query.toLowerCase().trim();
   const countyByName = new Map(state.countySummaries.map((county) => [normalizeCountyName(county.county), county]));
@@ -712,6 +1936,7 @@ function getFilteredHospitals() {
       return {
         ...hospital,
         countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null,
+        systemAffiliation: getHospitalSystemAffiliation(hospital),
         hfsRateSheet,
         hfsPayment: paymentByCmsId.get(String(hospital.facilityId)) || paymentByHfsProviderId.get(String(hfsRateSheet?.hfsProviderId)) || null
       };
@@ -723,6 +1948,7 @@ function getFilteredHospitals() {
         hospital.county,
         hospital.hospitalType,
         hospital.hospitalOwnership,
+        hospital.systemAffiliation?.systemName,
         hospital.emergencyServices,
         hospital.hfsRateSheet?.hfsProviderId,
         hospital.hfsRateSheet?.hospitalName,
@@ -877,6 +2103,8 @@ function renderHospitalDrilldown(hospital) {
   const rateSheet = hospital.hfsRateSheet;
   const payment = hospital.hfsPayment;
   const paymentFields = payment?.paymentFields || {};
+  const careers = getFacilityCareerRecord(hospital);
+  const system = hospital.systemAffiliation;
   return `
     <div class="profile-header">
       <div>
@@ -891,6 +2119,7 @@ function renderHospitalDrilldown(hospital) {
         ${renderProfileMetric("CMS facility ID", hospital.facilityId)}
         ${renderProfileMetric("County", hospital.county)}
         ${renderProfileMetric("Hospital type", hospital.hospitalType)}
+        ${renderProfileMetric("System affiliation", system?.systemName || "Not mapped")}
         ${renderProfileMetric("Ownership", hospital.hospitalOwnership)}
         ${renderProfileMetric("Emergency services", hospital.emergencyServices)}
         ${renderProfileMetric("Birthing friendly", hospital.birthingFriendly)}
@@ -898,6 +2127,7 @@ function renderHospitalDrilldown(hospital) {
         ${renderProfileMetric("Phone", hospital.telephoneNumber)}
       </div>
     </section>
+    ${renderHospitalSystemContext(hospital)}
     <section class="profile-section">
       <h4>Quality Measure Signals</h4>
       <div class="profile-grid">
@@ -913,7 +2143,7 @@ function renderHospitalDrilldown(hospital) {
       <p class="profile-note">CMS quality fields are directional screening signals. They should be validated with measure-level data before drawing conclusions.</p>
     </section>
     <section class="profile-section">
-      <h4>Reimbursement / Price Transparency Status</h4>
+      <h4>HFS Hospital Rate Sheet / Payment Parameters</h4>
       <div class="profile-grid">
         ${renderProfileMetric("HFS Medicaid rate sheet", rateSheet ? "Available" : "Not matched")}
         ${renderProfileMetric("HFS provider ID", rateSheet?.hfsProviderId || "N/A")}
@@ -944,7 +2174,819 @@ function renderHospitalDrilldown(hospital) {
       </div>
       <p class="profile-note">${payment ? escapeHtml(payment.extractionNotes || "") : "No structured HFS payment fields are available for this selected hospital."}</p>
     </section>
+    <section class="profile-section">
+      <h4>Workforce Demand Signal</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Careers page", careers?.careerPageUrl ? "Linked" : "Next data layer")}
+        ${renderProfileMetric("Open roles", Number.isFinite(careers?.jobOpeningCount) ? formatIntegerOrNA(careers.jobOpeningCount) : "Not counted")}
+        ${renderProfileMetric("Hiring platform", careers?.platform || "Unknown")}
+        ${renderProfileMetric("Observed", careers?.observedDate || "N/A")}
+      </div>
+      ${careers?.careerPageUrl ? `<p class="profile-note"><a href="${escapeHtml(careers.careerPageUrl)}" target="_blank" rel="noreferrer">Open careers page</a>. Job openings are a labor-market signal and should be validated against role duplication, campus scope, posting age, and internal transfer practices.</p>` : '<p class="profile-note">Illinois Hospital Report Card exposes hospital website fields that can seed homepage discovery. Careers pages and job counts should be captured with observation dates because they change frequently and may live on system-level hiring platforms.</p>'}
+    </section>
+    <section class="profile-section">
+      <h4>Reimbursement / Price Transparency Status</h4>
+      <div class="reimbursement-workbench">
+        <div>
+          <strong>What is attached now, and what needs imported next?</strong>
+          <p>This hospital MVP does not yet estimate reimbursement. It establishes the hospital master file and quality/access frame that HFS rates and machine-readable price files can attach to next.</p>
+        </div>
+        <div class="reimbursement-status-strip">
+          ${renderHospitalReimbursementStatusTiles(hospital)}
+        </div>
+      </div>
+      <div class="reimbursement-status-grid">
+        ${renderHospitalReimbursementStatusCards(hospital)}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Data Attachment Queue</h4>
+      <p class="profile-note">This is the practical audit bridge: attach one public source layer at a time, then keep price, payment, cost, and clinical logic separate so the evidence does not overclaim.</p>
+      <div class="attachment-queue">
+        ${renderHospitalDataAttachmentQueue(hospital)}
+      </div>
+    </section>
+    ${renderFacilityEvidenceBinder(hospital)}
+    <section class="profile-section">
+      <h4>Four-Layer Audit Map For This Hospital</h4>
+      <div class="hospital-audit-map">
+        ${renderHospitalAuditLayerMap(hospital)}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Payment Logic To Attach</h4>
+      <div class="hospital-logic-grid">
+        ${renderHospitalPaymentLogicCards(hospital)}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Evidence Checklist</h4>
+      <div class="evidence-checklist">
+        ${renderHospitalEvidenceChecklist(hospital, careers)}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Audit Questions For This Hospital</h4>
+      <div class="finding-list compact-findings">
+        ${renderHospitalAuditQuestions(hospital)}
+      </div>
+    </section>
   `;
+}
+
+function getHospitalDataAttachments() {
+  return Array.isArray(state.hospitalDataAttachments) ? state.hospitalDataAttachments : [];
+}
+
+function getFacilityEvidenceBinders() {
+  return Array.isArray(state.facilityEvidenceBinders) ? state.facilityEvidenceBinders : [];
+}
+
+function getFacilityEvidenceBinder(hospital) {
+  const facilityId = String(hospital?.facilityId || "");
+  const name = normalizeFacilityText(hospital?.facilityName);
+  return getFacilityEvidenceBinders().find((binder) => (
+    String(binder.facilityId || "") === facilityId || normalizeFacilityText(binder.facilityName) === name
+  )) || null;
+}
+
+function renderFacilityEvidenceBinder(hospital) {
+  const binder = getFacilityEvidenceBinder(hospital);
+  const priceExamples = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const providerRows = getProviderPaymentRowsForHospital(hospital);
+  const system = hospital.systemAffiliation;
+
+  if (!binder) {
+    return `
+      <section class="profile-section evidence-binder">
+        <h4>Facility Evidence Binder</h4>
+        <p class="profile-note">No facility-specific binder is mapped yet. This hospital can still use the Data Attachment Queue as the template for building one.</p>
+      </section>
+    `;
+  }
+
+  return `
+    <section class="profile-section evidence-binder">
+      <div class="binder-head">
+        <div>
+          <h4>${escapeHtml(binder.binderTitle || `${hospital.facilityName} Evidence Binder`)}</h4>
+          <p>${escapeHtml(binder.auditQuestion || "")}</p>
+        </div>
+        <span class="status-dot status-partial">${escapeHtml(binder.binderStatus || "starter")}</span>
+      </div>
+      <div class="binder-id-grid">
+        ${renderBinderIdentifiers(binder, hospital, system)}
+      </div>
+      <div class="binder-layer-grid">
+        ${renderBinderEvidenceRows(binder, hospital, priceExamples, providerRows)}
+      </div>
+      <section class="binder-subsection">
+        <h5>Attached Price Rows</h5>
+        ${renderBinderPriceRows(hospital, priceExamples)}
+      </section>
+      <section class="binder-subsection">
+        <h5>HFS Payment Rows</h5>
+        ${renderBinderProviderPaymentRows(hospital, providerRows)}
+      </section>
+      <section class="binder-subsection">
+        <h5>Public Payer Enrollment Context</h5>
+        ${renderBinderEnrollmentContext(hospital)}
+      </section>
+      <section class="binder-subsection">
+        <h5>Clinical Scenario Bridge</h5>
+        <div class="scenario-grid">
+          ${renderBinderClinicalScenarios(binder)}
+        </div>
+      </section>
+    </section>
+  `;
+}
+
+function renderBinderIdentifiers(binder, hospital, system) {
+  const identifiers = Array.isArray(binder.facilityIdentifiers) ? binder.facilityIdentifiers : [];
+  const dynamicIdentifiers = [
+    ["County", hospital.county || "Unknown", "CMS Hospital General Information", "loaded"],
+    ["System peers", system ? `${formatIntegerOrNA(getHospitalsInSystem(system).length)} mapped hospitals` : "Not mapped", "Hospital system crosswalk", system ? "mapped" : "next"],
+    ["Overall CMS rating", starLabel(hospital.overallRating), "CMS Hospital General Information", "loaded"]
+  ];
+  return [...identifiers, ...dynamicIdentifiers.map(([label, value, source, status]) => ({ label, value, source, status }))].map((item) => `
+    <article class="binder-id-card">
+      <span class="status-dot status-${statusClassForAttachment(item.status)}">${escapeHtml(item.status || "mapped")}</span>
+      <strong>${escapeHtml(item.value || "Unknown")}</strong>
+      <small>${escapeHtml(item.label || "Identifier")} / ${escapeHtml(item.source || "Source pending")}</small>
+    </article>
+  `).join("");
+}
+
+function renderBinderEvidenceRows(binder, hospital, priceExamples, providerRows) {
+  const rows = Array.isArray(binder.evidenceRows) ? binder.evidenceRows : [];
+  return rows.map((row) => {
+    const enriched = enrichBinderEvidenceRow(row, hospital, priceExamples, providerRows);
+    return `
+      <article class="binder-evidence-card">
+        <div class="binder-evidence-head">
+          <span class="status-dot status-${statusClassForAttachment(enriched.status)}">${escapeHtml(enriched.status)}</span>
+          <div>
+            <strong>${escapeHtml(enriched.evidenceName)}</strong>
+            <small>${escapeHtml(enriched.layer)} / ${escapeHtml(enriched.source)}</small>
+          </div>
+        </div>
+        <p>${escapeHtml(enriched.detail)}</p>
+        <dl>
+          <div>
+            <dt>Can prove</dt>
+            <dd>${escapeHtml(enriched.proves)}</dd>
+          </div>
+          <div>
+            <dt>Limit</dt>
+            <dd>${escapeHtml(enriched.doesNotProve)}</dd>
+          </div>
+        </dl>
+        ${enriched.sourceUrl ? `<a href="${escapeHtml(enriched.sourceUrl)}" target="_blank" rel="noreferrer">Open source</a>` : ""}
+      </article>
+    `;
+  }).join("");
+}
+
+function enrichBinderEvidenceRow(row, hospital, priceExamples, providerRows) {
+  if (row.layer === "Prices") {
+    const source = getPriceTransparencySources().find((item) => String(item.facilityId) === String(hospital.facilityId));
+    return {
+      ...row,
+      status: priceExamples.length ? "loaded" : source ? "mapped" : row.status,
+      detail: priceExamples.length
+        ? `${formatIntegerOrNA(priceExamples.length)} service examples are attached from the current price transparency query.`
+        : row.detail,
+      sourceUrl: source?.machineReadableFileUrl || row.sourceUrl
+    };
+  }
+  if (row.layer === "Public Payer Payment") {
+    return {
+      ...row,
+      status: providerRows.length ? "loaded" : row.status,
+      detail: providerRows.length
+        ? `${formatIntegerOrNA(providerRows.length)} HFS provider-payment rows are matched to this hospital/system candidate.`
+        : row.detail
+    };
+  }
+  return row;
+}
+
+function renderBinderPriceRows(hospital, priceExamples) {
+  const source = getPriceTransparencySources().find((item) => String(item.facilityId) === String(hospital.facilityId));
+  if (!priceExamples.length) {
+    return `
+      <div class="binder-empty">
+        <strong>${source ? "Price file mapped, rows not attached yet" : "No price file mapped"}</strong>
+        <p>${source ? "Click Query Price Files in the Price Transparency tab to attach service rows here. The binder will pull those rows into this hospital profile." : "Map a machine-readable price file before attaching price rows."}</p>
+        ${source?.machineReadableFileUrl ? `<a href="${escapeHtml(source.machineReadableFileUrl)}" target="_blank" rel="noreferrer">Open CSV</a>` : ""}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="binder-row-table">
+      ${priceExamples.slice(0, 12).map((record) => `
+        <article class="binder-data-row">
+          <div>
+            <strong>${escapeHtml(record.description || "Unknown service")}</strong>
+            <small>${escapeHtml(record.category || "Uncategorized")} / ${escapeHtml(record.code || "No code")} / ${escapeHtml(record.setting || "Unknown setting")}</small>
+          </div>
+          <div>${escapeHtml(record.chargeType || "Price field")}</div>
+          <div class="numeric">${formatCurrencyOrNA(record.amount)}</div>
+          <div>${escapeHtml(record.payer || "N/A")}</div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getProviderPaymentRowsForHospital(hospital) {
+  const hospitalName = normalizeFacilityText(hospital.facilityName);
+  const systemName = normalizeFacilityText(hospital.systemAffiliation?.systemName);
+  const county = normalizeCountyName(hospital.county);
+  return getProviderPaymentRecords().filter((record) => {
+    if (String(record.matchedFacilityId || "") === String(hospital.facilityId || "")) return true;
+    const providerName = normalizeFacilityText(record.providerName);
+    const providerCounty = normalizeCountyName(record.county);
+    return providerName === hospitalName
+      || (systemName && providerName.includes(systemName) && providerCounty === county)
+      || (providerName.includes(hospitalName) || hospitalName.includes(providerName));
+  });
+}
+
+function renderBinderProviderPaymentRows(hospital, providerRows) {
+  const statusLine = state.hfsProviderPaymentStatus ? `<p class="status">${escapeHtml(state.hfsProviderPaymentStatus)}</p>` : "";
+  if (!providerRows.length) {
+    return `
+      <div class="binder-empty">
+        <strong>No HFS provider-payment row is attached yet</strong>
+        <p>Next import should search HFS provider-level data for ${escapeHtml(hospital.facilityName)}, legal entity names, CCN ${escapeHtml(hospital.facilityId)}, county ${escapeHtml(hospital.county)}, and ${escapeHtml(hospital.systemAffiliation?.systemName || "system")} affiliation.</p>
+        ${statusLine}
+        <button class="mini-button" data-query-hfs-payments="${escapeHtml(hospital.facilityId)}">Query HFS Payments</button>
+        <a href="https://hfs.illinois.gov/info/factsfigures/transparency.html" target="_blank" rel="noreferrer">Open HFS transparency source</a>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="binder-action-row">
+      ${statusLine || '<p class="status">Matched HFS payment rows are attached as reported payment evidence.</p>'}
+      <button class="mini-button" data-query-hfs-payments="${escapeHtml(hospital.facilityId)}">Refresh HFS Payments</button>
+    </div>
+    <div class="binder-row-table">
+      ${providerRows.slice(0, 12).map((record) => `
+        <article class="binder-data-row">
+          <div>
+            <strong>${escapeHtml(record.providerName || "Unknown provider")}</strong>
+            <small>${escapeHtml(record.providerType || "Unknown type")} / ${escapeHtml(record.county || "Unknown county")} / ${escapeHtml(record.serviceYear || "Unknown year")}</small>
+            <small>${escapeHtml(record.matchReasons?.join(", ") || "Matched provider-payment row")}</small>
+          </div>
+          <div>${escapeHtml(record.reimbursementType || record.serviceCategory || "Provider payment")}</div>
+          <div class="numeric">${formatCurrencyOrNA(record.totalPaid, 0)}</div>
+          <div>${formatIntegerOrNA(record.patientsServed)} patients</div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function getHfsEnrollmentContextRecords() {
+  return Array.isArray(state.hfsEnrollmentContext)
+    ? state.hfsEnrollmentContext
+    : state.hfsEnrollmentContext.records || [];
+}
+
+function getHfsEnrollmentContextForHospital(hospital) {
+  return getHfsEnrollmentContextRecords().find((record) => String(record.facilityId) === String(hospital.facilityId))
+    || getHfsEnrollmentContextRecords().find((record) => String(record.zipCode) === String(hospital.zipCode));
+}
+
+function renderBinderEnrollmentContext(hospital) {
+  const context = getHfsEnrollmentContextForHospital(hospital);
+  if (!context) {
+    return `
+      <div class="binder-empty">
+        <strong>No HFS enrollment context is attached yet</strong>
+        <p>Attach HFS program enrollment and demographics data to add public-payer population context around the hospital ZIP or county.</p>
+        <a href="https://hfs.illinois.gov/info/factsfigures/transparency.html" target="_blank" rel="noreferrer">Open HFS transparency source</a>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="enrollment-context-card">
+      <div class="enrollment-context-head">
+        <div>
+          <strong>ZIP ${escapeHtml(context.zipCode)} HFS enrollment context</strong>
+          <small>${escapeHtml(context.serviceYear)} / ${formatIntegerOrNA(context.zipSourceRows)} source rows / ${escapeHtml(context.evidenceType)}</small>
+        </div>
+        <span>${formatNumberOrNA(context.zipRecipients, 2)} recipients</span>
+      </div>
+      <div class="enrollment-bars">
+        ${renderEnrollmentBars(context.zipByHighLevelGroup || [], context.zipRecipients)}
+      </div>
+      <dl>
+        <div>
+          <dt>Can prove</dt>
+          <dd>${escapeHtml(context.canProve)}</dd>
+        </div>
+        <div>
+          <dt>Cannot prove</dt>
+          <dd>${escapeHtml(context.cannotProve)}</dd>
+        </div>
+      </dl>
+    </div>
+  `;
+}
+
+function renderEnrollmentBars(items, total) {
+  if (!items.length) return '<p class="status">No enrollment group rows are available.</p>';
+  const denominator = Number.isFinite(total) && total > 0 ? total : Math.max(...items.map((item) => item.value || 0), 1);
+  return items.slice(0, 6).map((item) => {
+    const width = Math.max(4, Math.min(100, ((item.value || 0) / denominator) * 100));
+    return `
+      <div class="enrollment-bar">
+        <div>
+          <strong>${escapeHtml(item.label)}</strong>
+          <small>${formatNumberOrNA(item.value, 2)}</small>
+        </div>
+        <span><i style="width:${width}%"></i></span>
+      </div>
+    `;
+  }).join("");
+}
+
+async function queryHfsProviderPaymentsForHospital(facilityId, options = {}) {
+  const hospital = getFilteredHospitals().find((record) => String(record.facilityId) === String(facilityId))
+    || getFilteredHospitals()[0];
+  if (!hospital) return;
+  state.hfsProviderPaymentStatus = `${options.automatic ? "Auto-querying" : "Querying"} HFS provider-level payment data for ${hospital.facilityName}...`;
+  renderHospitalIntelligence();
+
+  try {
+    const response = await fetch(`/api/query-hfs-provider-payments?facilityId=${encodeURIComponent(hospital.facilityId)}`);
+    if (!response.ok) {
+      const payload = await response.json().catch(() => ({}));
+      throw new Error(payload.error || `HTTP ${response.status}`);
+    }
+    const payload = await response.json();
+    state.providerPayments = payload;
+    state.hfsProviderPaymentStatus = payload.notes || `Loaded ${formatIntegerOrNA(getProviderPaymentRecords().length)} HFS payment rows.`;
+    renderMoneyFlow();
+    renderAuditFramework();
+    renderHospitalIntelligence();
+  } catch (error) {
+    state.hfsProviderPaymentStatus = `Automatic HFS query failed: ${error.message}. The app will retry from the button when the source/network is available.`;
+    renderHospitalIntelligence();
+  }
+}
+
+function renderBinderClinicalScenarios(binder) {
+  const scenarios = Array.isArray(binder.clinicalScenarios) ? binder.clinicalScenarios : [];
+  return scenarios.map((scenario) => `
+    <article class="scenario-card">
+      <strong>${escapeHtml(scenario.name)}</strong>
+      <p>${escapeHtml(scenario.logic)}</p>
+      <small>${escapeHtml(scenario.neededEvidence)}</small>
+    </article>
+  `).join("");
+}
+
+function renderHospitalDataAttachmentQueue(hospital) {
+  const attachments = getHospitalDataAttachments();
+  if (!attachments.length) {
+    return '<p class="status">No hospital data attachment plan is loaded yet.</p>';
+  }
+
+  return attachments.map((attachment) => {
+    const enriched = enrichHospitalDataAttachment(attachment, hospital);
+    return `
+      <article class="attachment-card">
+        <div class="attachment-card-head">
+          <span class="status-dot status-${escapeHtml(statusClassForAttachment(enriched.status))}">${escapeHtml(enriched.status)}</span>
+          <div>
+            <strong>${escapeHtml(enriched.label)}</strong>
+            <small>${escapeHtml(enriched.layer)}</small>
+          </div>
+        </div>
+        <p>${escapeHtml(enriched.attachGoal)}</p>
+        <dl>
+          <div>
+            <dt>Can prove</dt>
+            <dd>${escapeHtml(enriched.canProve)}</dd>
+          </div>
+          <div>
+            <dt>Cannot prove</dt>
+            <dd>${escapeHtml(enriched.cannotProve)}</dd>
+          </div>
+          <div>
+            <dt>Next action</dt>
+            <dd>${escapeHtml(enriched.nextAction)}</dd>
+          </div>
+        </dl>
+        <div class="attachment-links">
+          ${enriched.sourceUrl ? `<a href="${escapeHtml(enriched.sourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(enriched.primarySource || "Primary source")}</a>` : ""}
+          ${enriched.secondarySourceUrl ? `<a href="${escapeHtml(enriched.secondarySourceUrl)}" target="_blank" rel="noreferrer">${escapeHtml(enriched.secondarySource || "Secondary source")}</a>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+}
+
+function enrichHospitalDataAttachment(attachment, hospital) {
+  const priceSource = getPriceTransparencySources().find((source) => String(source.facilityId) === String(hospital.facilityId));
+  const priceExamples = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const system = hospital.systemAffiliation;
+
+  if (attachment.id === "machine-readable-price-file" && priceSource) {
+    return {
+      ...attachment,
+      status: priceExamples.length ? "loaded" : "mapped",
+      sourceUrl: priceSource.priceTransparencyPageUrl || attachment.sourceUrl,
+      secondarySourceUrl: priceSource.machineReadableFileUrl || attachment.secondarySourceUrl,
+      primarySource: `${priceSource.systemName || system?.systemName || hospital.facilityName} price transparency page`,
+      secondarySource: `${hospital.facilityName} machine-readable file`,
+      canProve: priceExamples.length
+        ? `${formatIntegerOrNA(priceExamples.length)} parsed service examples plus the public machine-readable source file.`
+        : attachment.canProve,
+      nextAction: priceExamples.length
+        ? "Promote the parser from preview rows to payer-specific negotiated-rate extraction for DRG, CPT/HCPCS, revenue-code, pharmacy, lab, imaging, ED, and observation examples."
+        : attachment.nextAction
+    };
+  }
+
+  if (attachment.id === "cost-report-economics") {
+    return {
+      ...attachment,
+      nextAction: `Map ${hospital.facilityName}'s CMS certification/provider identifiers to HCRIS and HFS cost-report files, then pull revenue, expense, beds, utilization, wage, and cost-to-charge fields.`
+    };
+  }
+
+  if (attachment.id === "clinical-reimbursement-bridge") {
+    const hospitalType = hospital.hospitalType || "hospital";
+    return {
+      ...attachment,
+      nextAction: `Create ${hospitalType} test scenarios for ED-to-observation, ED-to-inpatient, transfer, readmission, expected LOS, high-cost outlier, and HAC/POA risk.`
+    };
+  }
+
+  if (attachment.id === "hfs-hospital-reimbursement") {
+    return {
+      ...attachment,
+      nextAction: `Find ${hospital.facilityName} in the latest HFS hospital rate sheet package and map HFS provider-payment rows by facility, CCN, legal name, and ${system?.systemName || "system"} affiliation.`
+    };
+  }
+
+  return attachment;
+}
+
+function statusClassForAttachment(status) {
+  const normalized = String(status || "").toLowerCase();
+  if (normalized === "loaded") return "loaded";
+  if (normalized === "mapped" || normalized === "scaffolded") return "partial";
+  if (normalized === "next") return "next";
+  return "missing";
+}
+
+function getHospitalSystemAffiliation(hospital) {
+  const facilityId = String(hospital.facilityId || "").trim();
+  const facilityName = normalizeFacilityText(hospital.facilityName);
+  return state.hospitalSystems.find((system) => {
+    const ids = Array.isArray(system.facilityIds) ? system.facilityIds.map(String) : [];
+    const patterns = Array.isArray(system.facilityNamePatterns) ? system.facilityNamePatterns : [];
+    return ids.includes(facilityId) || patterns.some((pattern) => facilityName === normalizeFacilityText(pattern));
+  }) || null;
+}
+
+function normalizeFacilityText(value) {
+  return String(value || "")
+    .toUpperCase()
+    .replace(/[^A-Z0-9]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function renderHospitalPaymentLogicCards(hospital) {
+  const hospitalType = hospital.hospitalType || "";
+  const isCriticalAccess = hospitalType === "Critical Access Hospitals";
+  const isRural = hospital.countyContext?.ruralUrbanClassification === "Rural";
+  const system = hospital.systemAffiliation;
+  const logic = [
+    isCriticalAccess
+      ? ["Medicare hospital logic", "Critical Access Hospital status means Medicare reimbursement analysis should account for CAH cost-based rules, swing-bed possibility, and rural access policy context."]
+      : ["Medicare hospital logic", "Acute inpatient analysis should connect MS-DRG, principal diagnosis, procedures, CC/MCC severity, transfer status, outliers, and LOS expectations."],
+    ["Medicaid hospital logic", "Attach Illinois HFS hospital rate sheets and Medicaid managed-care public payment data where available. Public files may show rates or payment totals, not full claim adjudication."],
+    ["Outpatient logic", "Attach APC/OPPS, fee schedule, emergency department level, observation, drug, lab, imaging, and therapy payment rules where public files support it."],
+    system
+      ? ["System-level logic", `${system.systemName} may centralize careers, billing, revenue cycle, price transparency, transfer pathways, and consolidated financial reporting. Keep CCN-level and system-level evidence separate.`]
+      : ["System-level logic", "Map parent system, management, ownership, and shared services before interpreting facility-only signals."],
+    isRural
+      ? ["Access context", "Rural county context makes emergency access, transfer patterns, workforce demand, and service-line availability important validation questions."]
+      : ["Market context", "Urban or mixed county context should be compared against nearby competitors, service mix, ownership, quality ratings, and price-transparency files."]
+  ];
+
+  return logic.map(([title, body]) => `
+    <article class="logic-card">
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(body)}</p>
+    </article>
+  `).join("");
+}
+
+function renderHospitalAuditLayerMap(hospital) {
+  const system = hospital.systemAffiliation;
+  const priceSource = getPriceTransparencySources().find((source) => String(source.facilityId) === String(hospital.facilityId));
+  const priceExamples = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const layers = [
+    {
+      title: "Prices",
+      status: priceExamples.length ? "loaded" : priceSource ? "mapped" : "next",
+      detail: priceExamples.length
+        ? `${formatIntegerOrNA(priceExamples.length)} parsed service examples`
+        : priceSource
+          ? "Machine-readable file mapped"
+          : "Find hospital machine-readable file",
+      warning: "Price is not paid reimbursement."
+    },
+    {
+      title: "Public Payer Payment",
+      status: "scaffolded",
+      detail: "Attach Medicare/HFS rate and payment files",
+      warning: "Payment is not cost."
+    },
+    {
+      title: "Facility Economics",
+      status: "next",
+      detail: "Attach cost reports, beds, revenue, expense, utilization",
+      warning: "Cost is not margin."
+    },
+    {
+      title: "System Financials",
+      status: system ? "mapped" : "next",
+      detail: system ? `${system.systemName} crosswalk attached` : "Attach 990, audited statements, bond disclosures",
+      warning: "System margin may not equal facility margin."
+    }
+  ];
+
+  return layers.map((layer) => `
+    <article class="hospital-audit-layer">
+      <span class="status-dot status-${layer.status === "loaded" ? "loaded" : layer.status === "mapped" || layer.status === "scaffolded" ? "partial" : "next"}">${escapeHtml(layer.status)}</span>
+      <strong>${escapeHtml(layer.title)}</strong>
+      <small>${escapeHtml(layer.detail)}</small>
+      <em>${escapeHtml(layer.warning)}</em>
+    </article>
+  `).join("");
+}
+
+function renderHospitalReimbursementStatusCards(hospital) {
+  return getHospitalReimbursementStatusItems(hospital).map((card) => `
+    <article class="reimbursement-status-card">
+      <div class="reimbursement-card-head">
+        <span>${escapeHtml(card.status)}</span>
+        <strong>${escapeHtml(card.label)}</strong>
+      </div>
+      <small>${escapeHtml(card.source)}</small>
+      <dl>
+        <div>
+          <dt>Can prove</dt>
+          <dd>${escapeHtml(card.proves)}</dd>
+        </div>
+        <div>
+          <dt>Limit</dt>
+          <dd>${escapeHtml(card.limit)}</dd>
+        </div>
+      </dl>
+      <a href="${escapeHtml(card.sourceUrl)}" target="_blank" rel="noreferrer">Open source</a>
+    </article>
+  `).join("");
+}
+
+function renderHospitalReimbursementStatusTiles(hospital) {
+  return getHospitalReimbursementStatusItems(hospital).map((item) => `
+    <div class="reimbursement-status-tile">
+      <span>${escapeHtml(item.status)}</span>
+      <strong>${escapeHtml(item.label)}</strong>
+    </div>
+  `).join("");
+}
+
+function getHospitalReimbursementStatusItems(hospital) {
+  const countyContext = hospital.countyContext?.ruralUrbanClassification || "Not matched";
+  return [
+    {
+      label: "HFS Medicaid rate sheet",
+      status: "Next data layer",
+      source: "Illinois HFS hospital rate sheets",
+      sourceUrl: "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hrs.html",
+      proves: "Published Illinois Medicaid hospital rate context where facility-level rates are available.",
+      limit: "Does not prove claim-level allowed amount, managed-care contract terms, denials, or patient severity."
+    },
+    {
+      label: "Hospital price transparency file",
+      status: "Next data layer",
+      source: `${hospital.systemAffiliation?.systemName || hospital.facilityName} machine-readable file`,
+      sourceUrl: hospital.systemAffiliation?.homepageUrl || "https://www.cms.gov/priorities/key-initiatives/hospital-price-transparency",
+      proves: "Gross charges, cash prices, and payer-specific negotiated-rate signals for selected codes when the file is found and parsed.",
+      limit: "Does not prove volume, actual collected payment, medical necessity, or patient-specific responsibility."
+    },
+    {
+      label: "DRG / outpatient code detail",
+      status: "Next data layer",
+      source: "CMS IPPS, OPPS, CPT/HCPCS, revenue-code, and HFS rule files",
+      sourceUrl: "https://www.cms.gov/medicare/payment/prospective-payment-systems/acute-inpatient-pps",
+      proves: "The rule logic behind inpatient admission, diagnosis/procedure coding, LOS, transfers, outliers, ED, observation, and outpatient services.",
+      limit: "Requires code-level examples and cannot be inferred from hospital master data alone."
+    },
+    {
+      label: "County context",
+      status: countyContext,
+      source: "County Health Rankings and matched county context",
+      sourceUrl: "https://www.countyhealthrankings.org/health-data/illinois/data-and-resources",
+      proves: "Rurality, poverty, older-adult share, and local social context that can frame access and reimbursement questions.",
+      limit: "Context only. It does not prove reimbursement adequacy or hospital financial distress."
+    }
+  ];
+}
+
+function renderHospitalSystemContext(hospital) {
+  const system = hospital.systemAffiliation;
+  if (!system) {
+    return `
+      <section class="profile-section">
+        <h4>System Context</h4>
+        <div class="callout muted-callout">No health-system affiliation is mapped yet for this hospital. That does not prove independence; it means the current public-data layer has not attached a parent/system crosswalk.</div>
+      </section>
+    `;
+  }
+
+  const peers = getHospitalsInSystem(system)
+    .filter((peer) => peer.facilityId !== hospital.facilityId)
+    .slice(0, 8);
+  const peerRows = peers.length
+    ? peers.map((peer) => `
+      <article class="table-row compact" data-hospital-row="${escapeHtml(peer.facilityId)}">
+        <div>
+          <strong>${escapeHtml(peer.facilityName)}</strong>
+          <small>${escapeHtml(peer.city)} / ${escapeHtml(peer.county)} / ${escapeHtml(peer.hospitalType)}</small>
+        </div>
+        <div class="numeric">${hospitalPriorityScore(peer)} signal / ${starLabel(peer.overallRating)}</div>
+      </article>
+    `).join("")
+    : '<p class="status">No peer hospitals from this system are currently matched in the CMS hospital file.</p>';
+
+  return `
+    <section class="profile-section system-context">
+      <h4>System Context</h4>
+      <div class="system-summary">
+        <div>
+          <strong>${escapeHtml(system.systemName)}</strong>
+          <p>${escapeHtml(system.sourceNote || "System affiliation source note unavailable.")}</p>
+          <div class="system-links">
+            ${system.homepageUrl ? `<a href="${escapeHtml(system.homepageUrl)}" target="_blank" rel="noreferrer">System site</a>` : ""}
+            ${system.careersUrl ? `<a href="${escapeHtml(system.careersUrl)}" target="_blank" rel="noreferrer">System careers</a>` : ""}
+            ${system.sourceUrl ? `<a href="${escapeHtml(system.sourceUrl)}" target="_blank" rel="noreferrer">Affiliation source</a>` : ""}
+          </div>
+        </div>
+        <div class="profile-grid">
+          ${renderProfileMetric("Mapped peer hospitals", formatIntegerOrNA(getHospitalsInSystem(system).length))}
+          ${renderProfileMetric("System type", system.systemType || "Not classified")}
+          ${renderProfileMetric("Careers source", system.careersUrl ? "System-level" : "Not mapped")}
+          ${renderProfileMetric("Evidence caution", "Separate CCN vs system")}
+        </div>
+      </div>
+      <div class="system-peer-grid">
+        <section>
+          <h5>System Peers In This Dataset</h5>
+          <div class="data-table">${peerRows}</div>
+        </section>
+        <section>
+          <h5>Why System Affiliation Changes The Audit</h5>
+          <div class="finding-list compact-findings">
+            ${system.auditNotes.map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("")}
+          </div>
+        </section>
+      </div>
+    </section>
+  `;
+}
+
+function getHospitalsInSystem(system) {
+  if (!system) return [];
+  const ids = new Set((system.facilityIds || []).map(String));
+  const patterns = system.facilityNamePatterns || [];
+  return state.hospitalRecords
+    .filter((hospital) => ids.has(String(hospital.facilityId || "")) || patterns.some((pattern) => normalizeFacilityText(hospital.facilityName) === normalizeFacilityText(pattern)))
+    .map((hospital) => ({
+      ...hospital,
+      countyContext: hospital.countyContext || state.countySummaries.find((county) => normalizeCountyName(county.county) === normalizeCountyName(hospital.county)) || null,
+      systemAffiliation: system
+    }))
+    .sort((a, b) => hospitalPriorityScore(b) - hospitalPriorityScore(a));
+}
+
+function renderHospitalEvidenceChecklist(hospital, careers) {
+  const system = hospital.systemAffiliation;
+  const checklist = [
+    {
+      label: "CMS hospital master record",
+      status: "loaded",
+      detail: `${hospital.facilityId || "Unknown CCN"} / ${hospital.hospitalType || "Unknown type"}`
+    },
+    {
+      label: "CMS quality signals",
+      status: "loaded",
+      detail: `${starLabel(hospital.overallRating)} overall / ${formatIntegerOrNA(hospital.readmissionWorse)} readmission worse`
+    },
+    {
+      label: "County social context",
+      status: hospital.countyContext ? "loaded" : "missing",
+      detail: hospital.countyContext
+        ? `${hospital.countyContext.ruralUrbanClassification || "Unknown"} / poverty ${formatOptionalPercent(hospital.countyContext.povertyRate)} / age 65+ ${formatOptionalPercent(hospital.countyContext.age65PlusPercent)}`
+        : "County context not matched"
+    },
+    {
+      label: "Health-system affiliation",
+      status: system ? "loaded" : "next",
+      detail: system
+        ? `${system.systemName} / ${formatIntegerOrNA(getHospitalsInSystem(system).length)} mapped hospital records`
+        : "Attach parent system, management, and shared-service crosswalk"
+    },
+    {
+      label: "Careers/workforce signal",
+      status: careers?.careerPageUrl || system?.careersUrl ? "partial" : "next",
+      detail: careers?.careerPageUrl
+        ? `${Number.isFinite(careers.jobOpeningCount) ? formatIntegerOrNA(careers.jobOpeningCount) : "Uncounted"} roles / ${careers.platform || "unknown platform"}`
+        : system?.careersUrl
+          ? `System careers available: ${system.systemName}`
+        : "Careers page and role counts not captured yet"
+    },
+    {
+      label: "HFS hospital reimbursement",
+      status: "next",
+      detail: "Attach Illinois hospital Medicaid rate sheet and provider-level payment records"
+    },
+    {
+      label: "Machine-readable price file",
+      status: "next",
+      detail: "Find payer/plan rates for DRG, CPT/HCPCS, revenue-code, pharmacy, lab, imaging, ED, and observation examples"
+    },
+    {
+      label: "Cost report economics",
+      status: "next",
+      detail: "Attach CMS HCRIS revenue, expense, utilization, wage, cost-to-charge, and margin fields"
+    },
+    {
+      label: "Clinical reimbursement bridge",
+      status: "next",
+      detail: "Attach DRG/APR-DRG, LOS, transfer, outlier, HAC/POA, and readmission logic"
+    }
+  ];
+
+  return checklist.map((item) => `
+    <article class="evidence-check">
+      <span class="status-dot status-${escapeHtml(item.status)}">${escapeHtml(item.status)}</span>
+      <div>
+        <strong>${escapeHtml(item.label)}</strong>
+        <small>${escapeHtml(item.detail)}</small>
+      </div>
+    </article>
+  `).join("");
+}
+
+function renderHospitalAuditQuestions(hospital) {
+  const system = hospital.systemAffiliation;
+  const questions = [
+    `${hospital.facilityName} should be tested first for emergency admission pathways: ED visit, observation, inpatient admission, transfer, and discharge status.`,
+    `For its ${hospital.hospitalType || "hospital"} designation, compare the public payment logic against actual service lines that are visible in CMS quality, price transparency, and cost-report files.`,
+    `Review whether worse readmission, mortality, or safety signals overlap with payment-risk categories such as readmission penalties, HAC/POA exposure, denials, or avoidable LOS variance.`,
+    `Use county context to ask whether reimbursement adequacy, workforce demand, patient mix, and rural access pressure are pointing in the same direction or contradicting each other.`
+  ];
+
+  if (system) {
+    questions.unshift(`Because ${hospital.facilityName} is mapped to ${system.systemName}, look for system-level careers, price transparency, shared billing/revenue-cycle operations, transfer patterns, and consolidated financial statements before treating it as a stand-alone facility.`);
+  }
+  if (hospital.hospitalType === "Critical Access Hospitals") {
+    questions.unshift("Because this is a Critical Access Hospital, separate CAH cost-based Medicare logic from ordinary acute-care DRG logic before interpreting reimbursement performance.");
+  }
+  if (hospital.overallRating <= 2) {
+    questions.push("The low CMS overall rating makes measure-level quality validation a priority before using the signal in any finance argument.");
+  }
+
+  return questions.map((question) => `<div class="finding">${escapeHtml(question)}</div>`).join("");
+}
+
+function getFacilityCareerRecord(facility) {
+  const records = Array.isArray(state.facilityCareers)
+    ? state.facilityCareers
+    : state.facilityCareers.records || [];
+  const facilityId = String(facility.facilityId || facility.code || "").trim();
+  const facilityName = String(facility.facilityName || facility.facility || "").toUpperCase().trim();
+  return records.find((record) => {
+    const recordId = String(record.facilityId || record.code || "").trim();
+    const recordName = String(record.facilityName || record.facility || "").toUpperCase().trim();
+    return (facilityId && recordId === facilityId) || (facilityName && recordName === facilityName);
+  }) || null;
 }
 
 function renderHospitalRiskRows(hospitals) {
@@ -1175,6 +3217,7 @@ function renderHospitalRoadmapCards() {
   const roadmap = [
     "Validate parsed HFS hospital payment parameters against a manual PDF review sample and track future HFS updates.",
     "Add selected hospital price transparency files for gross charge, cash price, and payer negotiated-rate comparisons.",
+    "Attach facility homepages, careers pages, and public job-opening counts as workforce-demand signals.",
     "Bring in CMS measure-level quality data for readmissions, mortality, safety, patient experience, and timely/effective care.",
     "Add emergency access, obstetric access, rurality, and county social-risk overlays for hospital disparity analysis."
   ];
@@ -2000,7 +4043,7 @@ function renderCapitalGeographyRows(groups) {
   }
 
   const rows = groups.map((group) => `
-    <article class="table-row">
+    <article class="table-row capital-geography-row">
       <div>
         <strong>${escapeHtml(group.key)}</strong>
         <small>${group.count} facilities</small>
@@ -2012,7 +4055,7 @@ function renderCapitalGeographyRows(groups) {
   `).join("");
 
   return `
-    <article class="table-row header">
+    <article class="table-row capital-geography-row header">
       <div>Geography</div>
       <div class="numeric">Capital</div>
       <div class="numeric">Total</div>
@@ -2240,7 +4283,8 @@ function renderExecutiveMetricCards(metrics) {
     ["Avg support component", currency.format(metrics.averageSupport)],
     ["Avg capital component", currency.format(metrics.averageCapital)],
     ["Lowest geography average", metrics.lowestGeography ? `${metrics.lowestGeography.key}: ${currency.format(metrics.lowestGeography.average)}` : "N/A"],
-    ["Highest geography average", metrics.highestGeography ? `${metrics.highestGeography.key}: ${currency.format(metrics.highestGeography.average)}` : "N/A"]
+    ["Highest geography average", metrics.highestGeography ? `${metrics.highestGeography.key}: ${currency.format(metrics.highestGeography.average)}` : "N/A"],
+    ["Missing geography classification", metrics.missingGeographyGroup ? `${metrics.missingGeographyGroup.count} records` : "0 records"]
   ];
 
   return cards.map(([label, value]) => `
@@ -2251,7 +4295,7 @@ function renderExecutiveMetricCards(metrics) {
   `).join("");
 }
 
-function renderExecutiveFindings({ records, tierGroups, capitalGroups, lowCapitalLowStaffing, highRateLowQuality }) {
+function renderExecutiveFindings({ records, tierGroups, missingGeographyGroup, capitalGroups, lowCapitalLowStaffing, highRateLowQuality }) {
   if (!records.length) {
     return '<div class="finding">No reimbursed records match the current filters.</div>';
   }
@@ -2271,6 +4315,9 @@ function renderExecutiveFindings({ records, tierGroups, capitalGroups, lowCapita
     lowestRate
       ? `${lowestRate.key} may warrant closer equity review because it has the lowest average total reimbursement in this filtered dataset.`
       : "Lowest-geography review is not available for the current filters.",
+    missingGeographyGroup
+      ? `${missingGeographyGroup.count} reimbursed records are missing geography classification and are excluded from highest/lowest geography comparisons.`
+      : "All reimbursed records in this view have a geography classification.",
     lowestCapital && highestCapital
       ? `Capital reimbursement varies by ${currency.format(capitalSpread)} per resident day between the lowest and highest geography averages, which appears meaningful for capital planning triage.`
       : "Capital-rate variation cannot be assessed for the current filters.",
@@ -2289,6 +4336,148 @@ function renderStrategyItems(items) {
       <span>${escapeHtml(body)}</span>
     </article>
   `).join("");
+}
+
+const LOOK_CLOSER_COUNTIES = ["Hardin", "Massac", "Fayette", "Franklin", "Union", "Wayne"];
+
+function getLookCloserCounties(counties, riskFlags) {
+  const byCounty = new Map(counties.map((county) => [normalizeCountyName(county.county), county]));
+  const named = LOOK_CLOSER_COUNTIES
+    .map((county) => byCounty.get(normalizeCountyName(county)))
+    .filter(Boolean);
+  const namedKeys = new Set(named.map((county) => normalizeCountyName(county.county)));
+  const flaggedCountyNames = new Set(riskFlags.map(({ county }) => normalizeCountyName(county.county)));
+  const similar = counties
+    .filter((county) => !namedKeys.has(normalizeCountyName(county.county)))
+    .filter((county) => flaggedCountyNames.has(normalizeCountyName(county.county)))
+    .sort((a, b) => {
+      const flagDelta = getCountyFlags(b, riskFlags).length - getCountyFlags(a, riskFlags).length;
+      return flagDelta || calculateCountyRiskScore(b) - calculateCountyRiskScore(a);
+    })
+    .slice(0, 4);
+
+  return [...named, ...similar];
+}
+
+function getCountyFlags(county, riskFlags) {
+  const key = normalizeCountyName(county?.county);
+  return riskFlags.filter((item) => normalizeCountyName(item.county?.county) === key);
+}
+
+function renderLookCloserCountyCards(counties, riskFlags) {
+  if (!counties.length) {
+    return '<p class="status">No priority counties match the current filters.</p>';
+  }
+
+  return counties.map((county) => {
+    const flags = getCountyFlags(county, riskFlags);
+    const isSelected = normalizeCountyName(county.county) === normalizeCountyName(state.selectedCountyName);
+    const topFlag = flags[0]?.flag || getCountySignalLabel(county);
+    return `
+      <button class="county-focus-card${isSelected ? " active" : ""}" type="button" data-county-focus="${escapeHtml(county.county)}">
+        <span class="county-focus-kicker">${escapeHtml(county.ruralUrbanClassification || "Unknown")} / Risk ${formatNumberOrNA(calculateCountyRiskScore(county), 1)}</span>
+        <strong>${escapeHtml(county.county)} County</strong>
+        <span>${escapeHtml(topFlag)}</span>
+        <span class="county-focus-metrics">
+          ${formatCurrencyOrNA(county.averageTotalRate)} avg total / ${formatCurrencyOrNA(county.averageCapitalRate)} capital / Staffing ${formatNumberOrNA(county.averageStaffingRating, 1)}
+        </span>
+      </button>
+    `;
+  }).join("");
+}
+
+function renderCountyDrilldown(county, riskFlags) {
+  if (!county) {
+    return '<p class="status">Select a county to view validation context.</p>';
+  }
+
+  const flags = getCountyFlags(county, riskFlags);
+  const facilities = getRiskFacilities()
+    .filter((facility) => normalizeCountyName(facility.quality?.county) === normalizeCountyName(county.county))
+    .sort((a, b) => b.risk.risk_score - a.risk.risk_score);
+  const priorityReasons = renderCountyPriorityReasons(county, flags);
+  const facilityRows = facilities.length
+    ? facilities.slice(0, 8).map((facility) => `
+      <article class="table-row compact" data-risk-row="${escapeHtml(getFacilityRiskId(facility))}">
+        <div>
+          <strong>${escapeHtml(facility.facility)}</strong>
+          <small>${escapeHtml(facility.city)} / ${escapeHtml(facility.quality?.ownershipType || "Unknown ownership")} / ${escapeHtml(facility.risk.risk_level)}</small>
+        </div>
+        <div class="numeric">${facility.risk.risk_score} risk / ${formatCurrencyOrNA(facility.publishedAmount)} total / ${formatCurrencyOrNA(facility.components?.capitalRate)} capital</div>
+      </article>
+    `).join("")
+    : '<p class="status">No matched facility records are available for this county under the current filters.</p>';
+
+  return `
+    <article class="county-drilldown-card">
+      <div class="county-drilldown-head">
+        <div>
+          <p class="eyebrow">Look closer</p>
+          <h4>${escapeHtml(county.county)} County</h4>
+        </div>
+        <span class="risk-pill risk-elevated">${formatNumberOrNA(calculateCountyRiskScore(county), 1)} score</span>
+      </div>
+      <div class="county-evidence-grid">
+        ${renderCountyEvidenceMetric("Matched facilities", county.matchedFacilityCount)}
+        ${renderCountyEvidenceMetric("Avg Medicaid per diem", formatCurrencyOrNA(county.averageTotalRate))}
+        ${renderCountyEvidenceMetric("Avg capital", formatCurrencyOrNA(county.averageCapitalRate))}
+        ${renderCountyEvidenceMetric("CMS overall", formatNumberOrNA(county.averageOverallStarRating, 1))}
+        ${renderCountyEvidenceMetric("CMS staffing", formatNumberOrNA(county.averageStaffingRating, 1))}
+        ${renderCountyEvidenceMetric("Poverty proxy", formatOptionalPercent(county.povertyRate))}
+        ${renderCountyEvidenceMetric("Median income", formatCurrencyOrNA(county.medianHouseholdIncome, 0))}
+        ${renderCountyEvidenceMetric("Age 65+", formatOptionalPercent(county.age65PlusPercent))}
+      </div>
+      <div class="county-drilldown-grid">
+        <section>
+          <h4>Why It Is On The List</h4>
+          <div class="finding-list compact-findings">${priorityReasons}</div>
+        </section>
+        <section>
+          <h4>Next Validation Questions</h4>
+          <div class="finding-list compact-findings">
+            <div class="finding">Which facilities, owners, or chains are driving the county average?</div>
+            <div class="finding">Do cost reports show weak margin, high labor cost, low occupancy, or capital strain?</div>
+            <div class="finding">Do staffing ratings, survey deficiencies, jobs postings, or quality penalties point to the same concern?</div>
+          </div>
+        </section>
+      </div>
+      <section>
+        <h4>Facilities To Open First</h4>
+        <div class="data-table">${facilityRows}</div>
+      </section>
+    </article>
+  `;
+}
+
+function renderCountyEvidenceMetric(label, value) {
+  return `
+    <div class="profile-metric">
+      <span>${escapeHtml(value)}</span>
+      <small>${escapeHtml(label)}</small>
+    </div>
+  `;
+}
+
+function renderCountyPriorityReasons(county, flags) {
+  const reasons = flags.map(({ flag, rationale }) => `<div class="finding"><strong>${escapeHtml(flag)}</strong><br>${escapeHtml(rationale)}</div>`);
+
+  if (county.matchedFacilityCount <= 2) {
+    reasons.push('<div class="finding"><strong>Small sample warning</strong><br>One or two matched facilities can dominate the county signal, so facility-level validation matters.</div>');
+  }
+  if (county.ruralUrbanClassification === "Rural") {
+    reasons.push('<div class="finding"><strong>Rural access context</strong><br>Rural status can make facility closure, staffing shortages, or capital underinvestment more consequential for access.</div>');
+  }
+
+  return reasons.length
+    ? reasons.join("")
+    : `<div class="finding">${escapeHtml(getCountySignalLabel(county))}</div>`;
+}
+
+function getCountySignalLabel(county) {
+  if (county.averageStaffingRating <= 2) return "Lower staffing rating deserves facility-level validation.";
+  if (county.averageCapitalRate <= 13) return "Lower capital reimbursement may point to infrastructure-pressure screening.";
+  if (county.povertyRate >= 20) return "Higher poverty context should be reviewed alongside reimbursement and quality.";
+  return "Composite risk score puts this county on the watchlist.";
 }
 
 function renderCountySummaryRows(counties) {
@@ -2698,10 +4887,34 @@ async function importFile(event) {
     const text = await file.text();
     const imported = file.name.toLowerCase().endsWith(".json")
       ? JSON.parse(text)
-      : parseCsv(text);
+      : parseDelimitedImport(text);
 
     if (!Array.isArray(imported)) {
       throw new Error("Import must be a JSON array or a CSV with a header row.");
+    }
+
+    if (looksLikeHfsProviderPaymentRows(imported)) {
+      const records = imported
+        .map((row) => normalizeImportedHfsProviderPayment(row))
+        .filter((record) => Number.isFinite(record.totalPaid) || Number.isFinite(record.patientsServed));
+      const selectedHospital = getFilteredHospitals().find((hospital) => String(hospital.facilityId) === String(state.selectedHospitalId))
+        || getFilteredHospitals()[0];
+      state.providerPayments = {
+        description: "Illinois HFS provider-level Medicaid payment data imported through the dashboard file picker.",
+        lastUpdated: new Date().toISOString().slice(0, 10),
+        source: "Illinois HFS Transparency Law Provider-Level Data",
+        sourceUrl: "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+        records: selectedHospital ? tagHfsPaymentMatches(records, selectedHospital) : records
+      };
+      const matchedCount = selectedHospital ? getProviderPaymentRowsForHospital(selectedHospital).length : 0;
+      state.hfsProviderPaymentStatus = selectedHospital
+        ? `Imported ${formatIntegerOrNA(records.length)} HFS provider-payment rows from ${file.name}; ${formatIntegerOrNA(matchedCount)} matched ${selectedHospital.facilityName}.`
+        : `Imported ${formatIntegerOrNA(records.length)} HFS provider-payment rows from ${file.name}.`;
+      els.importStatus.textContent = state.hfsProviderPaymentStatus;
+      renderMoneyFlow();
+      renderAuditFramework();
+      renderHospitalIntelligence();
+      return;
     }
 
     const normalized = imported.map(normalizeRecord);
@@ -2713,6 +4926,100 @@ async function importFile(event) {
   } finally {
     event.target.value = "";
   }
+}
+
+function parseDelimitedImport(text) {
+  const firstLine = text.split(/\r?\n/, 1)[0] || "";
+  const delimiter = (firstLine.match(/\t/g) || []).length > (firstLine.match(/,/g) || []).length ? "\t" : ",";
+  if (delimiter === ",") return parseCsv(text);
+  const rows = text.split(/\r?\n/)
+    .filter((line) => line.trim())
+    .map((line) => line.split("\t").map((cell) => cell.trim()));
+  const [headers, ...body] = rows;
+  if (!headers) return [];
+  return body.map((row) => Object.fromEntries(headers.map((header, index) => [header.trim(), row[index] || ""])));
+}
+
+function looksLikeHfsProviderPaymentRows(rows) {
+  if (!rows.length) return false;
+  const keys = Object.keys(rows[0]).map(normalizeHeader);
+  const hasProvider = keys.some((key) => ["provider_name", "provider", "vendor_name", "providerkeyid", "npi"].includes(key));
+  const hasPayment = keys.some((key) => key.includes("paid") || key.includes("payment") || key.includes("cost") || key.includes("recipient"));
+  return hasProvider && hasPayment;
+}
+
+function getImportedHfsValue(row, aliases) {
+  const normalized = Object.fromEntries(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
+  for (const alias of aliases) {
+    const value = normalized[normalizeHeader(alias)];
+    if (value !== undefined && String(value).trim() !== "") return value;
+  }
+  return "";
+}
+
+function normalizeImportedHfsProviderPayment(row) {
+  const totalPaid = toNumberOrNull(getImportedHfsValue(row, ["total paid", "total payments", "total amount paid", "amount paid", "payments", "total received", "total hfs paid", "total cost"]));
+  const patientsServed = toNumberOrNull(getImportedHfsValue(row, ["patients served", "recipient count", "recipients", "number of patients", "client count", "recipient total"]));
+  return {
+    providerName: getImportedHfsValue(row, ["provider name", "provider", "vendor name", "name", "payee name", "billing provider name"]) || "Unknown provider",
+    providerId: getImportedHfsValue(row, ["provider id", "provider key id", "provider number", "vendor id", "npi", "provider npi"]) || null,
+    county: getImportedHfsValue(row, ["county", "provider county", "vendor county", "provider county name"]) || "Unknown",
+    providerType: getImportedHfsValue(row, ["provider type", "provider category", "provider class", "category", "provider specialty", "provider type code"]) || "Unknown provider type",
+    serviceYear: toNumberOrNull(getImportedHfsValue(row, ["service year", "calendar year", "year", "experience year"])),
+    patientsServed: Number.isFinite(patientsServed) ? Math.trunc(patientsServed) : null,
+    claimCount: toNumberOrNull(getImportedHfsValue(row, ["claim count", "claims", "number of claims"])),
+    totalPaid,
+    averageCost: toNumberOrNull(getImportedHfsValue(row, ["average cost", "avg cost", "average payment", "avg payment", "average paid"])),
+    adjustments: toNumberOrNull(getImportedHfsValue(row, ["adjustments", "adjustment", "adjusted amount"])),
+    paymentPerPatient: Number.isFinite(totalPaid) && patientsServed ? Math.round((totalPaid / patientsServed) * 100) / 100 : null,
+    evidenceType: "reported_payment",
+    source: "Illinois HFS Transparency Law Provider-Level Data",
+    sourceUrl: "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+    limitations: "Provider-level aggregate payment data does not include patient-level acuity, full claim detail, managed care contract terms, denials, or medical necessity context."
+  };
+}
+
+function tagHfsPaymentMatches(records, hospital) {
+  return records.map((record) => {
+    const match = scoreHfsProviderPaymentMatch(record, hospital);
+    return {
+      ...record,
+      matchedFacilityId: match.score >= 70 ? hospital.facilityId : null,
+      matchedFacilityName: match.score >= 70 ? hospital.facilityName : null,
+      matchScore: match.score,
+      matchReasons: match.reasons
+    };
+  });
+}
+
+function scoreHfsProviderPaymentMatch(record, hospital) {
+  const providerName = normalizeFacilityText(record.providerName);
+  const hospitalName = normalizeFacilityText(hospital.facilityName);
+  const systemName = normalizeFacilityText(hospital.systemAffiliation?.systemName);
+  const providerCounty = normalizeCountyName(record.county);
+  const hospitalCounty = normalizeCountyName(hospital.county);
+  let score = 0;
+  const reasons = [];
+  if (providerName && hospitalName && providerName === hospitalName) {
+    score += 100;
+    reasons.push("exact hospital name");
+  } else if (providerName && hospitalName && (providerName.includes(hospitalName) || hospitalName.includes(providerName))) {
+    score += 75;
+    reasons.push("partial hospital name");
+  }
+  if (systemName && providerName.includes(systemName)) {
+    score += 35;
+    reasons.push("system name");
+  }
+  if (providerCounty && hospitalCounty && providerCounty === hospitalCounty) {
+    score += 15;
+    reasons.push("county match");
+  }
+  if (providerName.includes("TAYLORVILLE")) {
+    score += 35;
+    reasons.push("Taylorville text");
+  }
+  return { score, reasons };
 }
 
 function normalizeRecord(record) {
@@ -2877,6 +5184,22 @@ els.topRiskFacilities.addEventListener("click", (event) => {
   if (row) selectRiskFacility(row.dataset.riskRow);
 });
 
+els.countyPriorityCards.addEventListener("click", (event) => {
+  const card = event.target.closest("[data-county-focus]");
+  if (!card) return;
+  state.selectedCountyName = card.dataset.countyFocus;
+  renderCountyContext();
+  els.countyDrilldown.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+els.countyDrilldown.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-risk-row]");
+  if (!row) return;
+  state.selectedRiskFacilityId = row.dataset.riskRow;
+  setTab("facilityRisk");
+  renderFacilityRisk();
+});
+
 els.chainSummaryRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-chain-row]");
   if (row) selectChain(row.dataset.chainRow);
@@ -2893,6 +5216,15 @@ els.chainFacilityRows.addEventListener("click", (event) => {
   state.selectedRiskFacilityId = row.dataset.riskRow;
   setTab("facilityRisk");
   renderFacilityRisk();
+});
+
+els.careersRows.addEventListener("click", (event) => {
+  if (event.target.closest("a")) return;
+  const target = event.target.closest("[data-career-view], [data-career-row]");
+  if (!target) return;
+  state.selectedCareerFacilityId = target.dataset.careerView || target.dataset.careerRow;
+  renderWorkforceDemand();
+  els.careerDrilldown.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 els.hospitalRiskRows.addEventListener("click", (event) => {
@@ -2920,6 +5252,12 @@ els.paymentHospitalRows.addEventListener("click", (event) => {
   renderHospitalPaymentExplorer();
 });
 
+els.hospitalDrilldown.addEventListener("click", (event) => {
+  const button = event.target.closest("[data-query-hfs-payments]");
+  if (!button) return;
+  queryHfsProviderPaymentsForHospital(button.dataset.queryHfsPayments);
+});
+
 els.riskReimbursementScatter.addEventListener("click", (event) => {
   const dot = event.target.closest("[data-risk-id]");
   if (dot) selectRiskFacility(dot.dataset.riskId);
@@ -2932,6 +5270,14 @@ els.riskStaffingScatter.addEventListener("click", (event) => {
 
 els.exportButton.addEventListener("click", exportRecords);
 els.importInput.addEventListener("change", importFile);
+els.queryPriceTransparencyButton.addEventListener("click", queryPriceTransparencyData);
+els.refreshCareersButton.addEventListener("click", refreshCareersData);
+
+window.reimbursementExplorer = {
+  queryPriceTransparencyData,
+  refreshCareersData,
+  setTab
+};
 
 els.tabs.forEach((tab) => {
   tab.addEventListener("click", () => setTab(tab.dataset.tab));

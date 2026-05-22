@@ -1,0 +1,21 @@
+[
+  {
+    "facilityId": "141339",
+    "facilityName": "TAYLORVILLE MEMORIAL HOSPITAL",
+    "systemName": "Memorial Health",
+    "priceTransparencyPageUrl": "https://memorial.health/financial/price-transparency/",
+    "machineReadableFileUrl": "https://memorial.health/Resources/fa78bf96-0368-4cd1-8b83-ef42eaa4f0ab/370661250_Taylorville_Memorial_Hospital_standardcharges.csv",
+    "updatedAsOf": "2026-04-01",
+    "ein": "370661250",
+    "fileFormat": "csv",
+    "sourceNote": "Memorial Health's price transparency page lists Taylorville Memorial Hospital under Standard Charges for All Items and Services and states that traditional Medicare and Medicaid are excluded from the machine-readable file.",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ]
+  }
+]

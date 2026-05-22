@@ -7,6 +7,13 @@
     "bestFor": "Directory of Illinois Medicaid reimbursement pages, fee schedules, managed care, hospital, pharmacy, rural health clinic, and long-term care resources."
   },
   {
+    "name": "Illinois HFS Transparency Law Provider-Level Data",
+    "category": "Medicaid Money Flow",
+    "url": "https://hfs.illinois.gov/info/factsfigures/transparency.html",
+    "public": true,
+    "bestFor": "Provider-level Medicaid payment flow by provider/vendor, county, patients served, payments, average costs, adjustments, and total money received from HFS."
+  },
+  {
     "name": "Illinois HFS Practitioner Fee Schedule",
     "category": "Medicaid",
     "url": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/individualpractitioner.html",
@@ -47,6 +54,20 @@
     "url": "https://data.cms.gov/provider-data/dataset/xubh-q36u",
     "public": true,
     "bestFor": "Medicare-registered hospital master data including hospital type, ownership, emergency services, county, and overall hospital rating."
+  },
+  {
+    "name": "Memorial Health Price Transparency",
+    "category": "Hospital Prices",
+    "url": "https://memorial.health/financial/price-transparency/",
+    "public": true,
+    "bestFor": "Memorial Health machine-readable standard charges, including Taylorville Memorial Hospital CSV source metadata and price transparency limitations."
+  },
+  {
+    "name": "Memorial Health Hospital Pages",
+    "category": "Hospital System Context",
+    "url": "https://memorial.health/taylorville-memorial-hospital/overview/",
+    "public": true,
+    "bestFor": "Source-backed hospital system affiliation, system careers links, and facility page context for Taylorville Memorial Hospital and related Memorial Health facilities."
   },
   {
     "name": "CMS Physician Fee Schedule",
