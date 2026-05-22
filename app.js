@@ -66,6 +66,7 @@ const els = {
     facilityRisk: document.querySelector("#facilityRiskPanel"),
     chain: document.querySelector("#chainPanel"),
     hospital: document.querySelector("#hospitalPanel"),
+    binder: document.querySelector("#binderPanel"),
     payment: document.querySelector("#paymentPanel"),
     methodology: document.querySelector("#methodologyPanel"),
     workforce: document.querySelector("#workforcePanel"),
@@ -143,6 +144,12 @@ Object.assign(els, {
   hospitalRiskRows: document.querySelector("#hospitalRiskRows"),
   hospitalRateValueRows: document.querySelector("#hospitalRateValueRows"),
   hospitalRoadmapCards: document.querySelector("#hospitalRoadmapCards"),
+  binderSnapshotCards: document.querySelector("#binderSnapshotCards"),
+  binderEvidenceStack: document.querySelector("#binderEvidenceStack"),
+  binderServiceExamples: document.querySelector("#binderServiceExamples"),
+  binderPaymentRows: document.querySelector("#binderPaymentRows"),
+  binderClinicalWorkbench: document.querySelector("#binderClinicalWorkbench"),
+  binderProofTasks: document.querySelector("#binderProofTasks"),
   paymentExplorerFindings: document.querySelector("#paymentExplorerFindings"),
   paymentComparisonCards: document.querySelector("#paymentComparisonCards"),
   paymentHospitalRows: document.querySelector("#paymentHospitalRows"),
@@ -227,6 +234,7 @@ function render() {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalIntelligence();
+  renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderMethodology();
   renderWorkforceDemand();
@@ -1083,6 +1091,36 @@ function renderHospitalIntelligence() {
   els.hospitalRiskRows.innerHTML = renderHospitalRiskRows(hospitals);
   els.hospitalRateValueRows.innerHTML = renderHospitalRateValueRows(hospitals);
   els.hospitalRoadmapCards.innerHTML = renderHospitalRoadmapCards();
+}
+
+function renderFacilityBinderPage() {
+  const hospitals = getFilteredHospitals();
+  const taylorville = hospitals.find((hospital) => String(hospital.facilityId) === "141339")
+    || hospitals.find((hospital) => /TAYLORVILLE MEMORIAL/i.test(hospital.facilityName || ""));
+  const selected = hospitals.find((hospital) => hospital.facilityId === state.selectedHospitalId) || taylorville || hospitals[0] || null;
+  if (!selected) {
+    els.binderSnapshotCards.innerHTML = "";
+    els.binderEvidenceStack.innerHTML = '<p class="status">No hospital record is available for the evidence binder.</p>';
+    els.binderServiceExamples.innerHTML = "";
+    els.binderPaymentRows.innerHTML = "";
+    els.binderClinicalWorkbench.innerHTML = "";
+    els.binderProofTasks.innerHTML = "";
+    return;
+  }
+
+  const binder = getFacilityEvidenceBinder(selected);
+  const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(selected.facilityId));
+  const paymentRows = getProviderPaymentRowsForHospital(selected);
+  const enrollmentContext = getHfsEnrollmentContextForHospital(selected);
+  const rateSheet = selected.hfsRateSheet;
+  const hfsPayment = selected.hfsPayment;
+
+  els.binderSnapshotCards.innerHTML = renderBinderSnapshotCards(selected, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment);
+  els.binderEvidenceStack.innerHTML = renderBinderEvidenceStack(selected, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment);
+  els.binderServiceExamples.innerHTML = renderBinderServiceExampleRows(priceRows);
+  els.binderPaymentRows.innerHTML = renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment);
+  els.binderClinicalWorkbench.innerHTML = renderBinderClinicalWorkbench(selected, binder);
+  els.binderProofTasks.innerHTML = renderBinderProofTasks(selected, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment);
 }
 
 function renderHospitalPaymentExplorer() {
@@ -2300,6 +2338,247 @@ function renderFacilityEvidenceBinder(hospital) {
       </section>
     </section>
   `;
+}
+
+function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment) {
+  const totalPaid = sum(paymentRows.map((record) => record.totalPaid));
+  const patientCount = sum(paymentRows.map((record) => record.patientsServed));
+  const loadedLayers = [
+    priceRows.length > 0,
+    paymentRows.length > 0 || rateSheet || hfsPayment,
+    Boolean(enrollmentContext),
+    Boolean(hospital.systemAffiliation)
+  ].filter(Boolean).length;
+
+  const cards = [
+    {
+      label: "Facility",
+      value: hospital.facilityName,
+      detail: `${hospital.city || "Unknown city"} / ${hospital.county || "Unknown county"} / ${hospital.hospitalType || "Unknown type"}`
+    },
+    {
+      label: "Evidence layers active",
+      value: `${loadedLayers}/5`,
+      detail: "Prices, public payment, cost economics, system financials, clinical logic"
+    },
+    {
+      label: "Price rows attached",
+      value: formatIntegerOrNA(priceRows.length),
+      detail: "Machine-readable standard-charge examples"
+    },
+    {
+      label: "HFS provider payment",
+      value: totalPaid ? formatCurrencyOrNA(totalPaid, 0) : "Not loaded",
+      detail: patientCount ? `${formatIntegerOrNA(patientCount)} reported patients served` : "Provider-level public payment layer"
+    },
+    {
+      label: "HFS rate sheet",
+      value: rateSheet || hfsPayment ? "Matched" : "Next import",
+      detail: rateSheet?.hfsProviderId ? `HFS provider ${rateSheet.hfsProviderId}` : "Facility-level Medicaid rate context"
+    },
+    {
+      label: "System",
+      value: hospital.systemAffiliation?.systemName || binder?.systemName || "Not mapped",
+      detail: "System context must stay separate from facility CCN evidence"
+    }
+  ];
+
+  return cards.map((card) => `
+    <article class="metric-card">
+      <span>${escapeHtml(card.label)}</span>
+      <strong>${escapeHtml(card.value)}</strong>
+      <small>${escapeHtml(card.detail)}</small>
+    </article>
+  `).join("");
+}
+
+function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment) {
+  const layers = [
+    {
+      title: "Prices",
+      status: priceRows.length ? "loaded" : "mapped",
+      evidence: priceRows.length
+        ? `${formatIntegerOrNA(priceRows.length)} standard-charge examples attached`
+        : "Machine-readable price source mapped, parser can attach rows",
+      proves: "Posted gross charge, cash price, and negotiated-rate fields when the file exposes them.",
+      limit: "Does not prove actual payment, collected revenue, volume, denial, or patient balance."
+    },
+    {
+      title: "Public Payer Payment",
+      status: paymentRows.length || rateSheet || hfsPayment ? "loaded" : "next",
+      evidence: paymentRows.length
+        ? `${formatIntegerOrNA(paymentRows.length)} HFS provider-level payment rows plus rate-sheet context`
+        : "Attach HFS provider-payment and hospital rate rows",
+      proves: "Public Medicaid payment flow and published rate parameters.",
+      limit: "Does not prove claim-level adjudication, severity, managed-care contract terms, or private payer payment."
+    },
+    {
+      title: "Facility Economics",
+      status: "next",
+      evidence: "CMS HCRIS / HFS cost report economics still need imported",
+      proves: "Revenue, expense, utilization, beds, wages, cost-to-charge, and margin signals.",
+      limit: "Does not prove service-line profitability or real-time cash position."
+    },
+    {
+      title: "System Financials",
+      status: hospital.systemAffiliation ? "mapped" : "next",
+      evidence: hospital.systemAffiliation
+        ? `${hospital.systemAffiliation.systemName} affiliation mapped`
+        : "Attach Form 990, audited statements, and bond disclosures",
+      proves: "Parent/system-level finances and possible subsidy, debt, or capital context.",
+      limit: "System financials may not equal facility-level margin."
+    },
+    {
+      title: "Clinical Reimbursement Logic",
+      status: binder?.clinicalScenarios?.length ? "scaffolded" : "next",
+      evidence: binder?.clinicalScenarios?.length
+        ? `${formatIntegerOrNA(binder.clinicalScenarios.length)} ED/admission/payment-risk scenarios scaffolded`
+        : "Attach DRG/APR-DRG, LOS, transfer, outlier, HAC/POA, and readmission logic",
+      proves: "How a defined encounter would move through payment rules.",
+      limit: "Does not prove any real patient encounter was coded, billed, or paid correctly."
+    }
+  ];
+
+  return layers.map((layer) => `
+    <article class="binder-stack-card">
+      <span class="status-dot status-${statusClassForAttachment(layer.status)}">${escapeHtml(layer.status)}</span>
+      <div>
+        <strong>${escapeHtml(layer.title)}</strong>
+        <p>${escapeHtml(layer.evidence)}</p>
+      </div>
+      <dl>
+        <div>
+          <dt>Can prove</dt>
+          <dd>${escapeHtml(layer.proves)}</dd>
+        </div>
+        <div>
+          <dt>Limit</dt>
+          <dd>${escapeHtml(layer.limit)}</dd>
+        </div>
+      </dl>
+    </article>
+  `).join("");
+}
+
+function renderBinderServiceExampleRows(priceRows) {
+  if (!priceRows.length) {
+    return '<p class="status">No parsed price examples are attached yet. Query price files to populate CPT/HCPCS, revenue-code, drug, lab, imaging, ED, observation, and inpatient examples.</p>';
+  }
+  return priceRows.slice(0, 18).map((record) => `
+    <article class="table-row price-example-row">
+      <div>
+        <strong>${escapeHtml(record.description || "Unknown service")}</strong>
+        <small>${escapeHtml(record.category || "Uncategorized")} / ${escapeHtml(record.code || "No code")} / ${escapeHtml(record.setting || "Unknown setting")}</small>
+      </div>
+      <div>${escapeHtml(record.chargeType || "Price field")}</div>
+      <div class="numeric">${formatCurrencyOrNA(record.amount)}</div>
+      <div>${escapeHtml(record.payer || "N/A")}</div>
+    </article>
+  `).join("");
+}
+
+function renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment) {
+  const rows = [
+    ...paymentRows.map((record) => ({
+      title: record.providerName || "HFS provider payment row",
+      detail: `${record.providerType || "Provider"} / ${record.serviceYear || "Unknown year"} / ${record.reimbursementType || "Payment evidence"}`,
+      amount: formatCurrencyOrNA(record.totalPaid, 0),
+      note: `${formatIntegerOrNA(record.patientsServed)} patients`
+    }))
+  ];
+  if (rateSheet) {
+    rows.push({
+      title: "HFS hospital rate sheet",
+      detail: `${rateSheet.hfsProviderId || "No HFS provider ID"} / effective ${rateSheet.effectiveDate || "N/A"}`,
+      amount: "Matched",
+      note: rateSheet.url ? "PDF source linked" : "Source pending"
+    });
+  }
+  if (hfsPayment) {
+    rows.push({
+      title: "Parsed HFS hospital payment parameters",
+      detail: `${formatIntegerOrNA(hfsPayment.parsedFieldCount)} structured fields`,
+      amount: formatCurrencyOrNA(hfsPayment.paymentFields?.ipCos20AcuteDrgRate),
+      note: "IP acute DRG rate parameter"
+    });
+  }
+
+  if (!rows.length) return '<p class="status">No public payer payment rows are attached yet.</p>';
+  return rows.map((row) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(row.title)}</strong>
+        <small>${escapeHtml(row.detail)}</small>
+      </div>
+      <div class="numeric">${escapeHtml(row.amount)}</div>
+      <div>${escapeHtml(row.note)}</div>
+    </article>
+  `).join("");
+}
+
+function renderBinderClinicalWorkbench(hospital, binder) {
+  const scenarios = Array.isArray(binder?.clinicalScenarios) ? binder.clinicalScenarios : [];
+  const fallback = [
+    {
+      name: "ED discharged home",
+      logic: "Outpatient ED, labs, imaging, drugs, facility charge, and payer rule comparison.",
+      neededEvidence: "CPT/HCPCS, revenue-code rows, outpatient rule file, and payer payment source."
+    },
+    {
+      name: "ED to inpatient",
+      logic: "Principal diagnosis, DRG/APR-DRG grouping, CC/MCC, expected LOS, transfer, and outlier logic.",
+      neededEvidence: "DRG rule file, diagnosis/procedure scenario, LOS benchmark, discharge status."
+    }
+  ];
+  return (scenarios.length ? scenarios : fallback).map((scenario) => `
+    <div class="finding">
+      <strong>${escapeHtml(scenario.name)}</strong>
+      <p>${escapeHtml(scenario.logic)}</p>
+      <small>${escapeHtml(scenario.neededEvidence)}</small>
+    </div>
+  `).join("");
+}
+
+function renderBinderProofTasks(hospital, binder, priceRows, paymentRows, enrollmentContext, rateSheet, hfsPayment) {
+  const tasks = [
+    {
+      label: "Import CMS HCRIS cost report economics",
+      done: false,
+      detail: "Attach revenue, expense, beds, utilization, wage, cost-to-charge, and operating margin fields."
+    },
+    {
+      label: "Promote price parser to payer-specific examples",
+      done: priceRows.some((row) => row.payer),
+      detail: "Separate gross charge, cash price, Medicare, Medicaid/MCO, commercial plan, and code-level examples."
+    },
+    {
+      label: "Tie HFS payment to rate-sheet parameters",
+      done: Boolean(paymentRows.length && (rateSheet || hfsPayment)),
+      detail: "Keep provider-level payment totals separate from rate parameters and claim-specific logic."
+    },
+    {
+      label: "Add DRG/APR-DRG and LOS scenario rules",
+      done: false,
+      detail: "Build ED-to-admit, observation, transfer, outlier, HAC/POA, and readmission examples."
+    },
+    {
+      label: "Attach system financials",
+      done: Boolean(hospital.systemAffiliation),
+      detail: "Add Memorial Health Form 990, audited statements, and bond disclosure links as system-level evidence."
+    },
+    {
+      label: "Keep evidence limits visible",
+      done: Boolean(binder && enrollmentContext),
+      detail: "Every layer should say what it proves and what it cannot prove."
+    }
+  ];
+
+  return tasks.map((task) => `
+    <div class="finding ${task.done ? "finding-done" : ""}">
+      <strong>${task.done ? "loaded" : "next"} / ${escapeHtml(task.label)}</strong>
+      <p>${escapeHtml(task.detail)}</p>
+    </div>
+  `).join("");
 }
 
 function renderBinderIdentifiers(binder, hospital, system) {
@@ -5232,6 +5511,7 @@ els.hospitalRiskRows.addEventListener("click", (event) => {
   if (!row) return;
   state.selectedHospitalId = row.dataset.hospitalRow;
   renderHospitalIntelligence();
+  renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
 });
 
@@ -5241,6 +5521,7 @@ els.hospitalRateValueRows.addEventListener("click", (event) => {
   state.selectedHospitalId = row.dataset.hospitalRow;
   setTab("payment");
   renderHospitalIntelligence();
+  renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
 });
 
@@ -5249,6 +5530,7 @@ els.paymentHospitalRows.addEventListener("click", (event) => {
   if (!row) return;
   state.selectedHospitalId = row.dataset.paymentHospitalRow;
   renderHospitalIntelligence();
+  renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
 });
 

@@ -1804,6 +1804,70 @@ h3 {
   text-decoration: none;
 }
 
+.binder-stack {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.binder-stack-card {
+  display: grid;
+  gap: 10px;
+  align-content: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  min-width: 0;
+}
+
+.binder-stack-card .status-dot {
+  justify-self: start;
+}
+
+.binder-stack-card strong,
+.binder-stack-card p,
+.binder-stack-card dd {
+  overflow-wrap: anywhere;
+}
+
+.binder-stack-card p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.binder-stack-card dl {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+}
+
+.binder-stack-card dl div {
+  border-top: 1px solid var(--line);
+  padding-top: 8px;
+}
+
+.binder-stack-card dt {
+  color: var(--ink);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.binder-stack-card dd {
+  margin: 3px 0 0;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.finding-done {
+  border-color: #b9d8cc;
+  background: #f3fbf7;
+}
+
 .table-row.header {
   background: var(--soft);
   color: var(--muted);
@@ -1979,6 +2043,7 @@ h3 {
     .attachment-queue,
     .binder-layer-grid,
     .binder-id-grid,
+    .binder-stack,
     .scenario-grid,
     .system-summary,
     .system-peer-grid,
@@ -2010,6 +2075,7 @@ h3 {
   .attachment-queue,
   .binder-layer-grid,
   .binder-id-grid,
+  .binder-stack,
   .scenario-grid,
   .system-summary,
   .system-peer-grid,

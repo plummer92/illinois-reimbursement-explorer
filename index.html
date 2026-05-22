@@ -68,6 +68,7 @@
             <button class="tab" data-tab="facilityRisk">Facility Risk</button>
             <button class="tab" data-tab="chain">Chain Analytics</button>
             <button class="tab" data-tab="hospital">Hospital Intelligence</button>
+            <button class="tab" data-tab="binder">Evidence Binder</button>
             <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
             <button class="tab" data-tab="methodology">Methodology</button>
             <button class="tab" data-tab="workforce">Workforce Demand</button>
@@ -566,6 +567,46 @@
               <section>
                 <h3>Hospital Expansion Roadmap</h3>
                 <div id="hospitalRoadmapCards" class="finding-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section id="binderPanel" class="panel" aria-labelledby="binder">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Facility proof file</p>
+                <h2>Taylorville Evidence Binder</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              This page keeps price, public payment, cost economics, system financials, and clinical reimbursement logic separate. It is built to answer what public data can prove without treating charges, payment, cost, and margin as the same thing.
+            </div>
+            <section class="summary-section">
+              <h3>Binder Snapshot</h3>
+              <div id="binderSnapshotCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Evidence Stack</h3>
+              <div id="binderEvidenceStack" class="binder-stack"></div>
+            </section>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Service Examples</h3>
+                <div id="binderServiceExamples" class="data-table wide"></div>
+              </section>
+              <section>
+                <h3>Public Payment Rows</h3>
+                <div id="binderPaymentRows" class="data-table"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Clinical Logic Workbench</h3>
+                <div id="binderClinicalWorkbench" class="finding-list"></div>
+              </section>
+              <section>
+                <h3>Next Proof Tasks</h3>
+                <div id="binderProofTasks" class="finding-list"></div>
               </section>
             </div>
           </section>
