@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Illinois Reimbursement Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=2026-05-21-hospital-rates-1">
+    <link rel="stylesheet" href="styles.css?v=2026-05-21-hospital-values-1">
   </head>
   <body>
     <main class="shell">
@@ -424,7 +424,7 @@
               </div>
             </div>
             <div class="callout muted-callout">
-              Hospital Intelligence starts with CMS Hospital General Information for Illinois and linked 2026 HFS hospital rate sheet PDFs. It identifies access, quality, ownership, county-context, and reimbursement-document signals while structured hospital payment values and price transparency remain next data layers.
+              Hospital Intelligence starts with CMS Hospital General Information for Illinois, linked 2026 HFS hospital rate sheet PDFs, and parsed HFS payment parameters. It identifies access, quality, ownership, county-context, and reimbursement signals while claim-level payment modeling and hospital price transparency remain next data layers.
             </div>
             <section class="summary-section">
               <h3>Hospital Market Signals</h3>
@@ -449,6 +449,12 @@
                 <h3>Low Rating + Social Risk Watchlist</h3>
                 <div id="hospitalRiskRows" class="data-table"></div>
               </section>
+              <section>
+                <h3>Parsed HFS Rate Values</h3>
+                <div id="hospitalRateValueRows" class="data-table"></div>
+              </section>
+            </div>
+            <div class="risk-dashboard-grid">
               <section>
                 <h3>Hospital Expansion Roadmap</h3>
                 <div id="hospitalRoadmapCards" class="finding-list"></div>
@@ -532,6 +538,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=2026-05-21-hospital-rates-1"></script>
+    <script src="app.js?v=2026-05-21-hospital-values-1"></script>
   </body>
 </html>

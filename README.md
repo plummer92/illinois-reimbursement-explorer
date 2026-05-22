@@ -140,7 +140,15 @@ The dashboard also indexes HFS Hospital Rate Sheets Effective January 1, 2026 an
 python scripts/import_hfs_hospital_rate_sheets.py data/raw/hfs_hospital_rates_2026_list.json data/cms-hospital-general-illinois.json data/hfs-hospital-rate-sheets-2026.json
 ```
 
-The current hospital reimbursement layer links to the HFS rate sheet PDFs and shows match status, provider ID, effective date, and match score. Numeric Medicaid reimbursement values, DRG/APC logic, outpatient fee logic, and hospital price transparency files should still be parsed as later data layers before presenting hospital reimbursement estimates.
+Extract structured HFS payment parameters from those PDFs with:
+
+```powershell
+python scripts/import_hfs_hospital_rate_values.py data/hfs-hospital-rate-sheets-2026.json data/hfs-hospital-rate-values-2026.json
+```
+
+The PDF parser requires `pypdf`. The downloaded PDF cache is stored under `data/raw/hfs_hospital_rate_sheets/` and excluded from git.
+
+The current hospital reimbursement layer links to the HFS rate sheet PDFs and shows match status, provider ID, effective date, match score, and parsed payment fields such as IP acute DRG rate, psych/rehab per diem rates, outpatient EAPG base rates, wage index, CCR, trauma/perinatal level, and high-cost drug/device add-on eligibility. These are rate-sheet parameters, not full claim-specific payment estimates. DRG/APC grouper logic, diagnosis/procedure context, managed-care rules, outpatient claim logic, and hospital price transparency files should still be added before presenting scenario-level hospital reimbursement estimates.
 
 ## Data Coverage + Methodology
 

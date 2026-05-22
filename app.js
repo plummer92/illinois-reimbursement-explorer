@@ -3,6 +3,7 @@ const state = {
   qualityRecords: [],
   hospitalRecords: [],
   hospitalRateSheets: [],
+  hospitalRateValues: [],
   countyContext: [],
   countySummaries: [],
   sources: [],
@@ -111,6 +112,7 @@ Object.assign(els, {
   hospitalCountyRows: document.querySelector("#hospitalCountyRows"),
   hospitalDrilldown: document.querySelector("#hospitalDrilldown"),
   hospitalRiskRows: document.querySelector("#hospitalRiskRows"),
+  hospitalRateValueRows: document.querySelector("#hospitalRateValueRows"),
   hospitalRoadmapCards: document.querySelector("#hospitalRoadmapCards"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
   coverageRows: document.querySelector("#coverageRows"),
@@ -130,6 +132,7 @@ async function loadData() {
   state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
   state.hospitalRecords = await fetchOptionalJson("data/cms-hospital-general-illinois.json");
   state.hospitalRateSheets = await fetchOptionalJson("data/hfs-hospital-rate-sheets-2026.json");
+  state.hospitalRateValues = await fetchOptionalJson("data/hfs-hospital-rate-values-2026.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
   state.records = [...nursingRates, ...starterRecords];
@@ -488,6 +491,7 @@ function renderHospitalIntelligence() {
   els.hospitalCountyRows.innerHTML = renderHospitalCountyRows(countyGroups);
   els.hospitalDrilldown.innerHTML = renderHospitalDrilldown(selected);
   els.hospitalRiskRows.innerHTML = renderHospitalRiskRows(hospitals);
+  els.hospitalRateValueRows.innerHTML = renderHospitalRateValueRows(hospitals);
   els.hospitalRoadmapCards.innerHTML = renderHospitalRoadmapCards();
 }
 
@@ -508,6 +512,8 @@ function buildCoverageSummary() {
   const hospitalCount = state.hospitalRecords.length;
   const hospitalRateSheetCount = state.hospitalRateSheets.length;
   const matchedHospitalRateSheets = state.hospitalRateSheets.filter((sheet) => sheet.cmsFacilityId).length;
+  const hospitalRateValueCount = state.hospitalRateValues.filter((sheet) => sheet.parseStatus === "parsed").length;
+  const matchedHospitalRateValues = state.hospitalRateValues.filter((sheet) => sheet.parseStatus === "parsed" && sheet.cmsFacilityId).length;
   const chainCount = summarizeChains(getRiskFacilities()).filter((chain) => chain.count >= 2).length;
   const sourceCount = state.sources.length;
   return {
@@ -518,6 +524,8 @@ function buildCoverageSummary() {
     hospitalCount,
     hospitalRateSheetCount,
     matchedHospitalRateSheets,
+    hospitalRateValueCount,
+    matchedHospitalRateValues,
     chainCount,
     sourceCount,
     layers: [
@@ -557,11 +565,18 @@ function buildCoverageSummary() {
         interpretation: "Portfolio screening across average risk, staffing, capital, penalties, and geography."
       },
       {
-        layer: "HFS hospital Medicaid rates",
+        layer: "HFS hospital Medicaid rate sheets",
         records: hospitalRateSheetCount,
         coverage: `${matchedHospitalRateSheets} matched to CMS hospitals`,
         status: "Indexed",
         interpretation: "Current HFS hospital rate sheet PDFs are linked to hospitals where name matching is strong enough."
+      },
+      {
+        layer: "HFS hospital payment parameters",
+        records: hospitalRateValueCount,
+        coverage: `${matchedHospitalRateValues} parsed records matched to CMS hospitals`,
+        status: "Structured",
+        interpretation: "PDF-extracted inpatient, outpatient, wage-index, CCR, and add-on parameters for exploratory reimbursement analysis."
       },
       {
         layer: "Hospital price transparency files",
@@ -584,6 +599,8 @@ function renderCoverageMetricCards(coverage) {
     ["Illinois hospitals", coverage.hospitalCount],
     ["HFS hospital rate sheets", coverage.hospitalRateSheetCount],
     ["Matched hospital sheets", coverage.matchedHospitalRateSheets],
+    ["Parsed hospital rates", coverage.hospitalRateValueCount],
+    ["Matched parsed rates", coverage.matchedHospitalRateValues],
     ["Multi-facility operators", coverage.chainCount],
     ["Pending price layers", 1]
   ];
@@ -615,7 +632,7 @@ function renderMethodologyNotes() {
     "Capital rate is used as a proxy for capital funding pressure. It is not proof of deferred maintenance, modernization need, or ownership investment decisions.",
     "CMS quality, staffing, survey, and penalty fields are screening signals. They support prioritization, not causal conclusions.",
     "County social data provides context for disparity analysis, but county poverty, income, rurality, and age structure do not prove facility-level behavior.",
-    "Hospital Intelligence now links available HFS hospital rate sheet PDFs, but reimbursement estimates still require parsing rate sheet values and adding price transparency data."
+    "Hospital Intelligence now extracts structured HFS hospital payment parameters from public PDFs. These values are rate-sheet inputs, not claim-specific reimbursement guarantees."
   ];
   return notes.map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("");
 }
@@ -624,7 +641,7 @@ function renderDataGapRows() {
   const gaps = [
     ["Pharmacy vendor / consultant pharmacist", "Not in CMS/HFS standard files", "Requires facility disclosures, contracts, inspection reports, or NPI/vendor matching."],
     ["True financial condition", "Not in current dashboard", "Requires cost reports, audited financials, ownership filings, bond disclosures, leases, or court records."],
-    ["Hospital Medicaid reimbursement values", "Partially covered", "HFS hospital rate sheet PDFs are indexed and linked; numeric rate fields still need PDF/table extraction."],
+    ["Hospital Medicaid reimbursement values", "Structured rate-sheet fields loaded", "HFS hospital PDF fields are parsed, but full payment estimates still require DRG/APC logic, claim context, payer rules, and validation."],
     ["Hospital negotiated prices", "Pending", "Add selected hospital machine-readable files and normalize payer, plan, CPT/HCPCS, DRG, cash price, and negotiated rate."],
     ["Facility ownership/control complexity", "Partially covered", "CMS chain name may not capture management agreements, real-estate ownership, leases, or private equity structures."],
     ["Longitudinal trends", "Pending", "Add multiple CMS/HFS releases to distinguish persistent signals from one-period variation."]
@@ -642,7 +659,7 @@ function renderDataGapRows() {
 
 function renderNextLayerCards() {
   const layers = [
-    "Hospital rate sheet parser: extract numeric DRG, per-diem, add-on, and outpatient fields from linked HFS PDFs.",
+    "Hospital payment model: validate HFS PDF extraction and translate rate-sheet parameters into scenario-based DRG, per-diem, and outpatient examples.",
     "Hospital Price Transparency parser: start with 5-10 Illinois hospitals and normalize shoppable services, CPT/HCPCS, DRGs, cash prices, and payer negotiated rates.",
     "Cost report and ownership intelligence: add cost reports, ownership changes, related-party/lease indicators, and operator-level finance signals.",
     "Longitudinal trend module: compare CMS quality, staffing, penalties, rates, and county context across multiple releases.",
@@ -659,12 +676,26 @@ function getFilteredHospitals() {
       .filter((sheet) => sheet.cmsFacilityId)
       .map((sheet) => [String(sheet.cmsFacilityId), sheet])
   );
+  const paymentByCmsId = new Map(
+    state.hospitalRateValues
+      .filter((sheet) => sheet.cmsFacilityId && sheet.parseStatus === "parsed")
+      .map((sheet) => [String(sheet.cmsFacilityId), sheet])
+  );
+  const paymentByHfsProviderId = new Map(
+    state.hospitalRateValues
+      .filter((sheet) => sheet.hfsProviderId && sheet.parseStatus === "parsed")
+      .map((sheet) => [String(sheet.hfsProviderId), sheet])
+  );
   return state.hospitalRecords
-    .map((hospital) => ({
-      ...hospital,
-      countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null,
-      hfsRateSheet: rateSheetByCmsId.get(String(hospital.facilityId)) || null
-    }))
+    .map((hospital) => {
+      const hfsRateSheet = rateSheetByCmsId.get(String(hospital.facilityId)) || null;
+      return {
+        ...hospital,
+        countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null,
+        hfsRateSheet,
+        hfsPayment: paymentByCmsId.get(String(hospital.facilityId)) || paymentByHfsProviderId.get(String(hfsRateSheet?.hfsProviderId)) || null
+      };
+    })
     .filter((hospital) => {
       const haystack = [
         hospital.facilityName,
@@ -675,6 +706,8 @@ function getFilteredHospitals() {
         hospital.emergencyServices,
         hospital.hfsRateSheet?.hfsProviderId,
         hospital.hfsRateSheet?.hospitalName,
+        hospital.hfsPayment?.paymentFields?.medicareId,
+        hospital.hfsPayment?.paymentFields?.legacyMedicaidId,
         hospital.countyContext?.ruralUrbanClassification
       ].join(" ").toLowerCase();
       return !query || haystack.includes(query);
@@ -754,11 +787,16 @@ function renderHospitalInsights(hospitals, countyGroups) {
   const criticalAccess = hospitals.filter((hospital) => hospital.hospitalType === "Critical Access Hospitals");
   const emergency = hospitals.filter((hospital) => hospital.emergencyServices === "Yes");
   const rateSheetMatches = hospitals.filter((hospital) => hospital.hfsRateSheet);
+  const paymentMatches = hospitals.filter((hospital) => hospital.hfsPayment);
+  const acuteDrgRates = paymentMatches
+    .map((hospital) => hospital.hfsPayment?.paymentFields?.ipCos20AcuteDrgRate)
+    .filter((value) => Number.isFinite(value));
   const highContextCounty = countyGroups[0];
   const findings = [
     `${hospitals.length} Illinois hospitals are available from CMS Hospital General Information in the current view.`,
     `${emergency.length} hospitals report emergency services, while ${criticalAccess.length} are Critical Access Hospitals, which can be important for rural access analysis.`,
-    `${rateSheetMatches.length} hospitals in the current view have a matched 2026 HFS Medicaid hospital rate sheet PDF. These links provide reimbursement context, but numeric rate extraction is still a next step.`,
+    `${rateSheetMatches.length} hospitals in the current view have a matched 2026 HFS Medicaid hospital rate sheet PDF, and ${paymentMatches.length} have parsed HFS payment parameters.`,
+    acuteDrgRates.length ? `Among hospitals with acute DRG rates available, the average HFS IP COS 20 Acute DRG Rate is ${formatCurrencyOrNA(average(acuteDrgRates))}. This is a rate-sheet parameter, not a full claim payment estimate.` : "Parsed acute DRG rate fields will populate where the HFS sheet includes acute inpatient payment parameters.",
     `${lowRated.length} hospitals have CMS overall ratings of 1-2 stars where ratings are available. This may indicate quality review priorities, not causal reimbursement conclusions.`,
     highContextCounty ? `${highContextCounty.county} County appears highest in the hospital access/context screen with ${highContextCounty.count} hospital record${highContextCounty.count === 1 ? "" : "s"}, ${highContextCounty.lowRatingCount} low-rated hospital${highContextCounty.lowRatingCount === 1 ? "" : "s"}, and ${highContextCounty.ruralUrbanClassification.toLowerCase()} county context.` : "County context will populate as hospital records match county data."
   ];
@@ -772,6 +810,10 @@ function renderHospitalMetricCards(hospitals, countyGroups) {
   const ruralCountyHospitals = hospitals.filter((hospital) => hospital.countyContext?.ruralUrbanClassification === "Rural");
   const lowRated = hospitals.filter((hospital) => Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2);
   const rateSheetMatches = hospitals.filter((hospital) => hospital.hfsRateSheet);
+  const paymentMatches = hospitals.filter((hospital) => hospital.hfsPayment);
+  const acuteDrgRates = paymentMatches.map((hospital) => hospital.hfsPayment?.paymentFields?.ipCos20AcuteDrgRate).filter((value) => Number.isFinite(value));
+  const opAcuteEapgRates = paymentMatches.map((hospital) => hospital.hfsPayment?.paymentFields?.opCos24AcuteEapgConversionFactorBaseRate).filter((value) => Number.isFinite(value));
+  const highCostDrugEligible = paymentMatches.filter((hospital) => hospital.hfsPayment?.paymentFields?.eligibleHighCostDrugDeviceAddOn === "Yes");
   const ownershipTypes = new Set(hospitals.map((hospital) => hospital.hospitalOwnership).filter(Boolean));
   const metrics = [
     ["Illinois hospitals", hospitals.length],
@@ -780,6 +822,10 @@ function renderHospitalMetricCards(hospitals, countyGroups) {
     ["Emergency service hospitals", emergency.length],
     ["Critical access hospitals", criticalAccess.length],
     ["Matched HFS rate sheets", rateSheetMatches.length],
+    ["Parsed HFS payment records", paymentMatches.length],
+    ["Avg acute DRG rate", acuteDrgRates.length ? formatCurrencyOrNA(average(acuteDrgRates)) : "N/A"],
+    ["Avg OP acute EAPG base", opAcuteEapgRates.length ? formatCurrencyOrNA(average(opAcuteEapgRates)) : "N/A"],
+    ["High-cost drug add-on eligible", highCostDrugEligible.length],
     ["Rural-county hospitals", ruralCountyHospitals.length],
     ["Low overall rating", lowRated.length],
     ["Ownership types", ownershipTypes.size],
@@ -809,6 +855,8 @@ function renderHospitalCountyRows(countyGroups) {
 function renderHospitalDrilldown(hospital) {
   if (!hospital) return '<p class="status">Select or search for a hospital to view details.</p>';
   const rateSheet = hospital.hfsRateSheet;
+  const payment = hospital.hfsPayment;
+  const paymentFields = payment?.paymentFields || {};
   return `
     <div class="profile-header">
       <div>
@@ -851,12 +899,30 @@ function renderHospitalDrilldown(hospital) {
         ${renderProfileMetric("HFS provider ID", rateSheet?.hfsProviderId || "N/A")}
         ${renderProfileMetric("Rate sheet effective", rateSheet?.effectiveDate || "N/A")}
         ${renderProfileMetric("Rate sheet match score", Number.isFinite(rateSheet?.matchScore) ? formatNumberOrNA(rateSheet.matchScore, 2) : "N/A")}
+        ${renderProfileMetric("Structured HFS fields", payment ? `${payment.parsedFieldCount} parsed` : "Not parsed")}
         ${renderProfileMetric("Hospital price transparency file", "Next data layer")}
-        ${renderProfileMetric("DRG / outpatient code detail", "Next data layer")}
         ${renderProfileMetric("County context", hospital.countyContext?.ruralUrbanClassification || "Not matched")}
       </div>
       ${rateSheet ? `<p class="profile-note"><a href="${escapeHtml(rateSheet.url)}" target="_blank" rel="noreferrer">Open HFS 2026 hospital rate sheet PDF</a></p>` : ""}
-      <p class="profile-note">This hospital layer links current HFS rate sheet PDFs where matched. Numeric reimbursement fields still need PDF/table extraction before the dashboard should estimate hospital payments.</p>
+      <p class="profile-note">These are public HFS rate-sheet parameters. They help frame reimbursement analysis but do not calculate a claim-specific payment without diagnosis, DRG/APC, modifiers, policy logic, and payer context.</p>
+    </section>
+    <section class="profile-section">
+      <h4>Extracted HFS Payment Parameters</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("IP acute DRG rate", formatCurrencyOrNA(paymentFields.ipCos20AcuteDrgRate))}
+        ${renderProfileMetric("IP acute standardized amount", formatCurrencyOrNA(paymentFields.ipCos20AcuteStandardizedAmount))}
+        ${renderProfileMetric("Psych per diem", formatCurrencyOrNA(paymentFields.ipCos21PsychPerDiemRate))}
+        ${renderProfileMetric("Rehab per diem", formatCurrencyOrNA(paymentFields.ipCos22RehabPerDiemRate))}
+        ${renderProfileMetric("OP acute EAPG base", formatCurrencyOrNA(paymentFields.opCos24AcuteEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("OP psych EAPG base", formatCurrencyOrNA(paymentFields.opCos2728PsychEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("OP rehab EAPG base", formatCurrencyOrNA(paymentFields.opCos29RehabEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("IP wage index", formatNumberOrNA(paymentFields.ipCos20AcuteWageIndex, 4))}
+        ${renderProfileMetric("OP wage index", formatNumberOrNA(paymentFields.opWageIndex, 4))}
+        ${renderProfileMetric("Medicare IPPS CCR", formatNumberOrNA(paymentFields.medicareIppsAggregateCcr, 3))}
+        ${renderProfileMetric("High-cost drug/device add-on", paymentFields.eligibleHighCostDrugDeviceAddOn || "N/A")}
+        ${renderProfileMetric("SMART Act factor", formatNumberOrNA(paymentFields.smartActAdjustmentFactor, 3))}
+      </div>
+      <p class="profile-note">${payment ? escapeHtml(payment.extractionNotes || "") : "No structured HFS payment fields are available for this selected hospital."}</p>
     </section>
   `;
 }
@@ -877,9 +943,33 @@ function renderHospitalRiskRows(hospitals) {
   `).join("");
 }
 
+function renderHospitalRateValueRows(hospitals) {
+  const rows = hospitals
+    .filter((hospital) => hospital.hfsPayment)
+    .sort((a, b) => {
+      const aRate = a.hfsPayment?.paymentFields?.ipCos20AcuteDrgRate || 0;
+      const bRate = b.hfsPayment?.paymentFields?.ipCos20AcuteDrgRate || 0;
+      return bRate - aRate;
+    })
+    .slice(0, 20);
+  if (!rows.length) return '<p class="status">No parsed HFS hospital rate values match the current search.</p>';
+  return rows.map((hospital) => {
+    const fields = hospital.hfsPayment?.paymentFields || {};
+    return `
+      <article class="table-row compact" data-hospital-row="${escapeHtml(hospital.facilityId)}">
+        <div>
+          <strong>${escapeHtml(hospital.facilityName)}</strong>
+          <small>${escapeHtml(hospital.city)} / HFS ${escapeHtml(hospital.hfsPayment?.hfsProviderId || "N/A")} / ${escapeHtml(hospital.hospitalType)}</small>
+        </div>
+        <div class="numeric">DRG ${formatCurrencyOrNA(fields.ipCos20AcuteDrgRate)} / OP EAPG ${formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate)} / CCR ${formatNumberOrNA(fields.medicareIppsAggregateCcr, 3)}</div>
+      </article>
+    `;
+  }).join("");
+}
+
 function renderHospitalRoadmapCards() {
   const roadmap = [
-    "Parse linked Illinois HFS hospital rate sheet PDFs into structured Medicaid reimbursement fields.",
+    "Validate parsed HFS hospital payment parameters against a manual PDF review sample and track future HFS updates.",
     "Add selected hospital price transparency files for gross charge, cash price, and payer negotiated-rate comparisons.",
     "Bring in CMS measure-level quality data for readmissions, mortality, safety, patient experience, and timely/effective care.",
     "Add emergency access, obstetric access, rurality, and county social-risk overlays for hospital disparity analysis."
