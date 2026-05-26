@@ -68,6 +68,7 @@ const els = {
     facilityRisk: document.querySelector("#facilityRiskPanel"),
     chain: document.querySelector("#chainPanel"),
     hospital: document.querySelector("#hospitalPanel"),
+    leaderboard: document.querySelector("#leaderboardPanel"),
     binder: document.querySelector("#binderPanel"),
     payment: document.querySelector("#paymentPanel"),
     methodology: document.querySelector("#methodologyPanel"),
@@ -146,6 +147,10 @@ Object.assign(els, {
   hospitalRiskRows: document.querySelector("#hospitalRiskRows"),
   hospitalRateValueRows: document.querySelector("#hospitalRateValueRows"),
   hospitalRoadmapCards: document.querySelector("#hospitalRoadmapCards"),
+  leaderboardMetricCards: document.querySelector("#leaderboardMetricCards"),
+  leaderboardRows: document.querySelector("#leaderboardRows"),
+  leaderboardDrilldown: document.querySelector("#leaderboardDrilldown"),
+  leaderboardMethodology: document.querySelector("#leaderboardMethodology"),
   binderSnapshotCards: document.querySelector("#binderSnapshotCards"),
   binderEvidenceStack: document.querySelector("#binderEvidenceStack"),
   binderServiceExamples: document.querySelector("#binderServiceExamples"),
@@ -240,6 +245,7 @@ function render() {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalIntelligence();
+  renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderMethodology();
@@ -1097,6 +1103,20 @@ function renderHospitalIntelligence() {
   els.hospitalRiskRows.innerHTML = renderHospitalRiskRows(hospitals);
   els.hospitalRateValueRows.innerHTML = renderHospitalRateValueRows(hospitals);
   els.hospitalRoadmapCards.innerHTML = renderHospitalRoadmapCards();
+}
+
+function renderHospitalLeaderboard() {
+  const hospitals = getFilteredHospitals();
+  const scored = hospitals
+    .map((hospital) => scoreHospitalLeaderboard(hospital))
+    .sort((a, b) => b.totalScore - a.totalScore || b.evidenceScore - a.evidenceScore || a.hospital.facilityName.localeCompare(b.hospital.facilityName));
+  const selectedScore = scored.find((item) => item.hospital.facilityId === state.selectedHospitalId) || scored[0] || null;
+  if (selectedScore) state.selectedHospitalId = selectedScore.hospital.facilityId;
+
+  els.leaderboardMetricCards.innerHTML = renderLeaderboardMetricCards(scored);
+  els.leaderboardRows.innerHTML = renderLeaderboardRows(scored);
+  els.leaderboardDrilldown.innerHTML = renderLeaderboardDrilldown(selectedScore);
+  els.leaderboardMethodology.innerHTML = renderLeaderboardMethodology();
 }
 
 function renderFacilityBinderPage() {
@@ -2133,6 +2153,198 @@ function renderHospitalMetricCards(hospitals, countyGroups) {
       <small>${escapeHtml(label)}</small>
     </article>
   `).join("");
+}
+
+function scoreHospitalLeaderboard(hospital) {
+  const costReport = getCostReportForHospital(hospital);
+  const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const paymentRows = getProviderPaymentRowsForHospital(hospital);
+  const careers = getFacilityCareerRecord(hospital);
+  const rating = Number.isFinite(hospital.overallRating) ? hospital.overallRating : null;
+
+  let qualityScore = rating ? rating * 5 : 8;
+  qualityScore += Math.max(0, 6 - (Number(hospital.readmissionWorse) || 0) * 2);
+  qualityScore += Math.max(0, 5 - (Number(hospital.mortalityWorse) || 0) * 2.5);
+  qualityScore += Math.max(0, 4 - (Number(hospital.safetyWorse) || 0) * 2);
+  qualityScore = Math.min(40, qualityScore);
+
+  let accessScore = 0;
+  if (hospital.emergencyServices === "Yes") accessScore += 8;
+  if (hospital.hospitalType === "Critical Access Hospitals") accessScore += 4;
+  if (hospital.countyContext?.ruralUrbanClassification === "Rural") accessScore += 3;
+  if (hospital.birthingFriendly === "Yes") accessScore += 2;
+  if (hospital.systemAffiliation) accessScore += 3;
+  accessScore = Math.min(20, accessScore);
+
+  let financeScore = 8;
+  if (costReport) {
+    financeScore = 0;
+    financeScore += scorePositiveRatio(costReport.derived?.operatingMargin, 0, 0.2, 9);
+    financeScore += scorePositiveRatio(costReport.derived?.currentRatio, 1, 3, 5);
+    financeScore += scoreInverseRatio(costReport.derived?.liabilitiesToAssets, 0.7, 0.1, 5);
+    financeScore += scorePositiveRatio(costReport.derived?.occupancyRate, 0.25, 0.75, 4);
+    financeScore += Number.isFinite(costReport.netIncome) && costReport.netIncome > 0 ? 2 : 0;
+  }
+  financeScore = Math.min(25, financeScore);
+
+  let evidenceScore = 0;
+  if (hospital.hfsRateSheet || hospital.hfsPayment) evidenceScore += 4;
+  if (paymentRows.length) evidenceScore += 3;
+  if (costReport) evidenceScore += 4;
+  if (priceRows.length) evidenceScore += 2;
+  if (careers?.careerPageUrl) evidenceScore += 1;
+  if (getBenchmarkScorecardForHospital(hospital)) evidenceScore += 1;
+  evidenceScore = Math.min(15, evidenceScore);
+
+  const totalScore = Math.round((qualityScore + accessScore + financeScore + evidenceScore) * 10) / 10;
+  const reasons = buildHospitalLeaderboardReasons(hospital, { qualityScore, accessScore, financeScore, evidenceScore, costReport, priceRows, paymentRows, careers });
+  const gaps = buildHospitalLeaderboardGaps(hospital, { costReport, priceRows, paymentRows, careers });
+
+  return {
+    hospital,
+    qualityScore: roundScore(qualityScore),
+    accessScore: roundScore(accessScore),
+    financeScore: roundScore(financeScore),
+    evidenceScore: roundScore(evidenceScore),
+    totalScore,
+    reasons,
+    gaps,
+    costReport,
+    priceRows,
+    paymentRows,
+    careers
+  };
+}
+
+function scorePositiveRatio(value, low, high, points) {
+  if (!Number.isFinite(value)) return 0;
+  if (value <= low) return 0;
+  if (value >= high) return points;
+  return ((value - low) / (high - low)) * points;
+}
+
+function scoreInverseRatio(value, bad, good, points) {
+  if (!Number.isFinite(value)) return 0;
+  if (value <= good) return points;
+  if (value >= bad) return 0;
+  return ((bad - value) / (bad - good)) * points;
+}
+
+function roundScore(value) {
+  return Math.round((value || 0) * 10) / 10;
+}
+
+function buildHospitalLeaderboardReasons(hospital, context) {
+  const reasons = [];
+  if (Number.isFinite(hospital.overallRating)) reasons.push(`${starLabel(hospital.overallRating)} CMS overall rating`);
+  if (hospital.emergencyServices === "Yes") reasons.push("ER access is available");
+  if (hospital.hospitalType === "Critical Access Hospitals") reasons.push("Critical Access Hospital role supports rural access context");
+  if (context.costReport) {
+    reasons.push(`${formatOptionalPercent(context.costReport.derived?.operatingMargin)} HCRIS operating margin`);
+    reasons.push(`${formatNumberOrNA(context.costReport.costToChargeRatio, 3)} cost-to-charge ratio`);
+  }
+  if (hospital.hfsPayment) reasons.push("parsed HFS hospital payment parameters loaded");
+  if (context.paymentRows.length) reasons.push(`${formatIntegerOrNA(context.paymentRows.length)} HFS provider-payment row${context.paymentRows.length === 1 ? "" : "s"} matched`);
+  if (context.priceRows.length) reasons.push(`${formatIntegerOrNA(context.priceRows.length)} price transparency examples attached`);
+  if (hospital.systemAffiliation) reasons.push(`${hospital.systemAffiliation.systemName} system context mapped`);
+  return reasons.slice(0, 5);
+}
+
+function buildHospitalLeaderboardGaps(hospital, context) {
+  const gaps = [];
+  if (!context.costReport) gaps.push("HCRIS cost-report economics not attached yet");
+  if (!context.priceRows.length) gaps.push("price transparency rows not attached yet");
+  if (!context.paymentRows.length) gaps.push("provider-level public payment rows not matched yet");
+  if (!hospital.hfsPayment) gaps.push("parsed HFS rate parameters not available");
+  if (!context.careers?.careerPageUrl) gaps.push("workforce/careers signal not linked");
+  return gaps.slice(0, 4);
+}
+
+function renderLeaderboardMetricCards(scored) {
+  const withCost = scored.filter((item) => item.costReport).length;
+  const withHfs = scored.filter((item) => item.hospital.hfsPayment || item.hospital.hfsRateSheet).length;
+  const top = scored[0];
+  const fiveStar = scored.filter((item) => item.hospital.overallRating === 5).length;
+  const cards = [
+    ["Hospitals ranked", formatIntegerOrNA(scored.length), "Current filtered Illinois hospital set"],
+    ["Top current score", top ? `${formatNumberOrNA(top.totalScore, 1)} / 100` : "N/A", top?.hospital.facilityName || "No hospital selected"],
+    ["5-star hospitals", formatIntegerOrNA(fiveStar), "CMS overall rating loaded"],
+    ["HFS rate/payment evidence", formatIntegerOrNA(withHfs), "HFS public rate context attached"],
+    ["Cost reports attached", formatIntegerOrNA(withCost), "HCRIS economics currently loaded"],
+    ["Scoring caution", "Screening only", "Evidence gaps change the ranking"]
+  ];
+  return cards.map(([label, value, detail]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </article>
+  `).join("");
+}
+
+function renderLeaderboardRows(scored) {
+  if (!scored.length) return '<p class="status">No hospitals match the current filters.</p>';
+  return scored.slice(0, 50).map((item, index) => `
+    <article class="table-row leaderboard-row" data-leaderboard-row="${escapeHtml(item.hospital.facilityId)}">
+      <div>
+        <strong>#${index + 1} ${escapeHtml(item.hospital.facilityName)}</strong>
+        <small>${escapeHtml(item.hospital.city)} / ${escapeHtml(item.hospital.county)} / ${escapeHtml(item.hospital.hospitalType)}</small>
+      </div>
+      <div class="numeric">${formatNumberOrNA(item.totalScore, 1)}</div>
+      <div>${formatNumberOrNA(item.qualityScore, 1)} quality</div>
+      <div>${formatNumberOrNA(item.accessScore, 1)} access</div>
+      <div>${formatNumberOrNA(item.financeScore, 1)} finance</div>
+      <div>${formatNumberOrNA(item.evidenceScore, 1)} evidence</div>
+    </article>
+  `).join("");
+}
+
+function renderLeaderboardDrilldown(item) {
+  if (!item) return '<p class="status">Select a hospital from the leaderboard.</p>';
+  const hospital = item.hospital;
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(hospital.facilityName)}</h3>
+        <p>${escapeHtml(hospital.city)} / ${escapeHtml(hospital.county)} / ${escapeHtml(hospital.hospitalType)}</p>
+      </div>
+      <span class="risk-pill risk-low">${formatNumberOrNA(item.totalScore, 1)} score</span>
+    </div>
+    <section class="profile-section">
+      <h4>Score Components</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Quality", `${formatNumberOrNA(item.qualityScore, 1)} / 40`)}
+        ${renderProfileMetric("Access", `${formatNumberOrNA(item.accessScore, 1)} / 20`)}
+        ${renderProfileMetric("Finance", `${formatNumberOrNA(item.financeScore, 1)} / 25`)}
+        ${renderProfileMetric("Evidence", `${formatNumberOrNA(item.evidenceScore, 1)} / 15`)}
+        ${renderProfileMetric("CMS rating", starLabel(hospital.overallRating))}
+        ${renderProfileMetric("ER", hospital.emergencyServices || "N/A")}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Why It Scores Well</h4>
+      <div class="finding-list compact-findings">
+        ${item.reasons.length ? item.reasons.map((reason) => `<div class="finding">${escapeHtml(reason)}</div>`).join("") : '<p class="status">No strong public-data drivers are available yet.</p>'}
+      </div>
+    </section>
+    <section class="profile-section">
+      <h4>Evidence Gaps</h4>
+      <div class="finding-list compact-findings">
+        ${item.gaps.length ? item.gaps.map((gap) => `<div class="finding">${escapeHtml(gap)}</div>`).join("") : '<div class="finding">Core evidence layers are attached for the current scoring model.</div>'}
+      </div>
+    </section>
+  `;
+}
+
+function renderLeaderboardMethodology() {
+  const notes = [
+    "Quality is driven by CMS overall rating and negative quality signals such as readmission, mortality, and safety worse-than-benchmark counts.",
+    "Access rewards emergency services, Critical Access Hospital role, rural context, birthing-friendly status, and mapped system context.",
+    "Finance uses HCRIS cost-report economics when loaded. Hospitals without cost reports receive a conservative placeholder, so this is a current-evidence ranking, not a final finance ranking.",
+    "Evidence rewards attached source layers: HFS rates/payment, HCRIS, price transparency, workforce, and benchmark mapping.",
+    "Use the leaderboard to decide which hospitals deserve deeper binder work. Do not use it as an official statewide performance ranking."
+  ];
+  return notes.map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("");
 }
 
 function renderHospitalCountyRows(countyGroups) {
@@ -5722,6 +5934,7 @@ els.hospitalRiskRows.addEventListener("click", (event) => {
   if (!row) return;
   state.selectedHospitalId = row.dataset.hospitalRow;
   renderHospitalIntelligence();
+  renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
 });
@@ -5732,6 +5945,7 @@ els.hospitalRateValueRows.addEventListener("click", (event) => {
   state.selectedHospitalId = row.dataset.hospitalRow;
   setTab("payment");
   renderHospitalIntelligence();
+  renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
 });
@@ -5741,6 +5955,17 @@ els.paymentHospitalRows.addEventListener("click", (event) => {
   if (!row) return;
   state.selectedHospitalId = row.dataset.paymentHospitalRow;
   renderHospitalIntelligence();
+  renderHospitalLeaderboard();
+  renderFacilityBinderPage();
+  renderHospitalPaymentExplorer();
+});
+
+els.leaderboardRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-leaderboard-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.leaderboardRow;
+  renderHospitalIntelligence();
+  renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
 });

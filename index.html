@@ -68,6 +68,7 @@
             <button class="tab" data-tab="facilityRisk">Facility Risk</button>
             <button class="tab" data-tab="chain">Chain Analytics</button>
             <button class="tab" data-tab="hospital">Hospital Intelligence</button>
+            <button class="tab" data-tab="leaderboard">Hospital Leaderboard</button>
             <button class="tab" data-tab="binder">Evidence Binder</button>
             <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
             <button class="tab" data-tab="methodology">Methodology</button>
@@ -567,6 +568,36 @@
               <section>
                 <h3>Hospital Expansion Roadmap</h3>
                 <div id="hospitalRoadmapCards" class="finding-list"></div>
+              </section>
+            </div>
+          </section>
+
+          <section id="leaderboardPanel" class="panel" aria-labelledby="leaderboard">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Statewide comparison</p>
+                <h2>Hospital Leaderboard</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              This leaderboard ranks hospitals by current public evidence in the app. It is an explainable screening tool, not an official quality, finance, or reimbursement ranking.
+            </div>
+            <section class="summary-section">
+              <h3>Leaderboard Signals</h3>
+              <div id="leaderboardMetricCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Top Hospitals By Current Evidence</h3>
+              <div id="leaderboardRows" class="data-table wide"></div>
+            </section>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Selected Hospital Score</h3>
+                <div id="leaderboardDrilldown" class="drilldown-card"></div>
+              </section>
+              <section>
+                <h3>How The Score Works</h3>
+                <div id="leaderboardMethodology" class="finding-list compact-findings"></div>
               </section>
             </div>
           </section>

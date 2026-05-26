@@ -1689,6 +1689,17 @@ h3 {
   min-width: 840px;
 }
 
+.table-row.leaderboard-row {
+  grid-template-columns: minmax(280px, 1.4fr) 80px repeat(4, minmax(110px, 0.55fr));
+  min-width: 920px;
+  cursor: pointer;
+}
+
+.table-row.leaderboard-row:hover {
+  border-color: #b9d8cc;
+  background: #f7fbf8;
+}
+
 .source-actions {
   display: flex;
   flex-wrap: wrap;
@@ -2301,7 +2312,8 @@ h3 {
   .table-row.methodology-row,
   .table-row.careers-row,
   .table-row.price-example-row,
-  .table-row.capital-geography-row {
+  .table-row.capital-geography-row,
+  .table-row.leaderboard-row {
     grid-template-columns: 1fr;
   }
 
