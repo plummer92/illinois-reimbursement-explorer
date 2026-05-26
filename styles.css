@@ -1607,6 +1607,13 @@ h3 {
   background: var(--soft);
   color: var(--ink);
   line-height: 1.4;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.finding p,
+.finding small {
+  overflow-wrap: anywhere;
 }
 
 .data-table {
@@ -1813,8 +1820,9 @@ h3 {
 
 .binder-stack {
   display: grid;
-  grid-template-columns: repeat(5, minmax(180px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
   gap: 10px;
+  min-width: 0;
 }
 
 .binder-stack-card {
@@ -1934,6 +1942,124 @@ h3 {
   font-size: 12px;
   font-weight: 800;
   text-decoration: none;
+}
+
+.benchmark-scorecard {
+  display: grid;
+  gap: 12px;
+}
+
+.benchmark-intro,
+.benchmark-evidence-strip,
+.benchmark-row,
+.benchmark-limit {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  min-width: 0;
+}
+
+.benchmark-intro {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: start;
+  padding: 14px;
+}
+
+.benchmark-intro p,
+.benchmark-limit p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.benchmark-intro span {
+  border-radius: 999px;
+  padding: 7px 10px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.benchmark-domain-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+.benchmark-domain-card {
+  display: grid;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 12px;
+  background: #fff;
+  min-width: 0;
+}
+
+.benchmark-domain-card span,
+.benchmark-evidence-strip span,
+.benchmark-row span {
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.benchmark-domain-card strong,
+.benchmark-domain-card small,
+.benchmark-row strong,
+.benchmark-row small,
+.benchmark-row p {
+  overflow-wrap: anywhere;
+}
+
+.benchmark-domain-card small,
+.benchmark-row small,
+.benchmark-row p {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.benchmark-evidence-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(140px, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.benchmark-evidence-strip div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.benchmark-evidence-strip strong {
+  color: var(--ink);
+  font-size: 18px;
+}
+
+.benchmark-table {
+  display: grid;
+  gap: 8px;
+}
+
+.benchmark-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.8fr) minmax(0, 1.2fr);
+  gap: 12px;
+  padding: 12px;
+}
+
+.benchmark-row p {
+  margin: 0;
+}
+
+.benchmark-limit {
+  padding: 12px;
 }
 
 .finding-done {
@@ -2118,6 +2244,9 @@ h3 {
     .binder-id-grid,
     .binder-stack,
     .cost-report-grid,
+    .benchmark-domain-grid,
+    .benchmark-evidence-strip,
+    .benchmark-row,
     .scenario-grid,
     .system-summary,
     .system-peer-grid,
@@ -2151,6 +2280,9 @@ h3 {
   .binder-id-grid,
   .binder-stack,
   .cost-report-grid,
+  .benchmark-domain-grid,
+  .benchmark-evidence-strip,
+  .benchmark-row,
   .scenario-grid,
   .system-summary,
   .system-peer-grid,

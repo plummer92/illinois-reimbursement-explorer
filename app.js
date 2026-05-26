@@ -12,6 +12,7 @@ const state = {
   hospitalDataAttachments: [],
   facilityEvidenceBinders: [],
   hcrisCostReports: [],
+  benchmarkScorecards: [],
   priceTransparencySources: [],
   priceTransparencyRecords: [],
   facilityCareers: [],
@@ -150,6 +151,7 @@ Object.assign(els, {
   binderServiceExamples: document.querySelector("#binderServiceExamples"),
   binderPaymentRows: document.querySelector("#binderPaymentRows"),
   binderCostReportRows: document.querySelector("#binderCostReportRows"),
+  binderBenchmarkRows: document.querySelector("#binderBenchmarkRows"),
   binderClinicalWorkbench: document.querySelector("#binderClinicalWorkbench"),
   binderProofTasks: document.querySelector("#binderProofTasks"),
   paymentExplorerFindings: document.querySelector("#paymentExplorerFindings"),
@@ -195,6 +197,7 @@ async function loadData() {
   state.hospitalDataAttachments = await fetchOptionalJson("data/hospital-data-attachments.json");
   state.facilityEvidenceBinders = await fetchOptionalJson("data/facility-evidence-binders.json");
   state.hcrisCostReports = await fetchOptionalJson("data/hcris-cost-report-economics.json");
+  state.benchmarkScorecards = await fetchOptionalJson("data/hospital-benchmark-scorecards.json");
   state.priceTransparencySources = await fetchOptionalJson("data/price-transparency-sources.json");
   state.priceTransparencyRecords = await fetchOptionalJson("data/price-transparency-records.json");
   state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
@@ -1107,6 +1110,7 @@ function renderFacilityBinderPage() {
     els.binderServiceExamples.innerHTML = "";
     els.binderPaymentRows.innerHTML = "";
     els.binderCostReportRows.innerHTML = "";
+    els.binderBenchmarkRows.innerHTML = "";
     els.binderClinicalWorkbench.innerHTML = "";
     els.binderProofTasks.innerHTML = "";
     return;
@@ -1117,6 +1121,7 @@ function renderFacilityBinderPage() {
   const paymentRows = getProviderPaymentRowsForHospital(selected);
   const enrollmentContext = getHfsEnrollmentContextForHospital(selected);
   const costReport = getCostReportForHospital(selected);
+  const scorecard = getBenchmarkScorecardForHospital(selected);
   const rateSheet = selected.hfsRateSheet;
   const hfsPayment = selected.hfsPayment;
 
@@ -1125,6 +1130,7 @@ function renderFacilityBinderPage() {
   els.binderServiceExamples.innerHTML = renderBinderServiceExampleRows(priceRows);
   els.binderPaymentRows.innerHTML = renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment);
   els.binderCostReportRows.innerHTML = renderBinderCostReportRows(selected, costReport);
+  els.binderBenchmarkRows.innerHTML = renderBinderBenchmarkRows(selected, scorecard, costReport, paymentRows, priceRows);
   els.binderClinicalWorkbench.innerHTML = renderBinderClinicalWorkbench(selected, binder);
   els.binderProofTasks.innerHTML = renderBinderProofTasks(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
 }
@@ -2309,6 +2315,21 @@ function getCostReportForHospital(hospital) {
   )) || null;
 }
 
+function getBenchmarkScorecardRecords() {
+  return Array.isArray(state.benchmarkScorecards)
+    ? state.benchmarkScorecards
+    : state.benchmarkScorecards.records || [];
+}
+
+function getBenchmarkScorecardForHospital(hospital) {
+  const facilityId = String(hospital?.facilityId || "");
+  const name = normalizeFacilityText(hospital?.facilityName);
+  return getBenchmarkScorecardRecords().find((record) => (
+    String(record.facilityId || "") === facilityId
+    || normalizeFacilityText(record.facilityName) === name
+  )) || null;
+}
+
 function renderFacilityEvidenceBinder(hospital) {
   const binder = getFacilityEvidenceBinder(hospital);
   const priceExamples = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
@@ -2594,6 +2615,91 @@ function renderBinderCostReportRows(hospital, costReport) {
       <a href="${escapeHtml(costReport.sourceUrl || "https://data.cms.gov/provider-compliance/cost-reports/hospital-provider-cost-report")}" target="_blank" rel="noreferrer">Open CMS HCRIS source</a>
     </article>
   `;
+}
+
+function renderBinderBenchmarkRows(hospital, scorecard, costReport, paymentRows, priceRows) {
+  if (!scorecard?.metrics?.length) {
+    return `
+      <div class="binder-empty">
+        <strong>No benchmark scorecard is mapped yet</strong>
+        <p>Add a scorecard mapping to bridge internal management metrics with public evidence layers for ${escapeHtml(hospital.facilityName)}.</p>
+      </div>
+    `;
+  }
+
+  const domainGroups = summarizeBenchmarkDomains(scorecard.metrics);
+  return `
+    <div class="benchmark-intro">
+      <div>
+        <strong>${escapeHtml(scorecard.scorecardName || "Benchmark Scorecard")}</strong>
+        <p>${escapeHtml(scorecard.scorecardYear || "")} / ${escapeHtml(scorecard.source || "")}</p>
+      </div>
+      <span>${formatIntegerOrNA(scorecard.metrics.length)} mapped metrics</span>
+    </div>
+    <div class="benchmark-domain-grid">
+      ${domainGroups.map((group) => `
+        <article class="benchmark-domain-card">
+          <span>${formatIntegerOrNA(group.count)} metrics</span>
+          <strong>${escapeHtml(group.domain)}</strong>
+          <small>${escapeHtml(group.layers.join(", "))}</small>
+        </article>
+      `).join("")}
+    </div>
+    <div class="benchmark-evidence-strip">
+      ${renderBenchmarkEvidenceStrip(costReport, paymentRows, priceRows)}
+    </div>
+    <div class="benchmark-table">
+      ${scorecard.metrics.map((metric) => `
+        <article class="benchmark-row">
+          <div>
+            <strong>${escapeHtml(metric.metric)}</strong>
+            <small>${escapeHtml(metric.domain)} / ${escapeHtml(metric.direction)}</small>
+          </div>
+          <div>
+            <span>${escapeHtml(metric.publicEvidenceLayer)}</span>
+            <small>${escapeHtml(metric.appEvidence)}</small>
+          </div>
+          <p>${escapeHtml(metric.auditUse)}</p>
+        </article>
+      `).join("")}
+    </div>
+    <div class="benchmark-limit">
+      <strong>Evidence limit</strong>
+      <p>${escapeHtml(scorecard.limitations || "Internal benchmark metrics and public evidence are related context, not interchangeable proof.")}</p>
+    </div>
+  `;
+}
+
+function summarizeBenchmarkDomains(metrics) {
+  const groups = new Map();
+  metrics.forEach((metric) => {
+    const domain = metric.domain || "Unclassified";
+    if (!groups.has(domain)) groups.set(domain, { domain, count: 0, layers: new Set() });
+    const group = groups.get(domain);
+    group.count += 1;
+    if (metric.publicEvidenceLayer) group.layers.add(metric.publicEvidenceLayer);
+  });
+  return [...groups.values()].map((group) => ({
+    ...group,
+    layers: [...group.layers].slice(0, 4)
+  }));
+}
+
+function renderBenchmarkEvidenceStrip(costReport, paymentRows, priceRows) {
+  const totalPaid = sum(paymentRows.map((record) => record.totalPaid));
+  const items = [
+    ["Operating margin", costReport ? formatOptionalPercent(costReport.derived?.operatingMargin) : "N/A", "HCRIS"],
+    ["Operating income", costReport ? formatCurrencyOrNA(costReport.netIncomeFromServiceToPatients, 0) : "N/A", "HCRIS"],
+    ["ED payment signal", totalPaid ? formatCurrencyOrNA(sum(paymentRows.map((record) => record.serviceCosts?.ER || 0)), 0) : "N/A", "HFS"],
+    ["Price examples", formatIntegerOrNA(priceRows.length), "Transparency"]
+  ];
+  return items.map(([label, value, source]) => `
+    <div>
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(source)}</small>
+    </div>
+  `).join("");
 }
 
 function renderProfileCostReportRows(hospital, costReport) {

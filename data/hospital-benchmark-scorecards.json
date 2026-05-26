@@ -1,0 +1,198 @@
+{
+  "description": "Hospital-style benchmark scorecard metrics mapped to public evidence layers. These rows start from the HSHS balanced scorecard categories shown by the user and are intended to bridge management targets with public audit evidence.",
+  "lastUpdated": "2026-05-26",
+  "records": [
+    {
+      "facilityId": "141339",
+      "facilityName": "TAYLORVILLE MEMORIAL HOSPITAL",
+      "systemName": "Memorial Health",
+      "scorecardName": "Hospital Benchmark Scorecard",
+      "scorecardYear": "FY2026 benchmark frame",
+      "source": "User-provided hospital balanced scorecard screenshot; public-data bridge built in dashboard",
+      "sourceType": "internal_benchmark_frame",
+      "limitations": "The screenshot gives benchmark categories and example target structure, not audited Taylorville-specific performance values. Public data can approximate or contextualize some categories, but cannot replace internal scorecard reporting.",
+      "metrics": [
+        {
+          "domain": "Human Potential",
+          "metric": "Voluntary colleague turnover rate",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Monthly / annual goal style metric",
+          "publicEvidenceLayer": "Workforce Demand",
+          "publicProxy": "Careers pages, job-opening counts, role categories, staffing ratings where available",
+          "appEvidence": "Facility careers observations and role mix",
+          "auditUse": "Use public hiring demand as operating context, not as proof of turnover."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "CLABSI standardized infection ratio",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Monthly infection ratio",
+          "publicEvidenceLayer": "Quality & Payment Risk",
+          "publicProxy": "CMS/IDPH infection and hospital safety measures where available",
+          "appEvidence": "CMS quality signal scaffold",
+          "auditUse": "Connect infection signals to HAC/POA and payment-risk validation."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "C. diff standardized infection ratio",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Quarterly infection ratio",
+          "publicEvidenceLayer": "Quality & Payment Risk",
+          "publicProxy": "CMS hospital infection measures and HAC context",
+          "appEvidence": "CMS quality signal scaffold",
+          "auditUse": "Compare infection direction against readmission, safety, LOS, and HAC risk."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "CAUTI standardized infection ratio",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Monthly infection ratio",
+          "publicEvidenceLayer": "Quality & Payment Risk",
+          "publicProxy": "CMS hospital infection measures and HAC context",
+          "appEvidence": "CMS quality signal scaffold",
+          "auditUse": "Tie infection prevention outcomes to reimbursement-risk questions."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "Recommend the hospital",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly patient experience measure",
+          "publicEvidenceLayer": "Quality & Patient Experience",
+          "publicProxy": "HCAHPS recommend hospital and patient experience measures",
+          "appEvidence": "CMS patient-experience measure counts",
+          "auditUse": "Frame reputation/access context, not direct reimbursement proof."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "Serious safety events",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Monthly safety event count",
+          "publicEvidenceLayer": "Quality & Payment Risk",
+          "publicProxy": "CMS safety measures, HAC measures, survey/penalty data where available",
+          "appEvidence": "CMS safety signal counts",
+          "auditUse": "Ask whether safety risk overlaps with denials, HAC/POA exposure, or avoidable LOS."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "Risk-adjusted mortality",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Monthly mortality benchmark",
+          "publicEvidenceLayer": "Quality & Payment Risk",
+          "publicProxy": "CMS mortality measures",
+          "appEvidence": "CMS mortality worse/count fields",
+          "auditUse": "Use as severity/quality context before making payment-performance claims."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "30-day readmissions",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Monthly readmission benchmark",
+          "publicEvidenceLayer": "Quality & Payment Risk",
+          "publicProxy": "CMS readmission measures and readmission penalty data",
+          "appEvidence": "CMS readmission worse/count fields",
+          "auditUse": "Connect readmission signal to avoidable utilization and payment-penalty risk."
+        },
+        {
+          "domain": "Physician Alignment",
+          "metric": "Documentation query response TAT",
+          "direction": "Lower is better",
+          "internalBenchmarkSignal": "Documentation turnaround target",
+          "publicEvidenceLayer": "Clinical Reimbursement Logic",
+          "publicProxy": "No direct public proxy",
+          "appEvidence": "DRG/APR-DRG, CC/MCC, LOS, and documentation scenario bridge",
+          "auditUse": "Treat as internal revenue-cycle/documentation performance that public data can only explain conceptually."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "Unique lives served",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "YTD market reach metric",
+          "publicEvidenceLayer": "Utilization / Access",
+          "publicProxy": "Cost-report days/discharges, public payer enrollment context, Hospital Report Card volume fields where available",
+          "appEvidence": "HCRIS utilization and HFS enrollment context",
+          "auditUse": "Bridge population context to patient volume and access pressure."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "Admissions",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly volume metric",
+          "publicEvidenceLayer": "Facility Economics",
+          "publicProxy": "HCRIS discharges and days",
+          "appEvidence": "CMS HCRIS total discharges and inpatient days",
+          "auditUse": "Compare volume against cost, revenue, occupancy, and CAH access role."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "Total surgery cases",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly surgical volume metric",
+          "publicEvidenceLayer": "Price / Service Mix",
+          "publicProxy": "Price transparency surgery CPT rows and cost-report outpatient charge mix",
+          "appEvidence": "Price transparency service examples",
+          "auditUse": "Needs service-line data; public price rows prove posted prices, not surgery volume."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "Outpatient visits",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly outpatient volume metric",
+          "publicEvidenceLayer": "Facility Economics",
+          "publicProxy": "HCRIS outpatient revenue/charges and outpatient service examples",
+          "appEvidence": "HCRIS outpatient charges and price transparency outpatient rows",
+          "auditUse": "Understand outpatient dependence and EAPG/OPPS relevance."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "ED visits",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly ED volume metric",
+          "publicEvidenceLayer": "Clinical Reimbursement Logic",
+          "publicProxy": "HFS provider payment ER recipients/costs and price transparency ED rows",
+          "appEvidence": "HFS provider-level ER service recipients and ED scenario bridge",
+          "auditUse": "Connect ED access to discharged-home, observation, admission, and transfer pathways."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "Clinic visits",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly ambulatory volume metric",
+          "publicEvidenceLayer": "Access / Workforce",
+          "publicProxy": "Public data is limited; possible Hospital Report Card or provider-level payment context",
+          "appEvidence": "HFS provider payments and workforce demand",
+          "auditUse": "Flag as a future outpatient-access importer need."
+        },
+        {
+          "domain": "Site of Care Transformation",
+          "metric": "wRVUs",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly provider productivity metric",
+          "publicEvidenceLayer": "Clinical / Professional Payment Logic",
+          "publicProxy": "No direct public proxy; CPT/HCPCS volume/payment files may approximate some activity",
+          "appEvidence": "Future Medicare utilization/payment files and fee schedules",
+          "auditUse": "Keep separate from hospital facility reimbursement; wRVU is professional productivity."
+        },
+        {
+          "domain": "Unified Organization",
+          "metric": "Consolidated operating margin",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly system margin metric",
+          "publicEvidenceLayer": "System Financials / Facility Economics",
+          "publicProxy": "CMS HCRIS operating margin, audited statements, Form 990, bond disclosures",
+          "appEvidence": "Taylorville HCRIS cost-report operating margin",
+          "auditUse": "Compare facility-reported margin to system-level margin while keeping CCN and system evidence separate."
+        },
+        {
+          "domain": "Unified Organization",
+          "metric": "Operating income excluding FEMA",
+          "direction": "Higher is better",
+          "internalBenchmarkSignal": "Monthly operating income metric",
+          "publicEvidenceLayer": "Facility Economics / System Financials",
+          "publicProxy": "HCRIS net income from service to patients; audited statements may separate unusual items",
+          "appEvidence": "Taylorville HCRIS net income from service to patients",
+          "auditUse": "Use as an operating-performance bridge, but do not assume FEMA or one-time items are isolated in public files."
+        }
+      ]
+    }
+  ]
+}
