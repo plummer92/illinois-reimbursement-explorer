@@ -10,9 +10,10 @@
     "evidenceType": "reported_payment",
     "pipelineRole": "Money Flow",
     "accessLevel": "Public download",
-    "importStatus": "scaffolded",
+    "importStatus": "mapped",
     "whyItMatters": "Shows where Illinois Medicaid dollars flowed by provider, county, service category, and reporting year.",
-    "limitations": "Aggregate provider-level data does not show full claim detail, patient-level acuity, managed care contract terms, or medical necessity context."
+    "limitations": "Aggregate provider-level data does not show full claim detail, patient-level acuity, managed care contract terms, or medical necessity context.",
+    "currentCoverage": "The 2023 HFS Transparency Law provider file is parsed for hospital-type providers: 703 public payment rows are loaded, with 222 rows matched across 148 Illinois CMS hospital facilities."
   },
   {
     "priority": 2,
@@ -85,10 +86,10 @@
     "evidenceType": "cost_report",
     "pipelineRole": "Facility Economics",
     "accessLevel": "Public download, high-complexity files",
-    "importStatus": "scaffolded",
+    "importStatus": "mapped",
     "whyItMatters": "Turns the project from rate lookup into facility finance analysis by exposing costs, charges, utilization, and settlement data.",
     "limitations": "Files are large and complex, require form-specific worksheet mapping, and reported costs are not the same as claim-level allowed amounts.",
-    "currentCoverage": "Taylorville Memorial Hospital CCN 141339 is attached from the CMS Hospital Provider Cost Report public-use API as the first facility economics proof layer."
+    "currentCoverage": "Latest available CMS Hospital Provider Cost Report public-use API rows are attached for 207 Illinois hospital CCNs, giving the statewide leaderboard a facility economics layer beyond the original Taylorville proof row."
   },
   {
     "priority": 7,

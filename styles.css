@@ -2317,6 +2317,18 @@ h3 {
     grid-template-columns: 1fr;
   }
 
+  .data-table,
+  .table-row,
+  .table-row.watchlist,
+  .table-row.county-row,
+  .table-row.county-risk-row,
+  .table-row.careers-row,
+  .table-row.price-example-row,
+  .table-row.capital-geography-row,
+  .table-row.leaderboard-row {
+    min-width: 0;
+  }
+
   .audit-step,
   .audit-layer-head,
   .registry-row {

@@ -563,7 +563,7 @@ function getAuditEvidenceLayers() {
       statusKey: "next",
       proves: "Facility-level operating context such as revenue, expenses, utilization, beds, cost centers, wages, cost-to-charge, and occupancy when imported.",
       limits: "Exact service-line profitability, real-time cash position, private payer contracts, or system-level subsidy flows.",
-      connection: "Next importer should attach CMS HCRIS and Illinois cost report fields to each hospital/facility."
+      connection: `${formatIntegerOrNA(getCostReportRecords().length)} Illinois HCRIS cost-report rows attached; HFS cost-report archive rows remain the next Medicaid-specific economics layer.`
     },
     {
       title: "System Financials",
@@ -2263,13 +2263,20 @@ function buildHospitalLeaderboardGaps(hospital, context) {
 function renderLeaderboardMetricCards(scored) {
   const withCost = scored.filter((item) => item.costReport).length;
   const withHfs = scored.filter((item) => item.hospital.hfsPayment || item.hospital.hfsRateSheet).length;
+  const rankedIds = new Set(scored.map((item) => String(item.hospital.facilityId)));
+  const withProviderPayments = new Set(
+    getProviderPaymentRecords()
+      .map((record) => String(record.matchedFacilityId || ""))
+      .filter((facilityId) => rankedIds.has(facilityId))
+  ).size;
   const top = scored[0];
   const fiveStar = scored.filter((item) => item.hospital.overallRating === 5).length;
   const cards = [
     ["Hospitals ranked", formatIntegerOrNA(scored.length), "Current filtered Illinois hospital set"],
     ["Top current score", top ? `${formatNumberOrNA(top.totalScore, 1)} / 100` : "N/A", top?.hospital.facilityName || "No hospital selected"],
     ["5-star hospitals", formatIntegerOrNA(fiveStar), "CMS overall rating loaded"],
-    ["HFS rate/payment evidence", formatIntegerOrNA(withHfs), "HFS public rate context attached"],
+    ["HFS rate context", formatIntegerOrNA(withHfs), "Published hospital rate-sheet evidence"],
+    ["Provider payments matched", formatIntegerOrNA(withProviderPayments), "2023 HFS public payment rows"],
     ["Cost reports attached", formatIntegerOrNA(withCost), "HCRIS economics currently loaded"],
     ["Scoring caution", "Screening only", "Evidence gaps change the ranking"]
   ];
@@ -2340,7 +2347,7 @@ function renderLeaderboardMethodology() {
   const notes = [
     "Quality is driven by CMS overall rating and negative quality signals such as readmission, mortality, and safety worse-than-benchmark counts.",
     "Access rewards emergency services, Critical Access Hospital role, rural context, birthing-friendly status, and mapped system context.",
-    "Finance uses HCRIS cost-report economics when loaded. Hospitals without cost reports receive a conservative placeholder, so this is a current-evidence ranking, not a final finance ranking.",
+    "Finance uses HCRIS cost-report economics when loaded. Illinois HCRIS coverage is now broad, but hospitals without matched rows still receive a conservative placeholder.",
     "Evidence rewards attached source layers: HFS rates/payment, HCRIS, price transparency, workforce, and benchmark mapping.",
     "Use the leaderboard to decide which hospitals deserve deeper binder work. Do not use it as an official statewide performance ranking."
   ];

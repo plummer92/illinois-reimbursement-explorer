@@ -3,7 +3,7 @@
     "id": "hfs-hospital-reimbursement",
     "label": "HFS hospital reimbursement",
     "layer": "Public Payer Payment",
-    "status": "next",
+    "status": "mapped",
     "primarySource": "Illinois HFS Hospital Rate Sheets",
     "sourceUrl": "https://hfs.illinois.gov/medicalproviders/medicaidreimbursement/hospital/hrs.html",
     "secondarySource": "Illinois HFS Transparency Law Provider-Level Data",
@@ -11,7 +11,7 @@
     "attachGoal": "Attach Illinois hospital Medicaid rate sheet and provider-level payment records.",
     "canProve": "Published Medicaid hospital rate context and aggregate HFS payment flow where the public files include the facility.",
     "cannotProve": "Claim-level payment, managed-care contract terms, patient severity, denials, or actual allowed amount for a specific encounter.",
-    "nextAction": "Find Taylorville Memorial Hospital in the latest HFS hospital rate sheet package and map HFS provider payment rows by facility/system identity."
+    "nextAction": "Review lower-confidence HFS provider-payment matches, then rerun this importer when HFS publishes the next provider-level Transparency Law file."
   },
   {
     "id": "machine-readable-price-file",
@@ -31,7 +31,7 @@
     "id": "cost-report-economics",
     "label": "Cost report economics",
     "layer": "Facility Economics",
-    "status": "next",
+    "status": "mapped",
     "primarySource": "Illinois HFS Medicaid Hospital Archive Cost Reports",
     "sourceUrl": "https://hfs.illinois.gov/medicalproviders/costreports/medicaidhospitalarchive.html",
     "secondarySource": "CMS HCRIS hospital cost reports",
@@ -39,7 +39,7 @@
     "attachGoal": "Attach CMS HCRIS revenue, expense, utilization, wage, cost-to-charge, and margin fields.",
     "canProve": "Reported facility cost, charge, utilization, wage, bed, and cost-center economics from required cost reports.",
     "cannotProve": "Exact service-line profitability, real-time liquidity, commercial contract profitability, or system subsidy flows without more disclosures.",
-    "nextAction": "Map Taylorville's Medicare provider number to HCRIS and HFS cost report archive files."
+    "nextAction": "Use the statewide HCRIS attachment to compare cost, charge, utilization, staffing, and margin signals across hospitals; next, add Illinois HFS cost report archive rows where they expose Medicaid-specific cost context."
   },
   {
     "id": "clinical-reimbursement-bridge",
