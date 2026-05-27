@@ -34,7 +34,8 @@ const state = {
   selectedChainId: null,
   selectedHospitalId: null,
   selectedCareerFacilityId: null,
-  selectedCountyName: null
+  selectedCountyName: null,
+  selectedSystemId: null
 };
 
 const currency = new Intl.NumberFormat("en-US", {
@@ -77,6 +78,7 @@ const els = {
     binder: document.querySelector("#binderPanel"),
     payment: document.querySelector("#paymentPanel"),
     pressure: document.querySelector("#pressurePanel"),
+    systemFinance: document.querySelector("#systemFinancePanel"),
     methodology: document.querySelector("#methodologyPanel"),
     workforce: document.querySelector("#workforcePanel"),
     sources: document.querySelector("#sourcesPanel"),
@@ -190,6 +192,11 @@ Object.assign(els, {
   pressureOperatingContext: document.querySelector("#pressureOperatingContext"),
   pressureScenarioCards: document.querySelector("#pressureScenarioCards"),
   pressureEvidenceRows: document.querySelector("#pressureEvidenceRows"),
+  systemFinanceMetricCards: document.querySelector("#systemFinanceMetricCards"),
+  systemFinanceRows: document.querySelector("#systemFinanceRows"),
+  systemFinanceDetail: document.querySelector("#systemFinanceDetail"),
+  systemFinanceHospitalRows: document.querySelector("#systemFinanceHospitalRows"),
+  systemFinanceEvidenceGaps: document.querySelector("#systemFinanceEvidenceGaps"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
   coverageRows: document.querySelector("#coverageRows"),
   methodologyNotes: document.querySelector("#methodologyNotes"),
@@ -288,6 +295,7 @@ function render() {
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
   renderMethodology();
   renderWorkforceDemand();
 }
@@ -1711,6 +1719,333 @@ function renderFinancialPressure() {
   els.pressureOperatingContext.innerHTML = renderOperatingContinuityPanel(selected?.hospital, selected?.costReport);
   els.pressureScenarioCards.innerHTML = renderPressureScenarioCards(selected);
   els.pressureEvidenceRows.innerHTML = renderPressureEvidenceRows(selected);
+}
+
+function renderSystemFinanceDeepDive() {
+  const summaries = buildSystemFinanceSummaries();
+  const systemsWithFacts = summaries.filter((summary) => summary.facts.length);
+  const systemsWithNumericFacts = summaries.filter((summary) => summary.primaryFact?.extractionStatus === "numeric_extracted");
+  const mappedHospitals = sum(summaries.map((summary) => summary.hospitals.length));
+  const hcrisHospitals = sum(summaries.map((summary) => summary.costReports.length));
+  const negativeFacilityMargins = sum(summaries.map((summary) => summary.costReports.filter((report) => report.derived?.operatingMargin < 0).length));
+  const auditBondSources = sum(summaries.map((summary) => summary.sources.filter((source) => /audit|financial_statement|investor|bond/i.test(`${source.sourceType || ""} ${source.title || ""}`)).length));
+
+  els.systemFinanceMetricCards.innerHTML = renderWorkforceMetricCards([
+    ["Systems mapped", summaries.length],
+    ["Systems with facts", systemsWithFacts.length],
+    ["Numeric extracts", systemsWithNumericFacts.length],
+    ["Mapped hospitals", mappedHospitals],
+    ["HCRIS hospital rows", hcrisHospitals],
+    ["Negative facility margin", negativeFacilityMargins],
+    ["Audit/bond source links", auditBondSources],
+    ["Source links", getSystemFinancialSources().length]
+  ]);
+
+  const selectedFromHospital = getAllHospitalsWithContext().find((hospital) => String(hospital.facilityId) === String(state.selectedHospitalId))?.systemAffiliation?.systemId;
+  const fallbackSystemId = summaries.find((summary) => summary.system.systemId === "hshs")?.system.systemId || summaries[0]?.system.systemId || null;
+  if (!state.selectedSystemId || !summaries.some((summary) => summary.system.systemId === state.selectedSystemId)) {
+    state.selectedSystemId = selectedFromHospital || fallbackSystemId;
+  }
+
+  const selected = summaries.find((summary) => summary.system.systemId === state.selectedSystemId) || summaries[0] || null;
+  els.systemFinanceRows.innerHTML = renderSystemFinanceRows(summaries, selected?.system.systemId);
+  els.systemFinanceDetail.innerHTML = renderSystemFinanceDetail(selected);
+  els.systemFinanceHospitalRows.innerHTML = renderSystemFinanceHospitalRows(selected);
+  els.systemFinanceEvidenceGaps.innerHTML = renderSystemFinanceEvidenceGaps(selected);
+}
+
+function buildSystemFinanceSummaries() {
+  return (state.hospitalSystems || [])
+    .map((system) => {
+      const facts = getSystemFinancialFactsForSystem(system);
+      const sources = getSystemFinancialSourcesForSystem(system);
+      const hospitals = getHospitalsForSystem(system);
+      const costReports = hospitals.map((hospital) => getCostReportForHospital(hospital)).filter(Boolean);
+      const primaryFact = getPrimarySystemFinancialFact(facts);
+      const sourceStrength = scoreSystemSourceStrength(facts, sources);
+      const revenue = primaryFact?.revenue ?? getBestSystemMetric(facts, ["totalRevenue", "totalNetRevenue"]);
+      const expenses = getBestSystemMetric(facts, ["totalExpenses"]);
+      const netIncome = getBestSystemMetric(facts, ["netIncome"]);
+      const assets = getBestSystemMetric(facts, ["totalAssets"]);
+      const liabilities = getBestSystemMetric(facts, ["totalLiabilities"]);
+      const liabilityRatio = Number.isFinite(assets) && assets !== 0 && Number.isFinite(liabilities) ? liabilities / assets : null;
+      return {
+        system,
+        facts,
+        sources,
+        hospitals,
+        costReports,
+        primaryFact,
+        sourceStrength,
+        revenue,
+        expenses,
+        netIncome,
+        margin: Number.isFinite(netIncome) && Number.isFinite(revenue) && revenue !== 0 ? netIncome / revenue : primaryFact?.margin,
+        assets,
+        liabilities,
+        liabilityRatio
+      };
+    })
+    .sort((a, b) => b.sourceStrength - a.sourceStrength || (b.revenue || 0) - (a.revenue || 0) || a.system.systemName.localeCompare(b.system.systemName));
+}
+
+function getAllHospitalsWithContext() {
+  const countyByName = new Map(state.countySummaries.map((county) => [normalizeCountyName(county.county), county]));
+  const rateSheetByCmsId = new Map(
+    state.hospitalRateSheets
+      .filter((sheet) => sheet.cmsFacilityId)
+      .map((sheet) => [String(sheet.cmsFacilityId), sheet])
+  );
+  const paymentByCmsId = new Map(
+    state.hospitalRateValues
+      .filter((sheet) => sheet.cmsFacilityId && sheet.parseStatus === "parsed")
+      .map((sheet) => [String(sheet.cmsFacilityId), sheet])
+  );
+  const paymentByHfsProviderId = new Map(
+    state.hospitalRateValues
+      .filter((sheet) => sheet.hfsProviderId && sheet.parseStatus === "parsed")
+      .map((sheet) => [String(sheet.hfsProviderId), sheet])
+  );
+  return state.hospitalRecords.map((hospital) => {
+    const hfsRateSheet = rateSheetByCmsId.get(String(hospital.facilityId)) || null;
+    return {
+      ...hospital,
+      countyContext: countyByName.get(normalizeCountyName(hospital.county)) || null,
+      systemAffiliation: getHospitalSystemAffiliation(hospital),
+      hfsRateSheet,
+      hfsPayment: paymentByCmsId.get(String(hospital.facilityId)) || paymentByHfsProviderId.get(String(hfsRateSheet?.hfsProviderId)) || null
+    };
+  });
+}
+
+function getHospitalsForSystem(system) {
+  const systemId = system?.systemId;
+  if (!systemId) return [];
+  return getAllHospitalsWithContext()
+    .filter((hospital) => hospital.systemAffiliation?.systemId === systemId)
+    .sort((a, b) => a.facilityName.localeCompare(b.facilityName));
+}
+
+function syncSelectedSystemFromHospitalId(facilityId) {
+  const hospital = getAllHospitalsWithContext().find((item) => String(item.facilityId) === String(facilityId));
+  if (hospital?.systemAffiliation?.systemId) {
+    state.selectedSystemId = hospital.systemAffiliation.systemId;
+  }
+}
+
+function getSystemFinancialSourcesForSystem(system) {
+  const ids = new Set([system?.systemId, ...(system?.financialSourceIds || [])].filter(Boolean));
+  return getSystemFinancialSources().filter((source) => ids.has(source.systemId));
+}
+
+function getSystemFinancialFactsForSystem(system) {
+  const ids = new Set([system?.systemId, ...(system?.financialSourceIds || [])].filter(Boolean));
+  return getSystemFinancialFacts().filter((fact) => ids.has(fact.systemId));
+}
+
+function getBestSystemMetric(facts, keys) {
+  for (const fact of facts || []) {
+    for (const key of keys) {
+      const value = fact.metrics?.[key];
+      if (Number.isFinite(value)) return value;
+    }
+  }
+  return null;
+}
+
+function scoreSystemSourceStrength(facts, sources) {
+  const numeric = facts.filter((fact) => fact.extractionStatus === "numeric_extracted").length;
+  const summaries = facts.filter((fact) => fact.extractionStatus === "summary_extracted").length;
+  const hardSources = sources.filter((source) => /audit|financial_statement|investor|bond|form_990/i.test(`${source.sourceType || ""} ${source.title || ""}`)).length;
+  return numeric * 35 + summaries * 16 + hardSources * 8 + sources.length * 3;
+}
+
+function renderSystemFinanceRows(summaries, selectedSystemId) {
+  if (!summaries.length) return '<p class="status">No health-system crosswalk is loaded yet.</p>';
+  return `
+    <article class="table-row system-finance-row header">
+      <div>System</div>
+      <div class="numeric">Revenue</div>
+      <div class="numeric">Margin</div>
+      <div class="numeric">Mapped hospitals</div>
+      <div class="numeric">Negative HCRIS</div>
+      <div>Financial evidence</div>
+    </article>
+    ${summaries.map((summary) => {
+      const negative = summary.costReports.filter((report) => report.derived?.operatingMargin < 0).length;
+      const selectedClass = summary.system.systemId === selectedSystemId ? " selected-peer-row" : "";
+      return `
+        <article class="table-row system-finance-row${selectedClass}" data-system-finance-row="${escapeHtml(summary.system.systemId)}">
+          <div>
+            <strong>${escapeHtml(summary.system.systemName)}</strong>
+            <small>${escapeHtml(summary.system.systemType || "Health system")}</small>
+          </div>
+          <div class="numeric">${formatCurrencyOrNA(summary.revenue, 0)}</div>
+          <div class="numeric">${formatOptionalPercent(summary.margin)}</div>
+          <div class="numeric">${formatIntegerOrNA(summary.hospitals.length)}</div>
+          <div class="numeric">${formatIntegerOrNA(negative)}</div>
+          <div>
+            <span class="tag">${formatIntegerOrNA(summary.facts.length)} facts</span>
+            <span class="tag">${formatIntegerOrNA(summary.sources.length)} sources</span>
+            <span class="tag">${escapeHtml(summary.primaryFact?.basis || "source mapped")}</span>
+          </div>
+        </article>
+      `;
+    }).join("")}
+  `;
+}
+
+function renderSystemFinanceDetail(summary) {
+  if (!summary) return '<p class="status">Select a system to review system capacity.</p>';
+  const system = summary.system;
+  const factCards = [
+    ["System revenue", formatCurrencyOrNA(summary.revenue, 0), summary.primaryFact?.period || "Primary extract"],
+    ["System expenses", formatCurrencyOrNA(summary.expenses, 0), "Form 990 or extracted statement"],
+    ["System net income", formatCurrencyOrNA(summary.netIncome, 0), `${formatOptionalPercent(summary.margin)} margin signal`],
+    ["Assets", formatCurrencyOrNA(summary.assets, 0), `${formatOptionalPercent(summary.liabilityRatio)} liabilities to assets`],
+    ["Liabilities", formatCurrencyOrNA(summary.liabilities, 0), "Debt/liability context needs bond/audit validation"],
+    ["Mapped hospitals", formatIntegerOrNA(summary.hospitals.length), `${formatIntegerOrNA(summary.costReports.length)} with HCRIS economics`]
+  ];
+  const factRows = summary.facts.map((fact) => `
+    <article class="system-finance-fact-card">
+      <strong>${escapeHtml(fact.basis || fact.sourceTitle || "Financial fact")}</strong>
+      <small>${escapeHtml(fact.period || "Unknown period")} / ${escapeHtml(fact.extractionStatus || "mapped")}</small>
+      <div>${renderSystemFinancialMetricTags(fact.metrics || {})}</div>
+      <p>${escapeHtml(fact.notes || "")}</p>
+      <p>${escapeHtml(fact.limitations || "")}</p>
+      ${fact.sourceUrl ? `<a href="${escapeHtml(fact.sourceUrl)}" target="_blank" rel="noreferrer">Open fact source</a>` : ""}
+    </article>
+  `).join("");
+  const sourceLinks = summary.sources.map((source) => `
+    <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">${escapeHtml(source.title || source.sourceType || "Source")}</a>
+  `).join("");
+
+  return `
+    <div class="system-finance-header">
+      <div>
+        <h3>${escapeHtml(system.systemName)}</h3>
+        <p>${escapeHtml(system.systemType || "Health system")} / ${escapeHtml(system.sourceNote || "System affiliation and financial source registry are mapped separately from facility HCRIS rows.")}</p>
+      </div>
+      <div class="system-links">
+        ${system.homepageUrl ? `<a href="${escapeHtml(system.homepageUrl)}" target="_blank" rel="noreferrer">System site</a>` : ""}
+        ${system.careersUrl ? `<a href="${escapeHtml(system.careersUrl)}" target="_blank" rel="noreferrer">Careers</a>` : ""}
+        ${system.sourceUrl ? `<a href="${escapeHtml(system.sourceUrl)}" target="_blank" rel="noreferrer">Affiliation source</a>` : ""}
+      </div>
+    </div>
+    <div class="operating-context-grid">
+      ${factCards.map(([label, value, detail]) => `
+        <article class="operating-context-card">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+          <small>${escapeHtml(detail)}</small>
+        </article>
+      `).join("")}
+    </div>
+    <div class="system-finance-split">
+      <article class="operating-context-note">
+        <h4>System Financial Facts</h4>
+        <div class="system-finance-fact-grid">${factRows || '<p class="status">No extracted facts yet. Use source links for manual review.</p>'}</div>
+      </article>
+      <article class="operating-context-note">
+        <h4>Source Links</h4>
+        <div class="system-links">${sourceLinks || '<span class="tag">No source links mapped</span>'}</div>
+        ${(system.auditNotes || []).map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("")}
+      </article>
+    </div>
+  `;
+}
+
+function renderSystemFinanceHospitalRows(summary) {
+  if (!summary) return '<p class="status">Select a system to compare mapped hospitals.</p>';
+  if (!summary.hospitals.length) return '<p class="status">No hospitals are mapped to this system yet.</p>';
+  return `
+    <article class="table-row facility-system-row header">
+      <div>Hospital</div>
+      <div class="numeric">Facility margin</div>
+      <div class="numeric">System margin</div>
+      <div class="numeric">Liquidity</div>
+      <div class="numeric">Occupancy</div>
+      <div>Access role</div>
+      <div>What it means</div>
+    </article>
+    ${summary.hospitals.map((hospital) => {
+      const costReport = getCostReportForHospital(hospital);
+      const role = [
+        hospital.hospitalType === "Critical Access Hospitals" ? "CAH" : hospital.hospitalType,
+        hospital.emergencyServices === "Yes" ? "ER" : "No ER",
+        hospital.countyContext?.ruralUrbanClassification || "County unknown"
+      ].filter(Boolean).join(" / ");
+      const meaning = buildFacilitySystemMeaning(hospital, costReport, summary);
+      return `
+        <article class="table-row facility-system-row">
+          <div>
+            <strong>${escapeHtml(hospital.facilityName)}</strong>
+            <small>${escapeHtml(hospital.city || "")} / ${escapeHtml(hospital.county || "Unknown county")} / CMS ${escapeHtml(hospital.facilityId || "N/A")}</small>
+          </div>
+          <div class="numeric">${formatOptionalPercent(costReport?.derived?.operatingMargin)}</div>
+          <div class="numeric">${formatOptionalPercent(summary.margin)}</div>
+          <div class="numeric">${formatNumberOrNA(costReport?.derived?.currentRatio, 2)}</div>
+          <div class="numeric">${formatOptionalPercent(costReport?.derived?.occupancyRate)}</div>
+          <div>${escapeHtml(role)}</div>
+          <div><small>${escapeHtml(meaning)}</small></div>
+        </article>
+      `;
+    }).join("")}
+  `;
+}
+
+function buildFacilitySystemMeaning(hospital, costReport, summary) {
+  if (!costReport) {
+    return "HCRIS facility economics are missing, so system capacity cannot be compared to facility stress yet.";
+  }
+  const parts = [];
+  if (costReport.derived?.operatingMargin < 0) {
+    parts.push("Facility HCRIS is negative");
+  } else if (Number.isFinite(costReport.derived?.operatingMargin)) {
+    parts.push("Facility HCRIS is positive");
+  }
+  if (Number.isFinite(summary.margin)) {
+    parts.push(summary.margin < 0 ? "system margin is also negative" : "system margin is positive");
+  } else {
+    parts.push("system margin still needs extraction");
+  }
+  if (hospital.emergencyServices === "Yes" || hospital.hospitalType === "Critical Access Hospitals") {
+    parts.push("access role may justify support despite margin pressure");
+  }
+  return parts.join("; ") + ".";
+}
+
+function renderSystemFinanceEvidenceGaps(summary) {
+  if (!summary) return '<div class="finding">Select a system before reviewing evidence gaps.</div>';
+  const gaps = buildSystemFinanceEvidenceGaps(summary);
+  return gaps.map((gap) => `
+    <div class="finding">
+      <strong>${escapeHtml(gap[0])}</strong>
+      <span>${escapeHtml(gap[1])}</span>
+    </div>
+  `).join("");
+}
+
+function buildSystemFinanceEvidenceGaps(summary) {
+  const facts = summary.facts || [];
+  const sources = summary.sources || [];
+  const metrics = Object.assign({}, ...facts.map((fact) => fact.metrics || {}));
+  const hasAudit = sources.some((source) => /audit|financial_statement/i.test(`${source.sourceType || ""} ${source.title || ""}`));
+  const hasBond = sources.some((source) => /bond|investor|rating/i.test(`${source.sourceType || ""} ${source.title || ""}`));
+  const hasDebt = ["notesPayable", "totalLongTermDebt", "longTermDebt", "bondsPayable", "totalLiabilities"].some((key) => metrics[key] !== undefined);
+  const hasCash = ["cashAndInvestments", "cashOnHand", "daysCashOnHand", "cash"].some((key) => metrics[key] !== undefined);
+  const hasCommunityBenefit = ["communityBenefit", "charityCare", "costOfCharityCare", "communityProgramAnnualSupport", "foundationContribution"].some((key) => metrics[key] !== undefined);
+  const gaps = [
+    !hasAudit && ["Audited statements", "Need consolidated audited statement fields before claiming true system liquidity, operating income, or cash-flow strength."],
+    !hasBond && ["Bond disclosures", "Need bondholder documents, rating reports, debt service, covenants, and days cash before judging debt capacity."],
+    !hasDebt && ["Debt detail", "Liabilities are not enough. Separate bonds, leases, notes payable, pension exposure, and obligated-group debt."],
+    !hasCash && ["Cash and liquidity", "Need cash, investments, current assets/liabilities, and days cash on hand to assess ability to subsidize facilities."],
+    !hasCommunityBenefit && ["Mission/community benefit", "Need charity care and community benefit fields to separate mission support from operating loss."],
+    ["Facility-specific support", "Need intercompany transfers, management-fee, lease, subsidy, and service-line data to prove why a facility stays open."],
+    ["Payer mix and contracts", "Need Medicare, Medicaid, commercial, self-pay, supplemental payment, and managed-care contract context."],
+    ["Time trend", "Need multi-year HCRIS and system financials; one year can be distorted by settlements, investment income, acquisition, or accounting changes."]
+  ].filter(Boolean);
+  return gaps;
 }
 
 function renderMethodology() {
@@ -7268,68 +7603,88 @@ els.hospitalRiskRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-hospital-row]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.hospitalRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
   renderHospitalIntelligence();
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
 });
 
 els.hospitalRateValueRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-hospital-row]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.hospitalRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
   setTab("payment");
   renderHospitalIntelligence();
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
 });
 
 els.paymentHospitalRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-payment-hospital-row]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.paymentHospitalRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
   renderHospitalIntelligence();
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
 });
 
 els.pressureHospitalRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-pressure-hospital-row]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.pressureHospitalRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
   renderHospitalIntelligence();
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
 });
 
 els.leaderboardRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-leaderboard-row]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.leaderboardRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
   renderHospitalIntelligence();
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
 });
 
 els.binderPeerRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-binder-peer-id]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.binderPeerId;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
   renderHospitalIntelligence();
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderSystemFinanceDeepDive();
   els.binderPeerRows.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+els.systemFinanceRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-system-finance-row]");
+  if (!row) return;
+  state.selectedSystemId = row.dataset.systemFinanceRow;
+  renderSystemFinanceDeepDive();
+  els.systemFinanceDetail.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 els.hospitalDrilldown.addEventListener("click", (event) => {

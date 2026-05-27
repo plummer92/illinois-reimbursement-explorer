@@ -73,6 +73,7 @@
             <button class="tab" data-tab="binder">Evidence Binder</button>
             <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
             <button class="tab" data-tab="pressure">Financial Pressure</button>
+            <button class="tab" data-tab="systemFinance">System Financials</button>
             <button class="tab" data-tab="methodology">Methodology</button>
             <button class="tab" data-tab="workforce">Workforce Demand</button>
             <button class="tab" data-tab="sources">Sources</button>
@@ -875,6 +876,38 @@
             <section class="summary-section">
               <h3>Selected Facility Roles</h3>
               <div id="careerDrilldown" class="drilldown-card"></div>
+            </section>
+          </section>
+
+          <section id="systemFinancePanel" class="panel" aria-labelledby="systemFinance">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">System capacity layer</p>
+                <h2>System Financial Deep Dive</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              This page compares facility HCRIS stress against parent-system financial capacity. It helps ask whether a weak facility has system revenue scale, liquidity, debt capacity, community mission context, or strategic access reasons that could keep it operating.
+            </div>
+            <section class="summary-section">
+              <h3>System Capacity Summary</h3>
+              <div id="systemFinanceMetricCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Health System Registry</h3>
+              <div id="systemFinanceRows" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Selected System Detail</h3>
+              <div id="systemFinanceDetail" class="system-finance-detail"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Facility vs System</h3>
+              <div id="systemFinanceHospitalRows" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Missing Before Distress Claim</h3>
+              <div id="systemFinanceEvidenceGaps" class="finding-list"></div>
             </section>
           </section>
 

@@ -1724,6 +1724,22 @@ h3 {
   min-width: 1320px;
 }
 
+.table-row.system-finance-row {
+  grid-template-columns: minmax(280px, 1.25fr) repeat(4, minmax(105px, 0.45fr)) minmax(280px, 1fr);
+  min-width: 1080px;
+  cursor: pointer;
+}
+
+.table-row.system-finance-row:hover {
+  border-color: #99d8ca;
+  background: #f7fbf8;
+}
+
+.table-row.facility-system-row {
+  grid-template-columns: minmax(310px, 1.35fr) repeat(4, minmax(105px, 0.45fr)) minmax(210px, 0.85fr) minmax(310px, 1.2fr);
+  min-width: 1320px;
+}
+
 .table-row.enforcement-row {
   grid-template-columns: minmax(280px, 1.2fr) repeat(4, minmax(105px, 0.45fr)) minmax(180px, 0.8fr);
   min-width: 1040px;
@@ -1761,6 +1777,8 @@ h3 {
 
 .system-financial-row div,
 .system-financial-fact-row div,
+.system-finance-row div,
+.facility-system-row div,
 .enforcement-row div,
 .penalty-event-row div,
 .deficiency-row div {
@@ -2105,6 +2123,76 @@ h3 {
   gap: 8px;
 }
 
+.system-finance-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.system-finance-header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: start;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: linear-gradient(180deg, #f8fbfa, #fff);
+  padding: 16px;
+}
+
+.system-finance-header h3 {
+  margin: 0;
+}
+
+.system-finance-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.system-finance-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 14px;
+}
+
+.system-finance-fact-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.system-finance-fact-card {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.system-finance-fact-card p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 0;
+}
+
+.system-finance-fact-card small {
+  color: var(--muted);
+}
+
+.system-finance-fact-card a {
+  justify-self: start;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 6px 10px;
+  background: var(--soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: none;
+}
+
 .benchmark-scorecard {
   display: grid;
   gap: 12px;
@@ -2413,6 +2501,8 @@ h3 {
     .cost-report-grid,
     .operating-context-grid,
     .operating-context-split,
+    .system-finance-header,
+    .system-finance-split,
     .benchmark-domain-grid,
     .benchmark-evidence-strip,
     .benchmark-row,
@@ -2480,6 +2570,8 @@ h3 {
   .table-row.binder-peer-row,
   .table-row.system-financial-row,
   .table-row.system-financial-fact-row,
+  .table-row.system-finance-row,
+  .table-row.facility-system-row,
   .table-row.enforcement-row,
   .table-row.penalty-event-row,
   .table-row.deficiency-row,
@@ -2504,6 +2596,8 @@ h3 {
   .table-row.binder-peer-row,
   .table-row.system-financial-row,
   .table-row.system-financial-fact-row,
+  .table-row.system-finance-row,
+  .table-row.facility-system-row,
   .table-row.enforcement-row,
   .table-row.penalty-event-row,
   .table-row.deficiency-row,
