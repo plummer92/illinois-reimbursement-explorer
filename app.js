@@ -161,6 +161,9 @@ Object.assign(els, {
   leaderboardMethodology: document.querySelector("#leaderboardMethodology"),
   binderSnapshotCards: document.querySelector("#binderSnapshotCards"),
   binderEvidenceStack: document.querySelector("#binderEvidenceStack"),
+  binderEvidenceCompleteness: document.querySelector("#binderEvidenceCompleteness"),
+  binderPriceBasketRows: document.querySelector("#binderPriceBasketRows"),
+  binderPayerSpreadRows: document.querySelector("#binderPayerSpreadRows"),
   binderServiceExamples: document.querySelector("#binderServiceExamples"),
   binderPaymentRows: document.querySelector("#binderPaymentRows"),
   binderCostReportRows: document.querySelector("#binderCostReportRows"),
@@ -187,8 +190,12 @@ Object.assign(els, {
   queryPriceTransparencyButton: document.querySelector("#queryPriceTransparencyButton"),
   priceTransparencyStatus: document.querySelector("#priceTransparencyStatus"),
   priceTransparencyMetricCards: document.querySelector("#priceTransparencyMetricCards"),
+  priceTransparencyCoverageCards: document.querySelector("#priceTransparencyCoverageCards"),
+  priceTransparencyStatusRows: document.querySelector("#priceTransparencyStatusRows"),
   priceTransparencySourceRows: document.querySelector("#priceTransparencySourceRows"),
+  priceTransparencyBasketRows: document.querySelector("#priceTransparencyBasketRows"),
   priceTransparencyExampleRows: document.querySelector("#priceTransparencyExampleRows"),
+  priceTransparencyQualityRows: document.querySelector("#priceTransparencyQualityRows"),
   priceTransparencyLimitCards: document.querySelector("#priceTransparencyLimitCards"),
   refreshCareersButton: document.querySelector("#refreshCareersButton"),
   careersStatus: document.querySelector("#careersStatus"),
@@ -786,6 +793,7 @@ function renderPriceTransparency() {
   const records = getPriceTransparencyRecords();
   const facilities = new Set(sources.map((source) => source.facilityId || source.facilityName).filter(Boolean));
   const categories = summarizePriceTransparencyCategories(records);
+  const coverage = buildPriceTransparencyCoverage(sources, records);
 
   els.priceTransparencyMetricCards.innerHTML = renderWorkforceMetricCards([
     ["Tracked source files", sources.length],
@@ -794,8 +802,12 @@ function renderPriceTransparency() {
     ["Preview rows parsed", records.length],
     ["Service categories found", categories.length]
   ]);
+  els.priceTransparencyCoverageCards.innerHTML = renderPriceCoverageCards(coverage);
+  els.priceTransparencyStatusRows.innerHTML = renderPriceSourceStatusRows(coverage);
   els.priceTransparencySourceRows.innerHTML = renderPriceTransparencySourceRows(sources);
+  els.priceTransparencyBasketRows.innerHTML = renderPriceBasketCoverageRows(coverage);
   els.priceTransparencyExampleRows.innerHTML = renderPriceTransparencyExampleRows(records);
+  els.priceTransparencyQualityRows.innerHTML = renderPriceQualityRows(coverage);
   els.priceTransparencyLimitCards.innerHTML = renderPriceTransparencyLimits(sources);
 }
 
@@ -809,16 +821,137 @@ function getPriceTransparencyRecords() {
   return Array.isArray(state.priceTransparencyRecords) ? state.priceTransparencyRecords : [];
 }
 
+const priceServiceBasket = [
+  { key: "emergency", label: "ED visit", categories: ["Emergency"], terms: ["emergency", "er room", "ed visit", "99281", "99282", "99283", "99284", "99285"] },
+  { key: "observation", label: "Observation", categories: ["Observation"], terms: ["observation", "g0378", "obs"] },
+  { key: "room_board", label: "Room / board revenue code", categories: [], terms: ["room", "board", "revenue", "0120", "semi private", "bed"] },
+  { key: "inpatient_drg", label: "Inpatient DRG / room", categories: ["Inpatient/DRG"], terms: ["drg", "inpatient", "swing bed"] },
+  { key: "ct_mri", label: "CT / MRI imaging", categories: ["Imaging"], terms: ["ct ", "computed tomography", "mri", "scan"] },
+  { key: "lab_panel", label: "CBC / CMP / troponin", categories: ["Lab"], terms: ["cbc", "blood count", "metabolic", "cmp", "troponin", "panel", "laboratory"] },
+  { key: "pharmacy", label: "Drug / pharmacy", categories: ["Drug/Pharmacy"], terms: ["pharmacy", "drug", "injection", "infusion", "ndc", "j"] },
+  { key: "therapy", label: "Therapy", categories: ["Therapy"], terms: ["therapy", "physical therapy", "occupational therapy", "speech therapy", "rehab"] }
+];
+
+function getPriceBasketKey(record) {
+  const haystack = `${record.category || ""} ${record.description || ""} ${record.code || ""} ${record.codeType || ""} ${record.setting || ""} ${record.billingClass || ""}`.toLowerCase();
+  const match = priceServiceBasket.find((basket) =>
+    basket.categories.includes(record.category)
+    || basket.terms.some((term) => haystack.includes(term))
+  );
+  return match?.key || "other";
+}
+
+function getPriceQualityFlags(record, source) {
+  const flags = [];
+  if (record.serviceMatchType) flags.push(record.serviceMatchType);
+  else flags.push(getPriceBasketKey(record) === "other" ? "fuzzy match" : "exact/category match");
+  if (!Number.isFinite(record.amount)) flags.push("amount missing");
+  if (/percent|percentage|algorithm|formula|fee schedule/i.test(`${record.chargeType || ""} ${record.rateMethod || ""}`)) flags.push("formula or percent-of-charge");
+  if (record.payer || record.plan) flags.push("payer-specific");
+  if (!record.payer && /gross/i.test(record.chargeType || "")) flags.push("gross-charge only");
+  if (/medicare|medicaid|excluded/i.test(source?.sourceNote || record.limitations || "")) flags.push("public payer excluded");
+  if (!record.code) flags.push("code missing");
+  return [...new Set(flags)];
+}
+
+function buildPriceTransparencyCoverage(sources, records) {
+  const recordsByFacility = new Map();
+  records.forEach((record) => {
+    const key = String(record.facilityId || record.facilityName || "");
+    recordsByFacility.set(key, [...(recordsByFacility.get(key) || []), record]);
+  });
+  const statuses = [
+    ["mapped", sources.length],
+    ["not found", sources.filter((source) => source.sourceStatus === "not_found").length],
+    ["inaccessible", sources.filter((source) => source.parserStatus === "error" || source.sourceStatus === "inaccessible").length],
+    ["parsed", sources.filter((source) => source.parserStatus === "parsed").length],
+    ["parse failed", sources.filter((source) => ["error", "no_examples"].includes(source.parserStatus)).length]
+  ];
+  const basketRows = priceServiceBasket.map((basket) => {
+    const matched = records.filter((record) => getPriceBasketKey(record) === basket.key);
+    return {
+      ...basket,
+      rows: matched.length,
+      facilities: new Set(matched.map((record) => String(record.facilityId || record.facilityName || ""))).size,
+      payerRows: matched.filter((record) => record.payer || record.plan).length,
+      cashRows: matched.filter((record) => Number.isFinite(record.cashPrice)).length,
+      grossRows: matched.filter((record) => Number.isFinite(record.grossCharge)).length
+    };
+  });
+  const sourceRows = sources.map((source) => {
+    const facilityRecords = recordsByFacility.get(String(source.facilityId || source.facilityName || "")) || [];
+    const baskets = new Set(facilityRecords.map(getPriceBasketKey).filter((key) => key !== "other"));
+    return {
+      source,
+      records: facilityRecords,
+      basketCount: baskets.size,
+      payerRows: facilityRecords.filter((record) => record.payer || record.plan).length,
+      formulaRows: facilityRecords.filter((record) => /percent|percentage|algorithm|formula|fee schedule/i.test(`${record.chargeType || ""} ${record.rateMethod || ""}`)).length,
+      cashRows: facilityRecords.filter((record) => Number.isFinite(record.cashPrice)).length,
+      status: source.parserStatus || source.sourceStatus || "mapped"
+    };
+  });
+  const qualityCounts = new Map();
+  records.forEach((record) => {
+    const source = sources.find((item) => String(item.facilityId) === String(record.facilityId));
+    getPriceQualityFlags(record, source).forEach((flag) => qualityCounts.set(flag, (qualityCounts.get(flag) || 0) + 1));
+  });
+  return {
+    statuses,
+    basketRows,
+    sourceRows,
+    qualityCounts: [...qualityCounts.entries()].sort((a, b) => b[1] - a[1]),
+    mappedFacilities: new Set(sources.map((source) => source.facilityId || source.facilityName).filter(Boolean)).size,
+    parsedFacilities: new Set(records.map((record) => record.facilityId || record.facilityName).filter(Boolean)).size
+  };
+}
+
+function renderPriceCoverageCards(coverage) {
+  const completeBasketFacilities = coverage.sourceRows.filter((row) => row.basketCount >= 4).length;
+  const usablePayerFacilities = coverage.sourceRows.filter((row) => row.payerRows > 0).length;
+  return renderWorkforceMetricCards([
+    ["Mapped facilities", coverage.mappedFacilities],
+    ["Parsed facilities", coverage.parsedFacilities],
+    ["Basket-ready facilities", completeBasketFacilities],
+    ["Payer-rate facilities", usablePayerFacilities],
+    ["Service basket items", priceServiceBasket.length]
+  ]);
+}
+
+function renderPriceSourceStatusRows(coverage) {
+  return coverage.statuses.map(([status, count]) => `
+    <article class="table-row price-status-row">
+      <div>
+        <strong>${escapeHtml(status)}</strong>
+        <small>${escapeHtml(getPriceStatusMeaning(status))}</small>
+      </div>
+      <div class="numeric">${formatIntegerOrNA(count)}</div>
+    </article>
+  `).join("");
+}
+
+function getPriceStatusMeaning(status) {
+  const meanings = {
+    mapped: "A source record exists with facility, system, page URL, file URL, type, discovery date, and confidence.",
+    "not found": "No public machine-readable source has been mapped yet.",
+    inaccessible: "The source exists but could not be reached by the importer.",
+    parsed: "The importer produced normalized benchmark rows.",
+    "parse failed": "The file loaded poorly or produced no comparable rows."
+  };
+  return meanings[status] || "Source discovery status.";
+}
+
 function renderPriceTransparencySourceRows(sources) {
   if (!sources.length) {
     return '<p class="status">No price transparency sources are mapped yet.</p>';
   }
 
   return sources.map((source) => `
-    <article class="table-row compact">
+    <article class="table-row price-source-row">
       <div>
         <strong>${escapeHtml(source.facilityName || "Unknown facility")}</strong>
-        <small>${escapeHtml(source.systemName || "Unknown system")} / ${escapeHtml(source.updatedAsOf || "Unknown update date")} / ${escapeHtml(source.fileFormat || "unknown format")} / ${escapeHtml(source.parserStatus || source.sourceStatus || "mapped")}</small>
+        <small>${escapeHtml(source.systemName || "Unknown system")} / ${escapeHtml(source.fileFormat || "unknown format")} / ${escapeHtml(source.parserStatus || source.sourceStatus || "mapped")}</small>
+        <small>Discovered ${escapeHtml(source.discoveryDate || source.lastQueried || source.updatedAsOf || "unknown date")} / ${escapeHtml(source.confidence || inferPriceSourceConfidence(source))} confidence</small>
         <small>${escapeHtml(source.recordsParsed !== undefined ? `${source.recordsParsed} parsed examples` : "Not parsed yet")}</small>
         <small>${escapeHtml(source.sourceNote || "")}</small>
         ${source.parserMessage ? `<small>${escapeHtml(source.parserMessage)}</small>` : ""}
@@ -831,6 +964,57 @@ function renderPriceTransparencySourceRows(sources) {
   `).join("");
 }
 
+function inferPriceSourceConfidence(source) {
+  if (source.parserStatus === "parsed" && source.machineReadableFileUrl) return "high";
+  if (source.sourceStatus === "direct_file" || source.machineReadableFileUrl) return "medium";
+  if (source.sourceStatus === "portal_only") return "medium";
+  return "low";
+}
+
+function renderPriceBasketCoverageRows(coverage) {
+  if (!coverage.basketRows.length) {
+    return '<p class="status">No service basket coverage is available yet.</p>';
+  }
+  const rows = coverage.basketRows.map((basket) => `
+    <article class="table-row price-basket-row">
+      <div>
+        <strong>${escapeHtml(basket.label)}</strong>
+        <small>${escapeHtml(getBasketUseText(basket))}</small>
+      </div>
+      <div class="numeric">${formatIntegerOrNA(basket.rows)} rows</div>
+      <div class="numeric">${formatIntegerOrNA(basket.facilities)} facilities</div>
+      <div class="numeric">${formatIntegerOrNA(basket.payerRows)} payer rows</div>
+      <div class="numeric">${formatIntegerOrNA(basket.cashRows)} cash rows</div>
+      <div class="numeric">${formatIntegerOrNA(basket.grossRows)} gross rows</div>
+    </article>
+  `).join("");
+  return `
+    <article class="table-row price-basket-row header">
+      <div>Benchmark Service</div>
+      <div class="numeric">Rows</div>
+      <div class="numeric">Facilities</div>
+      <div class="numeric">Payer</div>
+      <div class="numeric">Cash</div>
+      <div class="numeric">Gross</div>
+    </article>
+    ${rows}
+  `;
+}
+
+function getBasketUseText(basket) {
+  const notes = {
+    emergency: "Emergency department CPT/revenue-code examples.",
+    observation: "Observation status examples, often separate from inpatient admission.",
+    inpatient_drg: "DRG, inpatient, room, or board examples that need LOS and discharge context.",
+    ct_mri: "High-cost diagnostic imaging examples.",
+    lab_panel: "Common lab and cardiac marker examples.",
+    pharmacy: "Drug, injection, infusion, and NDC/J-code examples.",
+    therapy: "PT, OT, speech, rehab, or therapy examples.",
+    room_board: "Room/board or revenue-code examples that help frame facility charges."
+  };
+  return notes[basket.key] || "Standard benchmark service.";
+}
+
 function renderPriceTransparencyExampleRows(records) {
   if (!records.length) {
     return '<p class="status">Click Query Price Files to preview Memorial Health standard-charge rows. Browser security may block direct CSV reading; source links remain available for manual download or future server-side import.</p>';
@@ -840,11 +1024,13 @@ function renderPriceTransparencyExampleRows(records) {
     <article class="table-row price-example-row">
       <div>
         <strong>${escapeHtml(record.description || "Unknown item/service")}</strong>
-        <small>${escapeHtml(record.category)} / ${escapeHtml(record.code || "No code found")} / ${escapeHtml(record.setting || "Unknown setting")}</small>
+        <small>${escapeHtml(record.facilityName || "Unknown facility")} / ${escapeHtml(record.category)} / ${escapeHtml(record.code || "No code found")}</small>
+        <small>${escapeHtml(record.setting || "Unknown setting")} / ${escapeHtml(record.billingClass || "Unknown billing class")}</small>
       </div>
       <div>${escapeHtml(record.chargeType || "Price field")}</div>
       <div class="numeric">${formatCurrencyOrNA(record.amount)}</div>
-      <div>${escapeHtml(record.payer || "N/A")}</div>
+      <div>${escapeHtml(record.payer || "N/A")}${record.plan ? `<small>${escapeHtml(record.plan)}</small>` : ""}</div>
+      <div>${getPriceQualityFlags(record).slice(0, 3).map((flag) => `<span class="tag">${escapeHtml(flag)}</span>`).join(" ")}</div>
     </article>
   `).join("");
 
@@ -854,9 +1040,39 @@ function renderPriceTransparencyExampleRows(records) {
       <div>Charge Type</div>
       <div class="numeric">Amount</div>
       <div>Payer</div>
+      <div>Quality Flags</div>
     </article>
     ${rows}
   `;
+}
+
+function renderPriceQualityRows(coverage) {
+  if (!coverage.qualityCounts.length) {
+    return '<p class="status">No quality checks are available until normalized price rows are parsed.</p>';
+  }
+  return coverage.qualityCounts.map(([flag, count]) => `
+    <article class="table-row price-quality-row">
+      <div>
+        <strong>${escapeHtml(flag)}</strong>
+        <small>${escapeHtml(getPriceQualityMeaning(flag))}</small>
+      </div>
+      <div class="numeric">${formatIntegerOrNA(count)}</div>
+    </article>
+  `).join("");
+}
+
+function getPriceQualityMeaning(flag) {
+  const meanings = {
+    "exact/category match": "The row matched a basket by category or strong term match.",
+    "fuzzy match": "The row may be useful, but the service mapping needs human validation.",
+    "amount missing": "The row does not expose a numeric dollar amount.",
+    "formula or percent-of-charge": "The row may be a contract formula, not a dollar rate.",
+    "payer-specific": "The row names a payer or plan and should not be compared as a generic price.",
+    "gross-charge only": "Gross charge is usually a chargemaster signal, not expected payment.",
+    "public payer excluded": "Medicare or Medicaid may need separate public payer files.",
+    "code missing": "The service needs code validation before cross-hospital comparison."
+  };
+  return meanings[flag] || "Importer quality flag for comparability review.";
 }
 
 function summarizePriceTransparencyCategories(records) {
@@ -1226,7 +1442,7 @@ function renderHospitalLeaderboard() {
   const hospitals = getFilteredHospitals();
   const scored = hospitals
     .map((hospital) => scoreHospitalLeaderboard(hospital))
-    .sort((a, b) => b.totalScore - a.totalScore || b.evidenceScore - a.evidenceScore || a.hospital.facilityName.localeCompare(b.hospital.facilityName));
+    .sort((a, b) => b.evidenceCompletenessScore - a.evidenceCompletenessScore || b.totalScore - a.totalScore || a.hospital.facilityName.localeCompare(b.hospital.facilityName));
   const selectedScore = scored.find((item) => item.hospital.facilityId === state.selectedHospitalId) || scored[0] || null;
   if (selectedScore) state.selectedHospitalId = selectedScore.hospital.facilityId;
 
@@ -1244,6 +1460,9 @@ function renderFacilityBinderPage() {
   if (!selected) {
     els.binderSnapshotCards.innerHTML = "";
     els.binderEvidenceStack.innerHTML = '<p class="status">No hospital record is available for the evidence binder.</p>';
+    els.binderEvidenceCompleteness.innerHTML = "";
+    els.binderPriceBasketRows.innerHTML = "";
+    els.binderPayerSpreadRows.innerHTML = "";
     els.binderServiceExamples.innerHTML = "";
     els.binderPaymentRows.innerHTML = "";
     els.binderCostReportRows.innerHTML = "";
@@ -1264,6 +1483,9 @@ function renderFacilityBinderPage() {
 
   els.binderSnapshotCards.innerHTML = renderBinderSnapshotCards(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
   els.binderEvidenceStack.innerHTML = renderBinderEvidenceStack(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
+  els.binderEvidenceCompleteness.innerHTML = renderBinderEvidenceCompleteness(selected, binder, priceRows, paymentRows, costReport, rateSheet, hfsPayment);
+  els.binderPriceBasketRows.innerHTML = renderBinderPriceBasketComparison(selected, priceRows);
+  els.binderPayerSpreadRows.innerHTML = renderBinderPayerSpreadRows(selected, priceRows);
   els.binderServiceExamples.innerHTML = renderBinderServiceExampleRows(priceRows);
   els.binderPaymentRows.innerHTML = renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment);
   els.binderCostReportRows.innerHTML = renderBinderCostReportRows(selected, costReport);
@@ -1335,6 +1557,9 @@ function buildCoverageSummary() {
   const matchedHospitalRateSheets = state.hospitalRateSheets.filter((sheet) => sheet.cmsFacilityId).length;
   const hospitalRateValueCount = state.hospitalRateValues.filter((sheet) => sheet.parseStatus === "parsed").length;
   const matchedHospitalRateValues = state.hospitalRateValues.filter((sheet) => sheet.parseStatus === "parsed" && sheet.cmsFacilityId).length;
+  const priceSources = getPriceTransparencySources();
+  const priceRecords = getPriceTransparencyRecords();
+  const parsedPriceSources = priceSources.filter((source) => source.parserStatus === "parsed").length;
   const chainCount = summarizeChains(getRiskFacilities()).filter((chain) => chain.count >= 2).length;
   const sourceCount = state.sources.length;
   return {
@@ -1347,6 +1572,9 @@ function buildCoverageSummary() {
     matchedHospitalRateSheets,
     hospitalRateValueCount,
     matchedHospitalRateValues,
+    priceSourceCount: priceSources.length,
+    parsedPriceSources,
+    priceRecordCount: priceRecords.length,
     chainCount,
     sourceCount,
     layers: [
@@ -1401,10 +1629,10 @@ function buildCoverageSummary() {
       },
       {
         layer: "Hospital price transparency files",
-        records: 0,
-        coverage: "Selected hospital MRFs",
-        status: "Next",
-        interpretation: "Needed for gross charge, cash price, and payer negotiated-rate comparison."
+        records: priceRecords.length,
+        coverage: `${parsedPriceSources} parsed / ${priceSources.length} mapped sources`,
+        status: parsedPriceSources ? "Parsed" : "Next",
+        interpretation: "Gross charge, cash price, payer negotiated-rate, source status, service basket, and comparability flags."
       }
     ]
   };
@@ -1423,7 +1651,8 @@ function renderCoverageMetricCards(coverage) {
     ["Parsed hospital rates", coverage.hospitalRateValueCount],
     ["Matched parsed rates", coverage.matchedHospitalRateValues],
     ["Multi-facility operators", coverage.chainCount],
-    ["Pending price layers", 1]
+    ["Price sources mapped", coverage.priceSourceCount],
+    ["Price rows parsed", coverage.priceRecordCount]
   ];
   return metrics.map(([label, value]) => `
     <article class="metric-card">
@@ -2311,6 +2540,7 @@ function scoreHospitalLeaderboard(hospital) {
   const paymentRows = getProviderPaymentRowsForHospital(hospital);
   const careers = getFacilityCareerRecord(hospital);
   const rating = Number.isFinite(hospital.overallRating) ? hospital.overallRating : null;
+  const priceCoverage = buildFacilityPriceEvidenceCoverage(priceRows);
 
   let qualityScore = rating ? rating * 5 : 8;
   qualityScore += Math.max(0, 6 - (Number(hospital.readmissionWorse) || 0) * 2);
@@ -2347,8 +2577,9 @@ function scoreHospitalLeaderboard(hospital) {
   evidenceScore = Math.min(15, evidenceScore);
 
   const totalScore = Math.round((qualityScore + accessScore + financeScore + evidenceScore) * 10) / 10;
-  const reasons = buildHospitalLeaderboardReasons(hospital, { qualityScore, accessScore, financeScore, evidenceScore, costReport, priceRows, paymentRows, careers });
-  const gaps = buildHospitalLeaderboardGaps(hospital, { costReport, priceRows, paymentRows, careers });
+  const evidenceCompletenessScore = scoreEvidenceCompleteness(hospital, { costReport, priceRows, paymentRows, careers, priceCoverage });
+  const reasons = buildHospitalLeaderboardReasons(hospital, { qualityScore, accessScore, financeScore, evidenceScore, evidenceCompletenessScore, costReport, priceRows, paymentRows, careers, priceCoverage });
+  const gaps = buildHospitalLeaderboardGaps(hospital, { costReport, priceRows, paymentRows, careers, priceCoverage });
 
   return {
     hospital,
@@ -2356,14 +2587,46 @@ function scoreHospitalLeaderboard(hospital) {
     accessScore: roundScore(accessScore),
     financeScore: roundScore(financeScore),
     evidenceScore: roundScore(evidenceScore),
+    evidenceCompletenessScore: roundScore(evidenceCompletenessScore),
     totalScore,
     reasons,
     gaps,
     costReport,
     priceRows,
+    priceCoverage,
     paymentRows,
     careers
   };
+}
+
+function buildFacilityPriceEvidenceCoverage(priceRows) {
+  const baskets = new Set(priceRows.map(getPriceBasketKey).filter((key) => key !== "other"));
+  const payerRows = priceRows.filter((record) => record.payer || record.plan).length;
+  const comparableRows = priceRows.filter((record) => Number.isFinite(record.amount) && !getPriceQualityFlags(record).some((flag) => ["amount missing", "formula or percent-of-charge"].includes(flag))).length;
+  const grossOnlyRows = priceRows.filter((record) => getPriceQualityFlags(record).includes("gross-charge only")).length;
+  const formulaRows = priceRows.filter((record) => getPriceQualityFlags(record).includes("formula or percent-of-charge")).length;
+  return {
+    baskets,
+    basketCount: baskets.size,
+    payerRows,
+    comparableRows,
+    grossOnlyRows,
+    formulaRows
+  };
+}
+
+function scoreEvidenceCompleteness(hospital, context) {
+  let score = 0;
+  if (hospital.hfsRateSheet || hospital.hfsPayment) score += 15;
+  if (context.paymentRows.length) score += 15;
+  if (context.costReport) score += 20;
+  if (context.priceRows.length) score += 15;
+  score += Math.min(15, context.priceCoverage.basketCount * 3);
+  if (context.priceCoverage.payerRows) score += 8;
+  if (context.careers?.careerPageUrl) score += 5;
+  if (getBenchmarkScorecardForHospital(hospital)) score += 5;
+  if (hospital.systemAffiliation) score += 2;
+  return Math.min(100, score);
 }
 
 function scorePositiveRatio(value, low, high, points) {
@@ -2395,7 +2658,8 @@ function buildHospitalLeaderboardReasons(hospital, context) {
   }
   if (hospital.hfsPayment) reasons.push("parsed HFS hospital payment parameters loaded");
   if (context.paymentRows.length) reasons.push(`${formatIntegerOrNA(context.paymentRows.length)} HFS provider-payment row${context.paymentRows.length === 1 ? "" : "s"} matched`);
-  if (context.priceRows.length) reasons.push(`${formatIntegerOrNA(context.priceRows.length)} price transparency examples attached`);
+  if (context.priceRows.length) reasons.push(`${formatIntegerOrNA(context.priceRows.length)} price rows across ${formatIntegerOrNA(context.priceCoverage?.basketCount || 0)} basket service types`);
+  if (context.evidenceCompletenessScore) reasons.push(`${formatNumberOrNA(context.evidenceCompletenessScore, 0)} / 100 evidence completeness`);
   if (hospital.systemAffiliation) reasons.push(`${hospital.systemAffiliation.systemName} system context mapped`);
   return reasons.slice(0, 5);
 }
@@ -2404,6 +2668,8 @@ function buildHospitalLeaderboardGaps(hospital, context) {
   const gaps = [];
   if (!context.costReport) gaps.push("HCRIS cost-report economics not attached yet");
   if (!context.priceRows.length) gaps.push("price transparency rows not attached yet");
+  else if ((context.priceCoverage?.basketCount || 0) < 4) gaps.push("price transparency service basket is still thin");
+  if (!context.priceCoverage?.payerRows) gaps.push("payer-specific negotiated-rate rows not usable yet");
   if (!context.paymentRows.length) gaps.push("provider-level public payment rows not matched yet");
   if (!hospital.hfsPayment) gaps.push("parsed HFS rate parameters not available");
   if (!context.careers?.careerPageUrl) gaps.push("workforce/careers signal not linked");
@@ -2421,14 +2687,16 @@ function renderLeaderboardMetricCards(scored) {
   ).size;
   const top = scored[0];
   const fiveStar = scored.filter((item) => item.hospital.overallRating === 5).length;
+  const basketReady = scored.filter((item) => item.priceCoverage?.basketCount >= 4).length;
   const cards = [
     ["Hospitals ranked", formatIntegerOrNA(scored.length), "Current filtered Illinois hospital set"],
-    ["Top current score", top ? `${formatNumberOrNA(top.totalScore, 1)} / 100` : "N/A", top?.hospital.facilityName || "No hospital selected"],
+    ["Top evidence binder", top ? `${formatNumberOrNA(top.evidenceCompletenessScore, 0)} / 100` : "N/A", top?.hospital.facilityName || "No hospital selected"],
     ["5-star hospitals", formatIntegerOrNA(fiveStar), "CMS overall rating loaded"],
     ["HFS rate context", formatIntegerOrNA(withHfs), "Published hospital rate-sheet evidence"],
     ["Provider payments matched", formatIntegerOrNA(withProviderPayments), "2023 HFS public payment rows"],
     ["Cost reports attached", formatIntegerOrNA(withCost), "HCRIS economics currently loaded"],
-    ["Scoring caution", "Screening only", "Evidence gaps change the ranking"]
+    ["Basket-ready price files", formatIntegerOrNA(basketReady), "At least 4 benchmark service categories"],
+    ["Ranking caution", "Evidence first", "Cheapest is not ranked as best"]
   ];
   return cards.map(([label, value, detail]) => `
     <article class="metric-card">
@@ -2447,6 +2715,7 @@ function renderLeaderboardRows(scored) {
         <strong>#${index + 1} ${escapeHtml(item.hospital.facilityName)}</strong>
         <small>${escapeHtml(item.hospital.city)} / ${escapeHtml(item.hospital.county)} / ${escapeHtml(item.hospital.hospitalType)}</small>
       </div>
+      <div class="numeric">${formatNumberOrNA(item.evidenceCompletenessScore, 0)} evidence</div>
       <div class="numeric">${formatNumberOrNA(item.totalScore, 1)}</div>
       <div>${formatNumberOrNA(item.qualityScore, 1)} quality</div>
       <div>${formatNumberOrNA(item.accessScore, 1)} access</div>
@@ -2465,7 +2734,7 @@ function renderLeaderboardDrilldown(item) {
         <h3>${escapeHtml(hospital.facilityName)}</h3>
         <p>${escapeHtml(hospital.city)} / ${escapeHtml(hospital.county)} / ${escapeHtml(hospital.hospitalType)}</p>
       </div>
-      <span class="risk-pill risk-low">${formatNumberOrNA(item.totalScore, 1)} score</span>
+      <span class="risk-pill risk-low">${formatNumberOrNA(item.evidenceCompletenessScore, 0)} evidence</span>
     </div>
     <section class="profile-section">
       <h4>Score Components</h4>
@@ -2474,6 +2743,8 @@ function renderLeaderboardDrilldown(item) {
         ${renderProfileMetric("Access", `${formatNumberOrNA(item.accessScore, 1)} / 20`)}
         ${renderProfileMetric("Finance", `${formatNumberOrNA(item.financeScore, 1)} / 25`)}
         ${renderProfileMetric("Evidence", `${formatNumberOrNA(item.evidenceScore, 1)} / 15`)}
+        ${renderProfileMetric("Evidence completeness", `${formatNumberOrNA(item.evidenceCompletenessScore, 0)} / 100`)}
+        ${renderProfileMetric("Price basket", `${formatIntegerOrNA(item.priceCoverage?.basketCount || 0)} / ${priceServiceBasket.length}`)}
         ${renderProfileMetric("CMS rating", starLabel(hospital.overallRating))}
         ${renderProfileMetric("ER", hospital.emergencyServices || "N/A")}
       </div>
@@ -2498,7 +2769,8 @@ function renderLeaderboardMethodology() {
     "Quality is driven by CMS overall rating and negative quality signals such as readmission, mortality, and safety worse-than-benchmark counts.",
     "Access rewards emergency services, Critical Access Hospital role, rural context, birthing-friendly status, and mapped system context.",
     "Finance uses HCRIS cost-report economics when loaded. Illinois HCRIS coverage is now broad, but hospitals without matched rows still receive a conservative placeholder.",
-    "Evidence rewards attached source layers: HFS rates/payment, HCRIS, price transparency, workforce, and benchmark mapping.",
+    "The table is sorted by evidence completeness first: HFS rates/payment, HCRIS economics, price transparency rows, service basket coverage, payer-rate usability, workforce, benchmark mapping, and system context.",
+    "Price transparency is not a cheapest-is-best rank. At this stage, parsed and comparable evidence earns credit; payment, cost, and quality interpretation happens in the binder.",
     "Use the leaderboard to decide which hospitals deserve deeper binder work. Do not use it as an official statewide performance ranking."
   ];
   return notes.map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("");
@@ -2886,6 +3158,147 @@ function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enr
   `).join("");
 }
 
+function renderBinderEvidenceCompleteness(hospital, binder, priceRows, paymentRows, costReport, rateSheet, hfsPayment) {
+  const careers = getFacilityCareerRecord(hospital);
+  const priceCoverage = buildFacilityPriceEvidenceCoverage(priceRows);
+  const evidenceCompletenessScore = scoreEvidenceCompleteness(hospital, { costReport, priceRows, paymentRows, careers, priceCoverage });
+  const scorecard = getBenchmarkScorecardForHospital(hospital);
+  const cards = [
+    ["Completeness score", `${formatNumberOrNA(evidenceCompletenessScore, 0)} / 100`, "Evidence-first binder rank"],
+    ["Price basket", `${formatIntegerOrNA(priceCoverage.basketCount)} / ${priceServiceBasket.length}`, "Benchmark services represented"],
+    ["Payer-rate rows", formatIntegerOrNA(priceCoverage.payerRows), "Negotiated payer/plan signals"],
+    ["Public payment", paymentRows.length || rateSheet || hfsPayment ? "Loaded" : "Missing", "HFS payment/rate evidence"],
+    ["Cost economics", costReport ? "Loaded" : "Missing", "CMS HCRIS facility economics"],
+    ["Workforce", careers?.careerPageUrl ? "Linked" : "Missing", "Careers/job-opening context"],
+    ["Benchmark bridge", scorecard ? "Mapped" : "Missing", "Internal metric to public-evidence map"]
+  ];
+  return cards.map(([label, value, detail]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(label)}</span>
+      <strong>${escapeHtml(value)}</strong>
+      <small>${escapeHtml(detail)}</small>
+    </article>
+  `).join("");
+}
+
+function renderBinderPriceBasketComparison(hospital, priceRows) {
+  const allRows = getPriceTransparencyRecords();
+  if (!priceRows.length) {
+    return '<p class="status">No parsed price rows are attached for this hospital yet. Query price files or map the hospital machine-readable file.</p>';
+  }
+  const systemName = priceRows[0]?.systemName || hospital.systemAffiliation?.systemName || "";
+  const rows = priceServiceBasket.map((basket) => {
+    const selectedRows = priceRows.filter((record) => getPriceBasketKey(record) === basket.key);
+    const peerRows = allRows.filter((record) =>
+      getPriceBasketKey(record) === basket.key
+      && String(record.facilityId) !== String(hospital.facilityId)
+      && systemName
+      && record.systemName === systemName
+    );
+    const stateRows = allRows.filter((record) => getPriceBasketKey(record) === basket.key);
+    return {
+      basket,
+      selected: summarizePriceAmounts(selectedRows),
+      peer: summarizePriceAmounts(peerRows),
+      state: summarizePriceAmounts(stateRows),
+      selectedRows
+    };
+  });
+
+  return `
+    <article class="table-row binder-price-basket-row header">
+      <div>Benchmark Service</div>
+      <div class="numeric">Selected Median</div>
+      <div class="numeric">System Median</div>
+      <div class="numeric">State Median</div>
+      <div class="numeric">Rows</div>
+      <div>Comparability</div>
+    </article>
+    ${rows.map((row) => {
+      const flags = summarizeSelectedPriceFlags(row.selectedRows);
+      return `
+        <article class="table-row binder-price-basket-row">
+          <div>
+            <strong>${escapeHtml(row.basket.label)}</strong>
+            <small>${escapeHtml(getBasketUseText(row.basket))}</small>
+          </div>
+          <div class="numeric">${formatCurrencyOrNA(row.selected.median)}</div>
+          <div class="numeric">${formatCurrencyOrNA(row.peer.median)}</div>
+          <div class="numeric">${formatCurrencyOrNA(row.state.median)}</div>
+          <div class="numeric">${formatIntegerOrNA(row.selected.count)} / ${formatIntegerOrNA(row.state.count)} statewide</div>
+          <div>${flags.length ? flags.map((flag) => `<span class="tag">${escapeHtml(flag)}</span>`).join(" ") : '<span class="tag">not covered</span>'}</div>
+        </article>
+      `;
+    }).join("")}
+  `;
+}
+
+function renderBinderPayerSpreadRows(hospital, priceRows) {
+  if (!priceRows.length) return '<p class="status">No payer/rate spread can be calculated until this hospital has parsed price rows.</p>';
+  const groups = priceServiceBasket
+    .map((basket) => {
+      const rows = priceRows.filter((record) => getPriceBasketKey(record) === basket.key);
+      const payerRows = rows.filter((record) => record.payer || record.plan);
+      const grossRows = rows.filter((record) => Number.isFinite(record.grossCharge));
+      const cashRows = rows.filter((record) => Number.isFinite(record.cashPrice));
+      return {
+        basket,
+        rows,
+        payerRows,
+        gross: summarizePriceAmounts(grossRows.map((record) => ({ ...record, amount: record.grossCharge }))),
+        cash: summarizePriceAmounts(cashRows.map((record) => ({ ...record, amount: record.cashPrice }))),
+        payer: summarizePriceAmounts(payerRows),
+        plans: new Set(payerRows.map((record) => `${record.payer || ""} ${record.plan || ""}`.trim()).filter(Boolean)).size
+      };
+    })
+    .filter((group) => group.rows.length);
+
+  return `
+    <article class="table-row binder-payer-spread-row header">
+      <div>Service Basket</div>
+      <div class="numeric">Gross Median</div>
+      <div class="numeric">Cash Median</div>
+      <div class="numeric">Payer Median</div>
+      <div class="numeric">Payer Range</div>
+      <div>Use Carefully</div>
+    </article>
+    ${groups.map((group) => `
+      <article class="table-row binder-payer-spread-row">
+        <div>
+          <strong>${escapeHtml(group.basket.label)}</strong>
+          <small>${formatIntegerOrNA(group.rows.length)} rows / ${formatIntegerOrNA(group.plans)} payer-plan names</small>
+        </div>
+        <div class="numeric">${formatCurrencyOrNA(group.gross.median)}</div>
+        <div class="numeric">${formatCurrencyOrNA(group.cash.median)}</div>
+        <div class="numeric">${formatCurrencyOrNA(group.payer.median)}</div>
+        <div class="numeric">${formatCurrencyOrNA(group.payer.min)} - ${formatCurrencyOrNA(group.payer.max)}</div>
+        <div><span class="tag">price != payment</span> <span class="tag">${group.payerRows.length ? "payer-specific" : "no payer rows"}</span></div>
+      </article>
+    `).join("")}
+  `;
+}
+
+function summarizePriceAmounts(rows) {
+  const amounts = rows
+    .map((record) => Number(record.amount))
+    .filter((value) => Number.isFinite(value) && value >= 0)
+    .sort((a, b) => a - b);
+  return {
+    count: amounts.length,
+    min: amounts.length ? amounts[0] : null,
+    median: amounts.length ? percentile(amounts, 0.5) : null,
+    max: amounts.length ? amounts[amounts.length - 1] : null
+  };
+}
+
+function summarizeSelectedPriceFlags(rows) {
+  if (!rows.length) return [];
+  const flags = new Set();
+  rows.forEach((record) => getPriceQualityFlags(record).forEach((flag) => flags.add(flag)));
+  const priority = ["payer-specific", "gross-charge only", "formula or percent-of-charge", "amount missing", "public payer excluded", "code missing", "exact/category match"];
+  return priority.filter((flag) => flags.has(flag)).slice(0, 3);
+}
+
 function renderBinderServiceExampleRows(priceRows) {
   if (!priceRows.length) {
     return '<p class="status">No parsed price examples are attached yet. Query price files to populate CPT/HCPCS, revenue-code, drug, lab, imaging, ED, observation, and inpatient examples.</p>';
@@ -2895,10 +3308,12 @@ function renderBinderServiceExampleRows(priceRows) {
       <div>
         <strong>${escapeHtml(record.description || "Unknown service")}</strong>
         <small>${escapeHtml(record.category || "Uncategorized")} / ${escapeHtml(record.code || "No code")} / ${escapeHtml(record.setting || "Unknown setting")}</small>
+        <small>${escapeHtml(record.billingClass || "Unknown billing class")} / ${escapeHtml(record.comparabilityStatus || "comparability pending")}</small>
       </div>
       <div>${escapeHtml(record.chargeType || "Price field")}</div>
       <div class="numeric">${formatCurrencyOrNA(record.amount)}</div>
-      <div>${escapeHtml(record.payer || "N/A")}</div>
+      <div>${escapeHtml(record.payer || "N/A")}${record.plan ? `<small>${escapeHtml(record.plan)}</small>` : ""}</div>
+      <div>${getPriceQualityFlags(record).slice(0, 3).map((flag) => `<span class="tag">${escapeHtml(flag)}</span>`).join(" ")}</div>
     </article>
   `).join("");
 }

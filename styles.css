@@ -1684,14 +1684,38 @@ h3 {
   min-width: 620px;
 }
 
+.table-row.price-status-row,
+.table-row.price-quality-row {
+  grid-template-columns: minmax(260px, 1fr) 110px;
+}
+
+.table-row.price-source-row {
+  grid-template-columns: minmax(320px, 1fr) auto;
+}
+
+.table-row.price-basket-row {
+  grid-template-columns: minmax(230px, 1.2fr) repeat(5, minmax(95px, 0.45fr));
+  min-width: 980px;
+}
+
+.table-row.binder-price-basket-row {
+  grid-template-columns: minmax(250px, 1.2fr) repeat(4, minmax(105px, 0.45fr)) minmax(210px, 0.85fr);
+  min-width: 1080px;
+}
+
+.table-row.binder-payer-spread-row {
+  grid-template-columns: minmax(240px, 1.2fr) repeat(4, minmax(115px, 0.45fr)) minmax(190px, 0.75fr);
+  min-width: 1080px;
+}
+
 .table-row.price-example-row {
-  grid-template-columns: minmax(260px, 1.4fr) minmax(150px, 0.7fr) minmax(110px, 0.4fr) minmax(160px, 0.7fr);
-  min-width: 840px;
+  grid-template-columns: minmax(300px, 1.5fr) minmax(150px, 0.7fr) minmax(110px, 0.4fr) minmax(190px, 0.8fr) minmax(190px, 0.8fr);
+  min-width: 1100px;
 }
 
 .table-row.leaderboard-row {
-  grid-template-columns: minmax(280px, 1.4fr) 80px repeat(4, minmax(110px, 0.55fr));
-  min-width: 920px;
+  grid-template-columns: minmax(280px, 1.4fr) 115px 90px repeat(4, minmax(105px, 0.55fr));
+  min-width: 1040px;
   cursor: pointer;
 }
 
@@ -2311,6 +2335,12 @@ h3 {
   .table-row.county-risk-row,
   .table-row.methodology-row,
   .table-row.careers-row,
+  .table-row.price-status-row,
+  .table-row.price-quality-row,
+  .table-row.price-source-row,
+  .table-row.price-basket-row,
+  .table-row.binder-price-basket-row,
+  .table-row.binder-payer-spread-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {
@@ -2323,6 +2353,12 @@ h3 {
   .table-row.county-row,
   .table-row.county-risk-row,
   .table-row.careers-row,
+  .table-row.price-status-row,
+  .table-row.price-quality-row,
+  .table-row.price-source-row,
+  .table-row.price-basket-row,
+  .table-row.binder-price-basket-row,
+  .table-row.binder-payer-spread-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {

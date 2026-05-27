@@ -676,6 +676,7 @@ function classifyPriceTransparencyRow(text) {
   if (/\b(observation|obs)\b/.test(text)) return "Observation";
   if (/\b(ct |computed tomography|mri|xray|x-ray|ultrasound|mammography|radiology|imaging)\b/.test(text)) return "Imaging";
   if (/\b(lab|laboratory|metabolic|blood count|cbc|troponin|culture|panel)\b/.test(text)) return "Lab";
+  if (/\b(therapy|physical therapy|occupational therapy|speech therapy|rehab|rehabilitation)\b/.test(text)) return "Therapy";
   if (/\b(pharmacy|drug|injection|infusion|j[0-9]{4}|ndc)\b/.test(text)) return "Drug/Pharmacy";
   if (/\b(drg|apr-drg|apr drg|ms-drg|inpatient)\b/.test(text)) return "Inpatient/DRG";
   return null;
@@ -719,8 +720,48 @@ function getCodeType(row) {
   return getFirstField(row, ["code_type", "type", "code_type_1", "billing_code_type", "coding_system", "code type"]);
 }
 
+const priceServiceBasket = [
+  { key: "emergency", label: "ED visit", categories: ["Emergency"], terms: ["emergency", "er room", "ed visit", "99281", "99282", "99283", "99284", "99285"] },
+  { key: "observation", label: "Observation", categories: ["Observation"], terms: ["observation", "g0378", "obs"] },
+  { key: "room_board", label: "Room / board revenue code", categories: [], terms: ["room", "board", "revenue", "0120", "semi private", "bed"] },
+  { key: "inpatient_drg", label: "Inpatient DRG / room", categories: ["Inpatient/DRG"], terms: ["drg", "inpatient", "swing bed"] },
+  { key: "ct_mri", label: "CT / MRI imaging", categories: ["Imaging"], terms: ["ct ", "computed tomography", "mri", "scan"] },
+  { key: "lab_panel", label: "CBC / CMP / troponin", categories: ["Lab"], terms: ["cbc", "blood count", "metabolic", "cmp", "troponin", "panel", "laboratory"] },
+  { key: "pharmacy", label: "Drug / pharmacy", categories: ["Drug/Pharmacy"], terms: ["pharmacy", "drug", "injection", "infusion", "ndc", "j"] },
+  { key: "therapy", label: "Therapy", categories: ["Therapy"], terms: ["therapy", "physical therapy", "occupational therapy", "speech therapy", "rehab"] }
+];
+
+function getPriceBasketKey(record) {
+  const haystack = `${record.category || ""} ${record.description || ""} ${record.code || ""} ${record.codeType || ""} ${record.setting || ""} ${record.billingClass || ""}`.toLowerCase();
+  const match = priceServiceBasket.find((basket) =>
+    basket.categories.includes(record.category)
+    || basket.terms.some((term) => haystack.includes(term))
+  );
+  return match?.key || "other";
+}
+
+function getPriceQualityFlags(record, source) {
+  const flags = [];
+  flags.push(getPriceBasketKey(record) === "other" ? "fuzzy match" : "exact/category match");
+  if (!Number.isFinite(record.amount)) flags.push("amount missing");
+  if (/percent|percentage|algorithm|formula|fee schedule/i.test(`${record.chargeType || ""} ${record.rateMethod || ""}`)) flags.push("formula or percent-of-charge");
+  if (record.payer || record.plan) flags.push("payer-specific");
+  if (!record.payer && /gross/i.test(record.chargeType || "")) flags.push("gross-charge only");
+  if (/medicare|medicaid|excluded/i.test(source?.sourceNote || record.limitations || "")) flags.push("public payer excluded");
+  if (!record.code) flags.push("code missing");
+  return [...new Set(flags)];
+}
+
+function getComparabilityStatus(flags) {
+  if (flags.includes("amount missing")) return "not comparable";
+  if (flags.includes("formula or percent-of-charge")) return "formula only";
+  if (flags.includes("payer-specific")) return "payer-specific";
+  if (flags.includes("gross-charge only")) return "gross-charge only";
+  return "comparable signal";
+}
+
 function normalizePriceExample(example, source) {
-  return {
+  const normalized = {
     facilityId: source.facilityId,
     facilityName: source.facilityName,
     systemName: source.systemName || "",
@@ -744,6 +785,15 @@ function normalizePriceExample(example, source) {
     observedDate: new Date().toISOString().slice(0, 10),
     evidenceType: "charge",
     limitations: "Hospital price transparency rows are published charge/rate signals. They do not prove actual paid claims, patient responsibility, volume, denials, medical necessity, or margin."
+  };
+  const qualityFlags = getPriceQualityFlags(normalized, source);
+  return {
+    ...normalized,
+    serviceBasketKey: getPriceBasketKey(normalized),
+    serviceMatchType: qualityFlags.includes("exact/category match") ? "exact/category match" : "fuzzy match",
+    qualityFlags,
+    comparabilityStatus: getComparabilityStatus(qualityFlags),
+    sourceParser: source.fileFormat || "unknown"
   };
 }
 
@@ -780,7 +830,8 @@ function extractPriceExamples(rows, source) {
     const codeType = getCodeType(row);
     const setting = getFirstField(row, ["setting", "patient_type", "inpatient_outpatient", "service_setting"]);
     const billingClass = getFirstField(row, ["billing_class", "billing_classification"]);
-    const haystack = `${description} ${code} ${setting} ${billingClass}`.toLowerCase();
+    const notes = getFirstField(row, ["additional_generic_notes", "additional_payer_notes", "gross_charge_type", "standard_charge_methodology", "standard_charge_algorithm", "rate_method", "rate_methodology"]);
+    const haystack = `${description} ${code} ${setting} ${billingClass} ${notes}`.toLowerCase();
     const category = classifyPriceTransparencyRow(haystack);
     if (!category) return;
     const amount = getPriceAmount(row);

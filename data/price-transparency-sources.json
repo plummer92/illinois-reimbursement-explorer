@@ -22,7 +22,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141352",
@@ -47,7 +50,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141322",
@@ -72,7 +78,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140148",
@@ -97,7 +106,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141339",
@@ -122,7 +134,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140091",
@@ -147,7 +162,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11405
+    "hpiDefinitionId": 11405,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140286",
@@ -172,7 +190,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 36,
-    "parserMessage": "Parsed 36 service examples from preview."
+    "parserMessage": "Parsed 36 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141318",
@@ -197,7 +218,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141323",
@@ -222,7 +246,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141328",
@@ -247,7 +274,10 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141316",
@@ -272,7 +302,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11410
+    "hpiDefinitionId": 11410,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141355",
@@ -297,7 +330,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11476
+    "hpiDefinitionId": 11476,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140127",
@@ -322,7 +358,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11475
+    "hpiDefinitionId": 11475,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141309",
@@ -347,7 +386,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11404
+    "hpiDefinitionId": 11404,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140209",
@@ -372,7 +414,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11406
+    "hpiDefinitionId": 11406,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140120",
@@ -397,7 +442,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11408
+    "hpiDefinitionId": 11408,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140013",
@@ -422,7 +470,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "hpiDefinitionId": 11407
+    "hpiDefinitionId": 11407,
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140179",
@@ -447,7 +498,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140093",
@@ -472,7 +526,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140113",
@@ -497,7 +554,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140052",
@@ -522,7 +582,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141337",
@@ -547,7 +610,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140110",
@@ -572,7 +638,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "362604009"
+    "ein": "362604009",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140067",
@@ -597,7 +666,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370662569"
+    "ein": "370662569",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140233",
@@ -622,7 +694,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "362167864"
+    "ein": "362167864",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140161",
@@ -647,7 +722,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370662570"
+    "ein": "370662570",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140162",
@@ -672,7 +750,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370662576"
+    "ein": "370662576",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140064",
@@ -697,7 +778,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370662581"
+    "ein": "370662581",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141310",
@@ -722,7 +806,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "362167785"
+    "ein": "362167785",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "141325",
@@ -747,7 +834,10 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   },
   {
     "facilityId": "140012",
@@ -772,6 +862,9 @@
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
     "parserMessage": "Parsed 160 service examples from preview.",
-    "ein": "370813229"
+    "ein": "370813229",
+    "discoveryDate": "2026-05-27",
+    "confidence": "high",
+    "sourceDiscoveryMethod": "Hospital/system price transparency page and machine-readable-file discovery"
   }
 ]
