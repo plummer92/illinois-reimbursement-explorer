@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Illinois Reimbursement Explorer</title>
-    <link rel="stylesheet" href="styles.css?v=2026-05-22-synced-binder-1">
+    <link rel="stylesheet" href="styles.css?v=2026-05-26-case-study-1">
   </head>
   <body>
     <main class="shell">
@@ -55,6 +55,7 @@
         <section class="content">
           <nav class="tabs" aria-label="Dashboard sections">
             <button class="tab active" data-tab="executive">Executive Summary</button>
+            <button class="tab" data-tab="caseStudy">Case Study</button>
             <button class="tab" data-tab="audit">Audit Framework</button>
             <button class="tab" data-tab="moneyFlow">Money Flow</button>
             <button class="tab" data-tab="priceTransparency">Price Transparency</button>
@@ -107,6 +108,44 @@
             <div class="callout muted-callout">
               This tool identifies associations and risk signals, not causation. Capital reimbursement is a proxy for capital funding pressure, not proof of actual capital spending.
             </div>
+          </section>
+
+          <section id="caseStudyPanel" class="panel" aria-labelledby="caseStudy">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">Portfolio story</p>
+                <h2>Case Study</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              This case study explains the project as a healthcare economics, reimbursement intelligence, and disparity analytics portfolio piece. Findings are screening signals and should be validated before operational, financial, or policy decisions.
+            </div>
+            <section class="summary-section">
+              <h3>Project Narrative</h3>
+              <div id="caseStudyNarrative" class="narrative-box"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Top Insights</h3>
+              <div id="caseStudyInsightCards" class="executive-metrics"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Evidence Stack</h3>
+              <div id="caseStudyEvidenceRows" class="data-table"></div>
+            </section>
+            <div class="risk-dashboard-grid">
+              <section>
+                <h3>Strategic Value</h3>
+                <div id="caseStudyValueCards" class="finding-list"></div>
+              </section>
+              <section>
+                <h3>Limitations + Next Steps</h3>
+                <div id="caseStudyNextSteps" class="finding-list"></div>
+              </section>
+            </div>
+            <section class="summary-section">
+              <h3>Portfolio Blurb</h3>
+              <div id="caseStudyPortfolioBlurb" class="narrative-box"></div>
+            </section>
           </section>
 
           <section id="auditPanel" class="panel" aria-labelledby="audit">
@@ -796,6 +835,6 @@
         </section>
       </section>
     </main>
-    <script src="app.js?v=2026-05-22-synced-binder-1"></script>
+    <script src="app.js?v=2026-05-26-case-study-1"></script>
   </body>
 </html>

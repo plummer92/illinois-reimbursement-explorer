@@ -238,3 +238,7 @@ The Hospital Payment Explorer tab turns these parsed fields into a facility-leve
 The Methodology tab summarizes live dataset coverage, interpretation limits, known data gaps, and recommended next layers. It is designed to make the project defensible in portfolio and interview settings by separating loaded evidence from pending research layers.
 
 Use this tab to explain which signals are reimbursement data, which are quality/access context, which are risk proxies, and which conclusions require additional validation.
+
+## Portfolio Case Study
+
+The Case Study tab packages the project for portfolio, interview, and class-presentation use. It summarizes the business problem, live top-line disparity metrics, loaded evidence layers, strategic value, limitations, next steps, and a copy-ready portfolio blurb with the public GitHub Pages dashboard link.

@@ -55,6 +55,7 @@ const els = {
   tabs: document.querySelectorAll(".tab"),
   panels: {
     executive: document.querySelector("#executivePanel"),
+    caseStudy: document.querySelector("#caseStudyPanel"),
     audit: document.querySelector("#auditPanel"),
     moneyFlow: document.querySelector("#moneyFlowPanel"),
     priceTransparency: document.querySelector("#priceTransparencyPanel"),
@@ -130,6 +131,12 @@ const els = {
 };
 
 Object.assign(els, {
+  caseStudyNarrative: document.querySelector("#caseStudyNarrative"),
+  caseStudyInsightCards: document.querySelector("#caseStudyInsightCards"),
+  caseStudyEvidenceRows: document.querySelector("#caseStudyEvidenceRows"),
+  caseStudyValueCards: document.querySelector("#caseStudyValueCards"),
+  caseStudyNextSteps: document.querySelector("#caseStudyNextSteps"),
+  caseStudyPortfolioBlurb: document.querySelector("#caseStudyPortfolioBlurb"),
   moneyFlowMetricCards: document.querySelector("#moneyFlowMetricCards"),
   topPaidProviders: document.querySelector("#topPaidProviders"),
   providerTypePayments: document.querySelector("#providerTypePayments"),
@@ -232,6 +239,7 @@ function render() {
   renderRiskFilterOptions();
   renderRecords();
   renderSources();
+  renderCaseStudy();
   renderAuditFramework();
   renderMoneyFlow();
   renderPriceTransparency();
@@ -239,6 +247,7 @@ function render() {
   renderAnalysis();
   renderCapitalEquity();
   renderQualityCorrelation();
+  renderCaseStudy();
   renderExecutiveSummary();
   renderCountyContext();
   renderPolicyExecutiveFindings();
@@ -255,6 +264,103 @@ function render() {
 function renderMetrics() {
   els.sourceCount.textContent = state.sources.length;
   els.recordCount.textContent = state.records.length;
+}
+
+function renderCaseStudy() {
+  const records = state.records.filter((record) => Number.isFinite(record.publishedAmount));
+  const matchedQuality = state.qualityRecords.length;
+  const riskFacilities = getRiskFacilities();
+  const elevatedRisk = riskFacilities.filter((facility) => ["High Risk", "Elevated Risk"].includes(facility.risk.risk_level));
+  const tierGroups = summarizeBy(records, (record) => record.geography?.tier || "Unclassified").filter((group) => group.key !== "Unclassified");
+  const chicago = tierGroups.find((group) => group.key === "Chicago Metro") || null;
+  const downstate = tierGroups.find((group) => group.key === "Downstate / Smaller Market") || null;
+  const capitalGroups = summarizeCapitalByGeography(getCapitalRecords());
+  const chicagoCapital = capitalGroups.find((group) => group.key === "Chicago Metro") || null;
+  const downstateCapital = capitalGroups.find((group) => group.key === "Downstate / Smaller Market") || null;
+  const hospitalPaymentRecords = state.hospitalRateValues.filter((record) => record.parseStatus === "parsed");
+  const matchedHospitalPayments = hospitalPaymentRecords.filter((record) => record.cmsFacilityId);
+  const providerPayments = getProviderPaymentRecords();
+  const hcrisReports = getCostReportRecords();
+  const priceRecords = state.priceTransparencyRecords || [];
+  const sourceCount = state.sources.length + (state.sourceRegistry?.length || 0);
+  const totalSpread = chicago && downstate ? chicago.average - downstate.average : null;
+  const capitalSpread = chicagoCapital && downstateCapital ? chicagoCapital.averageCapital - downstateCapital.averageCapital : null;
+
+  els.caseStudyNarrative.innerHTML = [
+    "I built the Illinois Reimbursement Explorer to test whether public reimbursement, quality, geography, and facility-finance data could make healthcare disparities easier to see. The project started with Illinois nursing facility Medicaid rates, then expanded into CMS quality data, county social-risk context, hospital rate sheets, HFS provider-payment records, cost report economics, price transparency examples, workforce signals, and facility evidence binders.",
+    "The central question is whether lower-resource, rural, or smaller-market healthcare providers show different reimbursement and capital-planning signals than larger metropolitan markets. The dashboard does not claim causation, but it does identify patterns that can guide deeper reimbursement review, capital planning, policy analysis, and facility-level due diligence."
+  ].map((paragraph) => `<p>${escapeHtml(paragraph)}</p>`).join("");
+
+  const insightCards = [
+    ["Nursing facility records", formatIntegerOrNA(records.length), "Loaded HFS Medicaid per-diem rate rows."],
+    ["CMS/HFS quality matches", formatIntegerOrNA(matchedQuality), "Matched nursing facility reimbursement to CMS Care Compare records."],
+    ["Total per-diem spread", Number.isFinite(totalSpread) ? formatCurrencyOrNA(totalSpread) : "N/A", "Chicago Metro average above Downstate / Smaller Market."],
+    ["Capital-rate spread", Number.isFinite(capitalSpread) ? formatCurrencyOrNA(capitalSpread) : "N/A", "Chicago Metro average above Downstate / Smaller Market."],
+    ["Elevated/high-risk facilities", formatIntegerOrNA(elevatedRisk.length), "Composite screening score based on reimbursement, staffing, quality, geography, and social-risk context."],
+    ["Parsed hospital payments", formatIntegerOrNA(matchedHospitalPayments.length), "HFS hospital rate-sheet records matched to CMS hospitals."],
+    ["Public payment rows", formatIntegerOrNA(providerPayments.length), "HFS provider-level payment-flow records loaded for money-flow context."],
+    ["Evidence layers", formatIntegerOrNA(sourceCount), "Public source and expansion registry entries tracked in the project."]
+  ];
+  els.caseStudyInsightCards.innerHTML = insightCards.map(([label, value, detail]) => `
+    <article class="metric-card">
+      <span>${escapeHtml(value)}</span>
+      <small>${escapeHtml(label)} / ${escapeHtml(detail)}</small>
+    </article>
+  `).join("");
+
+  const evidenceRows = [
+    ["Illinois HFS nursing facility rates", records.length, "Medicaid per-diem, nursing, support, and capital components."],
+    ["CMS Care Compare nursing home quality", matchedQuality, "Overall, staffing, inspection, quality, ownership, survey, and penalty signals."],
+    ["County disparity context", state.countySummaries.length || state.countyContext.length, "Rurality, income, poverty proxy, age 65+, uninsured, population, and access indicators."],
+    ["Illinois hospital master / quality", state.hospitalRecords.length, "Hospital type, ownership, emergency services, CMS rating, and measure-group signals."],
+    ["HFS hospital payment parameters", hospitalPaymentRecords.length, "PDF-extracted DRG, per-diem, EAPG, wage-index, CCR, and add-on fields."],
+    ["HFS provider payment flow", providerPayments.length, "Aggregate provider-level public payment rows for money-flow screening."],
+    ["HCRIS cost report economics", hcrisReports.length, "Hospital cost-report economics and facility finance context."],
+    ["Price transparency examples", priceRecords.length, "Gross charge, cash price, payer-rate, and source-file examples where available."]
+  ];
+  els.caseStudyEvidenceRows.innerHTML = evidenceRows.map(([layer, count, use]) => `
+    <article class="table-row methodology-row">
+      <div>
+        <strong>${escapeHtml(layer)}</strong>
+        <small>${escapeHtml(use)}</small>
+      </div>
+      <div>${escapeHtml(count)} records</div>
+      <div class="numeric">Loaded</div>
+      <div><span class="tag">Public</span></div>
+    </article>
+  `).join("");
+
+  els.caseStudyValueCards.innerHTML = renderCaseStudyCards([
+    ["Healthcare economics", "Connects reimbursement theory to actual public payment, rate, cost, and quality signals."],
+    ["Rural access analysis", "Shows where smaller-market and rural facilities may have lower reimbursement, lower capital rates, weaker staffing, or limited facility coverage."],
+    ["Capital planning", "Uses capital reimbursement as a proxy for infrastructure funding pressure and modernization review priorities."],
+    ["Strategic sourcing", "Adds workforce, price transparency, and evidence-binder layers that can support vendor, service-line, and facility diligence."],
+    ["Policy communication", "Turns technical reimbursement files into plain-English findings suitable for papers, interviews, and executive summaries."],
+    ["Portfolio proof", "Demonstrates data import, normalization, matching, risk scoring, explainable analytics, and public dashboard publishing."]
+  ]);
+
+  els.caseStudyNextSteps.innerHTML = renderCaseStudyCards([
+    ["Validate matches", "Manually review fuzzy CMS/HFS matches, especially hospitals and facilities with similar names."],
+    ["Add time trends", "Load multiple years of rates, quality, cost reports, and provider payments to separate persistent disparities from one-period signals."],
+    ["Model scenarios", "Translate hospital rate-sheet parameters into example DRG, outpatient, ED, observation, and transfer scenarios."],
+    ["Deepen facility finance", "Add audited financials, bond disclosures, ownership filings, lease data, and cost reports where public."],
+    ["Avoid overclaiming", "Keep association, proxy, and missing-data language visible because the dashboard does not prove causation or financial distress."],
+    ["Package for interviews", "Create a concise project walkthrough with problem, data, method, findings, limitations, and business value."]
+  ]);
+
+  els.caseStudyPortfolioBlurb.innerHTML = `
+    <p>${escapeHtml("Built an interactive healthcare reimbursement analytics dashboard using Illinois HFS Medicaid rates, CMS Care Compare quality data, county disparity indicators, hospital payment parameters, HFS provider-payment records, cost-report economics, price transparency examples, and workforce signals to identify reimbursement variation, capital funding pressure, rural access risk, and facility-level evidence gaps.")}</p>
+    <p><a href="https://plummer92.github.io/illinois-reimbursement-explorer/" target="_blank" rel="noreferrer">https://plummer92.github.io/illinois-reimbursement-explorer/</a></p>
+  `;
+}
+
+function renderCaseStudyCards(cards) {
+  return cards.map(([title, body]) => `
+    <div class="finding">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(body)}</span>
+    </div>
+  `).join("");
 }
 
 function renderCategoryOptions() {
@@ -5813,6 +5919,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderAnalysis();
   renderCapitalEquity();
   renderQualityCorrelation();
+  renderCaseStudy();
   renderExecutiveSummary();
   renderCountyContext();
   renderPolicyExecutiveFindings();
