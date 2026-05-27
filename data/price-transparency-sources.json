@@ -22,7 +22,7 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 benchmark service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview."
   },
   {
     "facilityId": "141352",
@@ -47,7 +47,7 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 benchmark service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview."
   },
   {
     "facilityId": "141322",
@@ -72,7 +72,7 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 benchmark service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview."
   },
   {
     "facilityId": "140148",
@@ -97,7 +97,7 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 benchmark service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview."
   },
   {
     "facilityId": "141339",
@@ -122,20 +122,20 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 benchmark service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview."
   },
   {
     "facilityId": "140091",
     "facilityName": "CARLE FOUNDATION HOSPITAL",
     "systemName": "Carle Health",
     "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
-    "machineReadableFileUrl": "https://search.hospitalpriceindex.com/hpi2/machineReadable/CarleFoundationHospital/11405",
-    "updatedAsOf": "2025-02-04",
-    "fileFormat": "html_portal",
-    "sourceStatus": "portal_only",
-    "sourceNote": "Carle links Carle Foundation Hospital to a Hospital Price Index machine-readable portal page. Direct CSV/JSON download endpoint still needs discovery before automated parsing.",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11405/371119538_the-carle-foundation-hospital_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
     "observedDate": "2026-05-27",
-    "parserStatus": "portal_only",
+    "parserStatus": "parsed",
     "auditFocus": [
       "Emergency department levels and observation services",
       "Imaging and radiology examples",
@@ -145,8 +145,9 @@
       "Cash price, gross charge, and payer negotiated-rate comparison"
     ],
     "lastQueried": "2026-05-27",
-    "recordsParsed": 0,
-    "parserMessage": "Mapped to a public portal page; direct machine-readable CSV/JSON endpoint still needs discovery."
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11405
   },
   {
     "facilityId": "140286",
@@ -171,7 +172,7 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 36,
-    "parserMessage": "Parsed 36 benchmark service examples from preview."
+    "parserMessage": "Parsed 36 service examples from preview."
   },
   {
     "facilityId": "141318",
@@ -179,13 +180,12 @@
     "systemName": "OSF HealthCare",
     "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
     "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1548393184_osf-healthcare-system_standardcharges.json",
-    "updatedAsOf": "unknown",
-    "ein": "370813229",
+    "updatedAsOf": "2026",
     "fileFormat": "json",
     "sourceStatus": "direct_file",
-    "sourceNote": "OSF HealthCare price transparency page lists OSF Holy Family Medical Center in Monmouth with this JSON MRF.",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Holy Family Medical Center - Monmouth.",
     "observedDate": "2026-05-27",
-    "parserStatus": "error",
+    "parserStatus": "parsed",
     "auditFocus": [
       "Emergency department levels and observation services",
       "Imaging and radiology examples",
@@ -195,8 +195,9 @@
       "Cash price, gross charge, and payer negotiated-rate comparison"
     ],
     "lastQueried": "2026-05-27",
-    "recordsParsed": 0,
-    "parserMessage": "fetch failed"
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
   },
   {
     "facilityId": "141323",
@@ -221,7 +222,7 @@
     ],
     "lastQueried": "2026-05-27",
     "recordsParsed": 160,
-    "parserMessage": "Parsed 160 benchmark service examples from preview."
+    "parserMessage": "Parsed 160 service examples from preview."
   },
   {
     "facilityId": "141328",
@@ -235,7 +236,7 @@
     "sourceStatus": "direct_file",
     "sourceNote": "Hardin County General Hospital current-prices page links a TXT standard charges file and a separate shoppable TXT file.",
     "observedDate": "2026-05-27",
-    "parserStatus": "error",
+    "parserStatus": "parsed",
     "auditFocus": [
       "Emergency department levels and observation services",
       "Imaging and radiology examples",
@@ -245,7 +246,532 @@
       "Cash price, gross charge, and payer negotiated-rate comparison"
     ],
     "lastQueried": "2026-05-27",
-    "recordsParsed": 0,
-    "parserMessage": "fetch failed"
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview."
+  },
+  {
+    "facilityId": "141316",
+    "facilityName": "CARLE HOOPESTON REGIONAL HEALTH CENTER",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11410/363637465_hoopeston-community-memorial-hospital_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11410
+  },
+  {
+    "facilityId": "141355",
+    "facilityName": "CARLE RICHLAND MEMORIAL HOSPITAL",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11476/371363001_richland-memorial-hospital-inc_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11476
+  },
+  {
+    "facilityId": "140127",
+    "facilityName": "CARLE BROMENN MEDICAL CENTER",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11475/850682363_carle-bromenn-medical-center_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11475
+  },
+  {
+    "facilityId": "141309",
+    "facilityName": "CARLE EUREKA  HOSPITAL",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11404/850688306_carle-eureka-hospital_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11404
+  },
+  {
+    "facilityId": "140209",
+    "facilityName": "CARLE HEALTH METHODIST HOSPITAL",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11406/370661223_methodist-medical-center-of-illinois_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11406
+  },
+  {
+    "facilityId": "140120",
+    "facilityName": "CARLE HEALTH PEKIN HOSPITAL",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11408/370692351_pekin-memorial-hospital_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11408
+  },
+  {
+    "facilityId": "140013",
+    "facilityName": "CARLE HEALTH PROCTOR HOSPITAL",
+    "systemName": "Carle Health",
+    "priceTransparencyPageUrl": "https://carle.org/patients-visitors/transparent-pricing-and-estimates",
+    "machineReadableFileUrl": "https://sthpiprd.blob.core.windows.net/machine-readable-files/11407/370681540_proctor-community-hospital_standardcharges.csv",
+    "updatedAsOf": "2026-04-15",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "Carle price transparency page lists this facility through Hospital Price Index. The dashboard resolves the HPI portal to the current machine-readable CSV when queried. Hospital Price Index API resolved the portal to the current machine-readable file on 2026-05-27.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "hpiDefinitionId": 11407
+  },
+  {
+    "facilityId": "140179",
+    "facilityName": "OSF LITTLE COMPANY OF MARY MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1215572045_osf-healthcare-system_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Little Company of Mary - Evergreen Park.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
+  },
+  {
+    "facilityId": "140093",
+    "facilityName": "OSF SACRED HEART MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1699288449_osf-healthcare-system_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Sacred Heart Medical Center - Danville.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
+  },
+  {
+    "facilityId": "140113",
+    "facilityName": "OSF HEART OF MARY MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1699288449_osf-healthcare-system_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF page lists the same Sacred Heart file for Urbana; CMS master names this facility OSF Heart of Mary Medical Center.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
+  },
+  {
+    "facilityId": "140052",
+    "facilityName": "OSF SAINT ANTHONY'S HEALTH CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1710396932_osf-healthcare-system_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Anthony's Health Center - Alton.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
+  },
+  {
+    "facilityId": "141337",
+    "facilityName": "OSF SAINT CLARE MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1093308439_osf-healthcare-system_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Clare Medical Center - Princeton.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
+  },
+  {
+    "facilityId": "140110",
+    "facilityName": "OSF SAINT ELIZABETH MDL CTR",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/362604009_osf-saint-elizabeth-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Elizabeth Medical Center file; CMS master abbreviation is OSF Saint Elizabeth MDL CTR.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "362604009"
+  },
+  {
+    "facilityId": "140067",
+    "facilityName": "SAINT FRANCIS MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370662569_osf-saint-francis-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Francis Medical Center - Peoria.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370662569"
+  },
+  {
+    "facilityId": "140233",
+    "facilityName": "SAINT ANTHONY MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/362167864_osf-saint-anthony-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Anthony Medical Center - Rockford.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "362167864"
+  },
+  {
+    "facilityId": "140161",
+    "facilityName": "SAINT JAMES HOSPITAL",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370662570_osf-saint-james-john-w-albrecht-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint James - John W. Albrecht Medical Center - Pontiac.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370662570"
+  },
+  {
+    "facilityId": "140162",
+    "facilityName": "ST JOSEPH MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370662576_osf-st-joseph-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF St. Joseph Medical Center - Bloomington.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370662576"
+  },
+  {
+    "facilityId": "140064",
+    "facilityName": "ST MARY MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370662581_osf-st-mary-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF St. Mary Medical Center - Galesburg.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370662581"
+  },
+  {
+    "facilityId": "141310",
+    "facilityName": "OSF SAINT PAUL MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/362167785_osf-saint-paul-medical-center_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Paul Medical Center - Mendota.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "362167785"
+  },
+  {
+    "facilityId": "141325",
+    "facilityName": "OSF SAINT LUKE MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_1871919381_osf-healthcare-system_standardcharges.json",
+    "updatedAsOf": "2026",
+    "fileFormat": "json",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Luke Medical Center - Kewanee.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
+  },
+  {
+    "facilityId": "140012",
+    "facilityName": "OSF SAINT KATHARINE MEDICAL CENTER",
+    "systemName": "OSF HealthCare",
+    "priceTransparencyPageUrl": "https://www.osfhealthcare.org/patients-visitors/billing-insurance/price-transparency",
+    "machineReadableFileUrl": "https://osf-p-001.sitecorecontenthub.cloud/api/public/content/370813229_OSF-Saint-Katharine-Medical-Center_standardcharges.csv",
+    "updatedAsOf": "2026",
+    "fileFormat": "csv",
+    "sourceStatus": "direct_file",
+    "sourceNote": "OSF HealthCare price transparency page lists this facility machine-readable standard charges file. OSF Saint Katharine Medical Center - Dixon.",
+    "observedDate": "2026-05-27",
+    "parserStatus": "parsed",
+    "auditFocus": [
+      "Emergency department levels and observation services",
+      "Imaging and radiology examples",
+      "Laboratory examples",
+      "Drug/pharmacy rows where available",
+      "DRG/APR-DRG or inpatient payment-method rows where available",
+      "Cash price, gross charge, and payer negotiated-rate comparison"
+    ],
+    "lastQueried": "2026-05-27",
+    "recordsParsed": 160,
+    "parserMessage": "Parsed 160 service examples from preview.",
+    "ein": "370813229"
   }
 ]

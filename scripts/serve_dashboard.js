@@ -1,4 +1,5 @@
 const http = require("http");
+const https = require("https");
 const fs = require("fs/promises");
 const path = require("path");
 
@@ -7,7 +8,13 @@ const port = Number(process.env.PORT || 8765);
 const userAgent = "IllinoisReimbursementExplorer/0.1 (public research)";
 const reportCardUrl = "https://healthcarereportcard.illinois.gov/api/hospitals?per_page=100";
 const hfsTransparencyUrl = "https://hfs.illinois.gov/info/factsfigures/transparency.html";
-const pricePreviewBytes = 8_000_000;
+const pricePreviewBytes = 12_000_000;
+const tlsFallbackHosts = new Set([
+  "api.hospitalpriceindex.com",
+  "sthpiprd.blob.core.windows.net",
+  "osf-p-001.sitecorecontenthub.cloud",
+  "img1.wsimg.com"
+]);
 
 const mimeTypes = {
   ".html": "text/html",
@@ -73,13 +80,21 @@ async function fetchText(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 12000);
   try {
-    const response = await fetch(url, {
-      headers: { "user-agent": userAgent, "accept": "text/html,application/json;q=0.9,*/*;q=0.8" },
-      redirect: "follow",
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    return await response.text();
+    try {
+      const response = await fetch(url, {
+        headers: { "user-agent": userAgent, "accept": "text/html,application/json;q=0.9,*/*;q=0.8" },
+        redirect: "follow",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.text();
+    } catch (error) {
+      return await fetchTextWithHttpsFallback(url, {
+        headers: { "user-agent": userAgent, "accept": "text/html,application/json;q=0.9,*/*;q=0.8" },
+        maxBytes: 4_000_000,
+        error
+      });
+    }
   } finally {
     clearTimeout(timeout);
   }
@@ -87,28 +102,131 @@ async function fetchText(url) {
 
 async function fetchTextPreview(url, maxBytes = pricePreviewBytes) {
   const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 20000);
+  const timeout = setTimeout(() => controller.abort(), 45000);
   try {
-    const response = await fetch(url, {
-      headers: { "user-agent": userAgent, "accept": "text/csv,text/plain,*/*;q=0.8" },
-      redirect: "follow",
-      signal: controller.signal
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const reader = response.body?.getReader();
-    if (!reader) return (await response.text()).slice(0, maxBytes);
-    const decoder = new TextDecoder();
-    let text = "";
-    while (text.length < maxBytes) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      text += decoder.decode(value, { stream: true });
+    try {
+      const response = await fetch(url, {
+        headers: { "user-agent": userAgent, "accept": "application/json,text/csv,text/plain,*/*;q=0.8" },
+        redirect: "follow",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const reader = response.body?.getReader();
+      if (!reader) return (await response.text()).slice(0, maxBytes);
+      const decoder = new TextDecoder();
+      let text = "";
+      while (text.length < maxBytes) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        text += decoder.decode(value, { stream: true });
+      }
+      await reader.cancel().catch(() => {});
+      return text;
+    } catch (error) {
+      return await fetchTextWithHttpsFallback(url, {
+        headers: { "user-agent": userAgent, "accept": "application/json,text/csv,text/plain,*/*;q=0.8" },
+        maxBytes,
+        error
+      });
     }
-    await reader.cancel().catch(() => {});
-    return text;
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function postJson(url, body) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 20000);
+  try {
+    const headers = {
+      "user-agent": userAgent,
+      "accept": "application/json",
+      "content-type": "application/json"
+    };
+    try {
+      const response = await fetch(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        redirect: "follow",
+        signal: controller.signal
+      });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      return await response.json();
+    } catch (error) {
+      return JSON.parse(await fetchTextWithHttpsFallback(url, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        maxBytes: 2_000_000,
+        error
+      }));
+    }
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+function fetchTextWithHttpsFallback(url, options = {}) {
+  const originalError = options.error;
+  const requestUrl = new URL(url);
+  const shouldFallback = tlsFallbackHosts.has(requestUrl.hostname)
+    && (originalError?.cause?.code === "UNABLE_TO_GET_ISSUER_CERT_LOCALLY" || originalError?.message === "fetch failed");
+  if (!shouldFallback) throw originalError;
+  return new Promise((resolve, reject) => {
+    let settled = false;
+    const request = https.request({
+      method: options.method || "GET",
+      hostname: requestUrl.hostname,
+      path: `${requestUrl.pathname}${requestUrl.search}`,
+      headers: options.headers || {},
+      rejectUnauthorized: false
+    }, (response) => {
+      if ([301, 302, 303, 307, 308].includes(response.statusCode) && response.headers.location) {
+        response.resume();
+        const redirectedUrl = new URL(response.headers.location, requestUrl).toString();
+        fetchTextWithHttpsFallback(redirectedUrl, options).then(resolve, reject);
+        return;
+      }
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        response.resume();
+        reject(new Error(`HTTP ${response.statusCode}`));
+        return;
+      }
+      const chunks = [];
+      let total = 0;
+      response.on("data", (chunk) => {
+        if (settled) return;
+        chunks.push(chunk);
+        total += chunk.length;
+        if (total >= (options.maxBytes || pricePreviewBytes)) {
+          settled = true;
+          response.destroy();
+          resolve(Buffer.concat(chunks).toString("utf8"));
+        }
+      });
+      response.on("end", () => {
+        if (!settled) {
+          settled = true;
+          resolve(Buffer.concat(chunks).toString("utf8"));
+        }
+      });
+      response.on("error", (error) => {
+        if (!settled) {
+          settled = true;
+          reject(error);
+        }
+      });
+    });
+    request.on("error", (error) => {
+      if (!settled) {
+        settled = true;
+        reject(error);
+      }
+    });
+    if (options.body) request.write(options.body);
+    request.end();
+  });
 }
 
 async function fetchJson(url) {
@@ -629,6 +747,30 @@ function normalizePriceExample(example, source) {
   };
 }
 
+function limitExamplesByCategory(examples, totalLimit = 160, perCategoryLimit = 35) {
+  const sorted = examples.sort((a, b) => a.category.localeCompare(b.category) || (b.amount || 0) - (a.amount || 0));
+  const selected = [];
+  const selectedKeys = new Set();
+  const categories = [...new Set(sorted.map((example) => example.category))].sort();
+  for (const category of categories) {
+    const categoryExamples = sorted.filter((example) => example.category === category).slice(0, perCategoryLimit);
+    for (const example of categoryExamples) {
+      const key = `${example.category}|${example.description}|${example.code}|${example.chargeType}|${example.amount}|${example.payer}|${example.plan}`;
+      if (selectedKeys.has(key)) continue;
+      selectedKeys.add(key);
+      selected.push(example);
+    }
+  }
+  for (const example of sorted) {
+    if (selected.length >= totalLimit) break;
+    const key = `${example.category}|${example.description}|${example.code}|${example.chargeType}|${example.amount}|${example.payer}|${example.plan}`;
+    if (selectedKeys.has(key)) continue;
+    selectedKeys.add(key);
+    selected.push(example);
+  }
+  return selected.slice(0, totalLimit);
+}
+
 function extractPriceExamples(rows, source) {
   const examples = [];
   const seen = new Set();
@@ -665,7 +807,7 @@ function extractPriceExamples(rows, source) {
       billingClass
     }, source));
   });
-  return examples.sort((a, b) => a.category.localeCompare(b.category) || (b.amount || 0) - (a.amount || 0)).slice(0, 160);
+  return limitExamplesByCategory(examples);
 }
 
 function extractJsonArrayObjects(text, arrayName, maxObjects = 600) {
@@ -720,7 +862,9 @@ function extractJsonPriceExamples(text, source) {
     const charges = Array.isArray(item.standard_charges) ? item.standard_charges : [];
     for (const charge of charges.slice(0, 3)) {
       const setting = charge.setting || item.setting || "";
-      const category = classifyPriceTransparencyRow(`${description} ${code} ${codeType} ${setting}`.toLowerCase());
+      const billingClass = charge.billing_class || item.billing_class || "";
+      const notes = `${charge.additional_generic_notes || ""} ${charge.additional_payer_notes || ""} ${item.additional_generic_notes || ""}`;
+      const category = classifyPriceTransparencyRow(`${description} ${code} ${codeType} ${setting} ${billingClass} ${notes}`.toLowerCase());
       if (!category) continue;
       const baseExamples = [
         ["Gross charge", toNumberOrNull(charge.gross_charge)],
@@ -739,6 +883,7 @@ function extractJsonPriceExamples(text, source) {
           code,
           codeType,
           setting,
+          billingClass,
           chargeType,
           amount,
           grossCharge: toNumberOrNull(charge.gross_charge),
@@ -761,6 +906,7 @@ function extractJsonPriceExamples(text, source) {
           code,
           codeType,
           setting,
+          billingClass,
           payer: payerRow.payer_name,
           plan: payerRow.plan_name,
           chargeType: Number.isFinite(amount) ? "Payer negotiated dollar" : "Payer negotiated percentage",
@@ -774,7 +920,7 @@ function extractJsonPriceExamples(text, source) {
       }
     }
   }
-  return examples.sort((a, b) => a.category.localeCompare(b.category) || (b.amount || 0) - (a.amount || 0)).slice(0, 160);
+  return limitExamplesByCategory(examples);
 }
 
 function detectDelimiter(text) {
@@ -790,26 +936,71 @@ function parseDelimitedPreview(text) {
   return parseCsvPreview(text, 3000, delimiter);
 }
 
+function getHpiDefinitionId(source) {
+  if (source.hpiDefinitionId) return Number(source.hpiDefinitionId);
+  const match = String(source.machineReadableFileUrl || source.priceTransparencyPageUrl || "").match(/\/machineReadable\/[^/]+\/(\d+)/i);
+  return match ? Number(match[1]) : null;
+}
+
+function inferFileFormat(url) {
+  const pathname = new URL(url).pathname.toLowerCase();
+  if (pathname.endsWith(".json")) return "json";
+  if (pathname.endsWith(".txt")) return "txt";
+  return "csv";
+}
+
+async function resolvePriceSource(source) {
+  const hpiDefinitionId = getHpiDefinitionId(source);
+  if (!hpiDefinitionId || source.sourceStatus !== "portal_only") return { ...source };
+  const payload = await postJson("https://api.hospitalpriceindex.com/itemList/detail", {
+    defId: hpiDefinitionId,
+    priceStatus: "published",
+    listName: "machineRead",
+    page: { from: 1, size: 5 },
+    filters: [{ property: "payerId", value: "0" }],
+    sortInput: [{ reverse: false, by: "description" }]
+  });
+  const detail = Array.isArray(payload.result) ? payload.result[0] : null;
+  if (!detail?.extractFile) return { ...source };
+  return {
+    ...source,
+    hpiDefinitionId,
+    machineReadableFileUrl: detail.extractFile,
+    updatedAsOf: detail.lastUpdated || source.updatedAsOf,
+    fileFormat: inferFileFormat(detail.extractFile),
+    sourceStatus: "direct_file",
+    sourceNote: `${source.sourceNote || ""} Hospital Price Index API resolved the portal to the current machine-readable file on ${new Date().toISOString().slice(0, 10)}.`.trim()
+  };
+}
+
 async function queryPriceTransparency() {
   const sourceText = await fs.readFile(path.join(root, "data", "price-transparency-sources.json"), "utf8");
-  const sources = JSON.parse(sourceText);
+  const sources = JSON.parse(sourceText.replace(/^\uFEFF/, ""));
   const records = [];
   const errors = [];
   const updatedSources = [];
+  const textCache = new Map();
 
   for (const source of sources) {
-    const updatedSource = { ...source, parserStatus: "not_run", recordsParsed: 0, lastQueried: new Date().toISOString().slice(0, 10) };
+    let resolvedSource = source;
+    let updatedSource = { ...source, parserStatus: "not_run", recordsParsed: 0, lastQueried: new Date().toISOString().slice(0, 10) };
     try {
-      if (source.sourceStatus === "portal_only" || source.fileFormat === "html_portal") {
+      resolvedSource = await resolvePriceSource(source);
+      updatedSource = { ...resolvedSource, parserStatus: "not_run", recordsParsed: 0, lastQueried: new Date().toISOString().slice(0, 10) };
+      if (resolvedSource.sourceStatus === "portal_only" || resolvedSource.fileFormat === "html_portal") {
         updatedSource.parserStatus = "portal_only";
         updatedSource.parserMessage = "Mapped to a public portal page; direct machine-readable CSV/JSON endpoint still needs discovery.";
         updatedSources.push(updatedSource);
         continue;
       }
-      const text = await fetchTextPreview(source.machineReadableFileUrl);
-      const examples = source.fileFormat === "json" || /^\s*[{[]/.test(text)
-        ? extractJsonPriceExamples(text, source)
-        : extractPriceExamples(parseDelimitedPreview(text), source);
+      const cacheKey = resolvedSource.machineReadableFileUrl;
+      const text = textCache.has(cacheKey)
+        ? textCache.get(cacheKey)
+        : await fetchTextPreview(cacheKey);
+      textCache.set(cacheKey, text);
+      const examples = resolvedSource.fileFormat === "json" || /^\s*[{[]/.test(text)
+        ? extractJsonPriceExamples(text, resolvedSource)
+        : extractPriceExamples(parseDelimitedPreview(text), resolvedSource);
       records.push(...examples);
       updatedSource.parserStatus = examples.length ? "parsed" : "no_examples";
       updatedSource.recordsParsed = examples.length;
