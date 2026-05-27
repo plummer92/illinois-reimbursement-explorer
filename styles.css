@@ -1740,6 +1740,20 @@ h3 {
   min-width: 1320px;
 }
 
+.table-row.system-extraction-row {
+  grid-template-columns: minmax(260px, 1.1fr) minmax(120px, 0.42fr) minmax(260px, 1fr) minmax(260px, 1fr) minmax(300px, 1.1fr);
+  min-width: 1220px;
+}
+
+.system-extraction-row a {
+  color: var(--accent);
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 4px;
+  text-decoration: none;
+}
+
 .table-row.enforcement-row {
   grid-template-columns: minmax(280px, 1.2fr) repeat(4, minmax(105px, 0.45fr)) minmax(180px, 0.8fr);
   min-width: 1040px;
@@ -1779,6 +1793,7 @@ h3 {
 .system-financial-fact-row div,
 .system-finance-row div,
 .facility-system-row div,
+.system-extraction-row div,
 .enforcement-row div,
 .penalty-event-row div,
 .deficiency-row div {
@@ -2572,6 +2587,7 @@ h3 {
   .table-row.system-financial-fact-row,
   .table-row.system-finance-row,
   .table-row.facility-system-row,
+  .table-row.system-extraction-row,
   .table-row.enforcement-row,
   .table-row.penalty-event-row,
   .table-row.deficiency-row,
@@ -2598,6 +2614,7 @@ h3 {
   .table-row.system-financial-fact-row,
   .table-row.system-finance-row,
   .table-row.facility-system-row,
+  .table-row.system-extraction-row,
   .table-row.enforcement-row,
   .table-row.penalty-event-row,
   .table-row.deficiency-row,

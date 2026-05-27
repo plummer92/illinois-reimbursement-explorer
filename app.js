@@ -197,6 +197,7 @@ Object.assign(els, {
   systemFinanceDetail: document.querySelector("#systemFinanceDetail"),
   systemFinanceHospitalRows: document.querySelector("#systemFinanceHospitalRows"),
   systemFinanceEvidenceGaps: document.querySelector("#systemFinanceEvidenceGaps"),
+  systemFinanceExtractionRows: document.querySelector("#systemFinanceExtractionRows"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
   coverageRows: document.querySelector("#coverageRows"),
   methodologyNotes: document.querySelector("#methodologyNotes"),
@@ -1752,6 +1753,7 @@ function renderSystemFinanceDeepDive() {
   els.systemFinanceDetail.innerHTML = renderSystemFinanceDetail(selected);
   els.systemFinanceHospitalRows.innerHTML = renderSystemFinanceHospitalRows(selected);
   els.systemFinanceEvidenceGaps.innerHTML = renderSystemFinanceEvidenceGaps(selected);
+  els.systemFinanceExtractionRows.innerHTML = renderSystemFinanceExtractionRows(selected);
 }
 
 function buildSystemFinanceSummaries() {
@@ -2026,6 +2028,36 @@ function renderSystemFinanceEvidenceGaps(summary) {
   `).join("");
 }
 
+function renderSystemFinanceExtractionRows(summary) {
+  if (!summary) return '<p class="status">Select a system to see the extraction queue.</p>';
+  const rows = buildSystemFinanceExtractionQueue(summary);
+  return `
+    <article class="table-row system-extraction-row header">
+      <div>Evidence Need</div>
+      <div>Status</div>
+      <div>Current Source</div>
+      <div>Fields To Extract</div>
+      <div>Why It Matters</div>
+    </article>
+    ${rows.map((row) => `
+      <article class="table-row system-extraction-row">
+        <div>
+          <strong>${escapeHtml(row.need)}</strong>
+          <small>${escapeHtml(row.proves)}</small>
+        </div>
+        <div><span class="status-dot status-${escapeHtml(row.statusKey)}">${escapeHtml(row.status)}</span></div>
+        <div>
+          <strong>${escapeHtml(row.sourceTitle)}</strong>
+          <small>${escapeHtml(row.sourceType)}</small>
+          ${row.sourceUrl ? `<a href="${escapeHtml(row.sourceUrl)}" target="_blank" rel="noreferrer">Open source</a>` : ""}
+        </div>
+        <div>${row.fields.map((field) => `<span class="tag">${escapeHtml(field)}</span>`).join(" ")}</div>
+        <div><small>${escapeHtml(row.why)}</small></div>
+      </article>
+    `).join("")}
+  `;
+}
+
 function buildSystemFinanceEvidenceGaps(summary) {
   const facts = summary.facts || [];
   const sources = summary.sources || [];
@@ -2046,6 +2078,95 @@ function buildSystemFinanceEvidenceGaps(summary) {
     ["Time trend", "Need multi-year HCRIS and system financials; one year can be distorted by settlements, investment income, acquisition, or accounting changes."]
   ].filter(Boolean);
   return gaps;
+}
+
+function buildSystemFinanceExtractionQueue(summary) {
+  const facts = summary.facts || [];
+  const sources = summary.sources || [];
+  const metrics = Object.assign({}, ...facts.map((fact) => fact.metrics || {}));
+  const sourceFor = (matcher) => sources.find((source) => matcher(`${source.sourceType || ""} ${source.title || ""}`));
+  const factWith = (keys) => facts.find((fact) => keys.some((key) => fact.metrics?.[key] !== undefined && fact.metrics?.[key] !== null));
+  const makeRow = ({ need, proves, fields, why, sourceMatcher, metricKeys }) => {
+    const source = sourceFor(sourceMatcher);
+    const fact = factWith(metricKeys);
+    const hasAllFields = metricKeys.some((key) => metrics[key] !== undefined && metrics[key] !== null);
+    const status = hasAllFields
+      ? "extracted"
+      : source
+        ? "source mapped"
+        : "source needed";
+    const statusKey = hasAllFields ? "loaded" : source ? "partial" : "next";
+    return {
+      need,
+      proves,
+      fields,
+      why,
+      status,
+      statusKey,
+      sourceTitle: fact?.sourceTitle || source?.title || "Not mapped yet",
+      sourceType: fact?.basis || source?.sourceType || "Find audited/bond/public filing source",
+      sourceUrl: fact?.sourceUrl || source?.url || ""
+    };
+  };
+
+  return [
+    makeRow({
+      need: "Audited statements",
+      proves: "Consolidated GAAP operating result and cash-flow strength.",
+      fields: ["operating revenue", "operating income", "EBIDA", "cash flow"],
+      why: "This is the cleanest way to compare system capacity against facility HCRIS stress.",
+      sourceMatcher: (text) => /audit|financial_statement|financial_information|investor|bond/i.test(text),
+      metricKeys: ["operatingRevenue", "operatingIncome", "ebida", "cashFlowFromOperations"]
+    }),
+    makeRow({
+      need: "Bond disclosures",
+      proves: "Debt capacity, obligated group, covenant context, and rating posture.",
+      fields: ["debt", "debt service", "ratings", "covenants"],
+      why: "A hospital can keep operating with losses if the obligated group has liquidity, debt access, or strategic support.",
+      sourceMatcher: (text) => /bond|investor|rating/i.test(text),
+      metricKeys: ["longTermDebt", "bondsPayable", "debtServiceCoverage", "fitchLongTermRating", "moodyLongTermRating", "spLongTermRating"]
+    }),
+    makeRow({
+      need: "Cash and liquidity",
+      proves: "Whether the system may have enough liquid resources to bridge weak facilities.",
+      fields: ["cash", "investments", "days cash", "current ratio"],
+      why: "Negative facility margin is different from immediate distress; liquidity is the bridge between those ideas.",
+      sourceMatcher: (text) => /audit|financial_statement|financial_information|investor|bond|form_990/i.test(text),
+      metricKeys: ["cash", "cashAndInvestments", "daysCashOnHand", "totalCurrentAssets", "totalCurrentLiabilities"]
+    }),
+    makeRow({
+      need: "Facility-specific support",
+      proves: "Whether the parent system directly subsidizes, leases, manages, or transfers funds to a facility.",
+      fields: ["subsidy", "intercompany", "lease", "management fee"],
+      why: "This is the missing proof for why a weak facility can stay open inside a stronger system.",
+      sourceMatcher: (text) => /audit|financial_statement|bond|form_990/i.test(text),
+      metricKeys: ["intercompanyTransfers", "facilitySubsidy", "leaseExpense", "managementFees"]
+    }),
+    makeRow({
+      need: "Payer mix and contracts",
+      proves: "How Medicare, Medicaid, commercial, self-pay, and managed-care exposure shape revenue.",
+      fields: ["Medicare mix", "Medicaid mix", "commercial mix", "MCO context"],
+      why: "Payer mix explains why two hospitals with similar volumes can have very different margins.",
+      sourceMatcher: (text) => /audit|annual|financial_statement|bond|investor|form_990/i.test(text),
+      metricKeys: ["medicareRevenue", "medicaidRevenue", "commercialRevenue", "payerMix"]
+    }),
+    makeRow({
+      need: "Community benefit",
+      proves: "Mission support, charity care, and public-good rationale.",
+      fields: ["charity care", "community benefit", "uncompensated care", "Schedule H"],
+      why: "Mission-heavy systems may tolerate weak facility economics where access and community benefit are central.",
+      sourceMatcher: (text) => /annual|community|form_990|audit|financial_statement/i.test(text),
+      metricKeys: ["communityBenefit", "charityCare", "costOfCharityCare", "communityProgramAnnualSupport", "foundationContribution"]
+    }),
+    makeRow({
+      need: "Time trend",
+      proves: "Whether weakness is structural or a one-year distortion.",
+      fields: ["3-year revenue", "3-year margin", "3-year cash", "3-year debt"],
+      why: "One year can be distorted by settlements, investment income, acquisitions, pension movement, or accounting changes.",
+      sourceMatcher: (text) => /annual|audit|financial_statement|form_990|bond|investor/i.test(text),
+      metricKeys: ["threeYearRevenueTrend", "threeYearMarginTrend", "threeYearCashTrend", "threeYearDebtTrend"]
+    })
+  ];
 }
 
 function renderMethodology() {
