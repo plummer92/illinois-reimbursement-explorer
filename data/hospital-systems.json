@@ -6,7 +6,8 @@
     "homepageUrl": "https://memorial.health/",
     "careersUrl": "https://jobs.memorial.health/",
     "sourceUrl": "https://memorial.health/taylorville-memorial-hospital/overview/",
-    "sourceNote": "Memorial Health identifies Taylorville Memorial Hospital as part of Memorial Health. Memorial Health contact pages list its Illinois hospitals, including Decatur, Jacksonville, Lincoln, Springfield, and Taylorville Memorial hospitals.",
+    "financialSourceIds": ["memorial-health-central-il"],
+    "sourceNote": "Memorial Health identifies Taylorville Memorial Hospital as part of Memorial Health. Memorial Health pages list Illinois hospitals including Decatur, Jacksonville, Lincoln, Springfield, and Taylorville Memorial hospitals.",
     "facilityIds": ["140135", "140148", "141322", "141339", "141352"],
     "facilityNamePatterns": [
       "DECATUR MEMORIAL HOSPITAL",
@@ -20,6 +21,126 @@
       "System affiliation may move careers, price transparency, billing, revenue cycle, financial reporting, transfer patterns, and some service-line strategy above the individual hospital level.",
       "For reimbursement analysis, distinguish the hospital CMS CCN from system-level ownership, management, shared services, and consolidated financial statements.",
       "For workforce analysis, query system-level careers pages and then filter postings by Taylorville, Decatur, Jacksonville, Lincoln, Springfield, or facility-specific location text."
+    ]
+  },
+  {
+    "systemId": "hshs",
+    "systemName": "Hospital Sisters Health System",
+    "systemType": "Catholic non-profit health system",
+    "homepageUrl": "https://www.hshs.org/",
+    "careersUrl": "https://careers.hshs.org/",
+    "sourceUrl": "https://www.hshs.org/system-hospital-search",
+    "financialSourceIds": ["hshs"],
+    "facilityIds": ["140137", "140187", "141354"],
+    "facilityNamePatterns": ["HSHS", "ST JOHNS HOSPITAL", "ST JOSEPHS HOSPITAL"],
+    "auditNotes": [
+      "HSHS has Illinois and Wisconsin operations; system financials must be separated from Illinois facility-specific cost reports.",
+      "Some HSHS hospitals appear in CMS files without the HSHS prefix, so name matching needs manual validation."
+    ]
+  },
+  {
+    "systemId": "osf-healthcare",
+    "systemName": "OSF HealthCare",
+    "systemType": "Catholic non-profit integrated health system",
+    "homepageUrl": "https://www.osfhealthcare.org/",
+    "careersUrl": "https://www.osfcareers.org/",
+    "sourceUrl": "https://www.osfhealthcare.org/patients-visitors/about/facts-figures",
+    "financialSourceIds": ["osf-healthcare"],
+    "facilityIds": ["140012", "140052", "140093", "140110", "140113", "140179", "141310", "141318", "141325", "141337"],
+    "facilityNamePatterns": ["OSF"],
+    "auditNotes": [
+      "OSF financial evidence should be interpreted as system context unless a facility-specific report or HCRIS row is attached.",
+      "OSF price transparency and careers often live at the system level."
+    ]
+  },
+  {
+    "systemId": "carle-health",
+    "systemName": "Carle Health",
+    "systemType": "Non-profit integrated health system",
+    "homepageUrl": "https://carle.org/",
+    "careersUrl": "https://jobs.carle.com/",
+    "sourceUrl": "https://carle.org/about-us",
+    "financialSourceIds": ["carle-health"],
+    "facilityIds": ["140013", "140091", "140120", "140127", "140209", "141309", "141316", "141355"],
+    "facilityNamePatterns": ["CARLE"],
+    "auditNotes": [
+      "Carle has grown through acquisitions and affiliations; system and facility legal entities need careful crosswalk.",
+      "The first financial seed is a major Carle Form 990 source, not a complete consolidated system-financial package."
+    ]
+  },
+  {
+    "systemId": "northwestern-medicine",
+    "systemName": "Northwestern Medicine",
+    "systemType": "Academic non-profit health system",
+    "homepageUrl": "https://www.nm.org/",
+    "careersUrl": "https://jobs.nm.org/",
+    "sourceUrl": "https://www.nm.org/about-us/financial-statements-and-annual-reports",
+    "financialSourceIds": ["northwestern-medicine"],
+    "facilityIds": ["140116", "140130", "140211", "140242", "140281", "140286"],
+    "facilityNamePatterns": ["NORTHWESTERN"],
+    "auditNotes": [
+      "Northwestern Memorial HealthCare financial statements are consolidated; facility-level analysis still needs CCN/HCRIS matching.",
+      "Northwestern Medicine price files and financial statements may use system branding rather than individual hospital legal names."
+    ]
+  },
+  {
+    "systemId": "rush",
+    "systemName": "Rush",
+    "systemType": "Academic non-profit health system",
+    "homepageUrl": "https://www.rush.edu/",
+    "careersUrl": "https://jobs.rush.edu/",
+    "sourceUrl": "https://www.rush.edu/about-us/bondholder-information",
+    "financialSourceIds": ["rush"],
+    "facilityIds": ["140063", "140119"],
+    "facilityNamePatterns": ["RUSH"],
+    "auditNotes": [
+      "Rush bondholder information and Form 990 evidence should be reconciled to RUSH obligated-group and medical-center entities.",
+      "Academic-system finance may include education, research, hospital, and physician enterprise relationships."
+    ]
+  },
+  {
+    "systemId": "endeavor-health",
+    "systemName": "Endeavor Health",
+    "systemType": "Non-profit regional health system",
+    "homepageUrl": "https://www.endeavorhealth.org/",
+    "careersUrl": "https://www.endeavorhealth.org/careers",
+    "sourceUrl": "https://www.endeavorhealth.org/",
+    "financialSourceIds": ["endeavor-health"],
+    "facilityIds": ["140010", "140114", "140200", "140231", "144035"],
+    "facilityNamePatterns": ["NORTHSHORE", "SWEDISH HOSPITAL", "EDWARD HOSPITAL", "ELMHURST MEMORIAL", "LINDEN OAKS"],
+    "auditNotes": [
+      "Endeavor Health combines legacy NorthShore and Edward-Elmhurst entities; older filings may require multiple EINs.",
+      "CMS facility names may still carry legacy brands."
+    ]
+  },
+  {
+    "systemId": "advocate-health",
+    "systemName": "Advocate Health",
+    "systemType": "Large multi-state non-profit health system",
+    "homepageUrl": "https://www.advocatehealth.org/",
+    "careersUrl": "https://careers.aah.org/",
+    "sourceUrl": "https://www.advocatehealth.org/investor-relations",
+    "financialSourceIds": ["advocate-health"],
+    "facilityIds": ["140030", "140048", "140182", "140202", "140208", "140223", "140288", "140291"],
+    "facilityNamePatterns": ["ADVOCATE"],
+    "auditNotes": [
+      "Advocate Health investor disclosures are consolidated and multi-state; Illinois facility analysis still needs HCRIS, HFS, and facility price files.",
+      "Legacy Advocate Aurora names may appear in older filings or source documents."
+    ]
+  },
+  {
+    "systemId": "uchicago-medicine",
+    "systemName": "UChicago Medicine",
+    "systemType": "Academic non-profit health system",
+    "homepageUrl": "https://www.uchicagomedicine.org/",
+    "careersUrl": "https://careers.uchicagomedicine.org/",
+    "sourceUrl": "https://www.uchicagomedicine.org/about-us/financial-information",
+    "financialSourceIds": ["uchicago-medicine"],
+    "facilityIds": ["140088", "140065", "140122", "140292", "140304"],
+    "facilityNamePatterns": ["UNIVERSITY OF CHICAGO", "UCHICAGO"],
+    "auditNotes": [
+      "UChicago Medicine finance can include hospital, academic, physician, research, and university-adjacent relationships.",
+      "AdventHealth co-branded facilities need extra care before attributing all financial evidence to UChicago Medicine."
     ]
   }
 ]

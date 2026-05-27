@@ -1714,6 +1714,19 @@ h3 {
   cursor: pointer;
 }
 
+.table-row.system-financial-row {
+  grid-template-columns: minmax(260px, 1.2fr) minmax(130px, 0.5fr) minmax(130px, 0.5fr) minmax(100px, 0.35fr) minmax(320px, 1.4fr) 80px;
+  min-width: 1120px;
+}
+
+.system-financial-row .tag {
+  white-space: normal;
+}
+
+.system-financial-row div {
+  overflow-wrap: anywhere;
+}
+
 .table-row.selected-peer-row {
   border-color: #99d8ca;
   background: #f2fbf8;
@@ -2359,6 +2372,7 @@ h3 {
   .table-row.binder-price-basket-row,
   .table-row.binder-payer-spread-row,
   .table-row.binder-peer-row,
+  .table-row.system-financial-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {
@@ -2378,6 +2392,7 @@ h3 {
   .table-row.binder-price-basket-row,
   .table-row.binder-payer-spread-row,
   .table-row.binder-peer-row,
+  .table-row.system-financial-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {
