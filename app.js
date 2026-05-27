@@ -654,7 +654,7 @@ function getAuditEvidenceLayers() {
       proves: "Public gross charges, cash prices, min/max negotiated-rate signals, and payer/plan price fields where the file is parsed.",
       limits: "Actual paid claims, Medicaid/Medicare payment, volume, denials, patient responsibility, medical necessity, or margin.",
       connection: priceRecordCount
-        ? `${formatIntegerOrNA(priceRecordCount)} Taylorville examples parsed in Price Transparency.`
+        ? `${formatIntegerOrNA(priceRecordCount)} price transparency examples parsed across ${formatIntegerOrNA(priceSourceCount)} mapped source files.`
         : priceSourceCount
           ? `${formatIntegerOrNA(priceSourceCount)} machine-readable file mapped; click Query Price Files.`
           : "Map hospital machine-readable files."
@@ -790,6 +790,7 @@ function renderPriceTransparency() {
   els.priceTransparencyMetricCards.innerHTML = renderWorkforceMetricCards([
     ["Tracked source files", sources.length],
     ["Facilities mapped", facilities.size],
+    ["Sources parsed", sources.filter((source) => source.parserStatus === "parsed").length],
     ["Preview rows parsed", records.length],
     ["Service categories found", categories.length]
   ]);
@@ -817,12 +818,14 @@ function renderPriceTransparencySourceRows(sources) {
     <article class="table-row compact">
       <div>
         <strong>${escapeHtml(source.facilityName || "Unknown facility")}</strong>
-        <small>${escapeHtml(source.systemName || "Unknown system")} / ${escapeHtml(source.updatedAsOf || "Unknown update date")} / ${escapeHtml(source.fileFormat || "unknown format")}</small>
+        <small>${escapeHtml(source.systemName || "Unknown system")} / ${escapeHtml(source.updatedAsOf || "Unknown update date")} / ${escapeHtml(source.fileFormat || "unknown format")} / ${escapeHtml(source.parserStatus || source.sourceStatus || "mapped")}</small>
+        <small>${escapeHtml(source.recordsParsed !== undefined ? `${source.recordsParsed} parsed examples` : "Not parsed yet")}</small>
         <small>${escapeHtml(source.sourceNote || "")}</small>
+        ${source.parserMessage ? `<small>${escapeHtml(source.parserMessage)}</small>` : ""}
       </div>
       <div class="source-actions">
         <a href="${escapeHtml(source.priceTransparencyPageUrl)}" target="_blank" rel="noreferrer">Page</a>
-        <a href="${escapeHtml(source.machineReadableFileUrl)}" target="_blank" rel="noreferrer">CSV</a>
+        <a href="${escapeHtml(source.machineReadableFileUrl)}" target="_blank" rel="noreferrer">${escapeHtml((source.fileFormat || "file").toUpperCase())}</a>
       </div>
     </article>
   `).join("");

@@ -147,9 +147,10 @@
     "evidenceType": "charge",
     "pipelineRole": "Rate Rules",
     "accessLevel": "Public hospital website file, often CSV or JSON",
-    "importStatus": "scaffolded",
+    "importStatus": "mapped",
     "whyItMatters": "Shows public price and negotiated-rate signals that can be compared against reimbursement rules, service examples, and payer variation.",
-    "limitations": "Files may exclude Medicare and Medicaid, can be huge or hard to parse, and do not prove paid claims, patient responsibility, volume, denials, or medical necessity."
+    "limitations": "Files may exclude Medicare and Medicaid, can be huge or hard to parse, and do not prove paid claims, patient responsibility, volume, denials, or medical necessity.",
+    "currentCoverage": "10 Illinois hospital price-transparency sources are mapped in the starter basket; 7 parsed successfully into 996 normalized benchmark examples, with portal/error sources retained as evidence gaps."
   },
   {
     "priority": 11,

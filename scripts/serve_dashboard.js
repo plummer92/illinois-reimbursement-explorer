@@ -7,7 +7,7 @@ const port = Number(process.env.PORT || 8765);
 const userAgent = "IllinoisReimbursementExplorer/0.1 (public research)";
 const reportCardUrl = "https://healthcarereportcard.illinois.gov/api/hospitals?per_page=100";
 const hfsTransparencyUrl = "https://hfs.illinois.gov/info/factsfigures/transparency.html";
-const pricePreviewBytes = 1_500_000;
+const pricePreviewBytes = 8_000_000;
 
 const mimeTypes = {
   ".html": "text/html",
@@ -295,7 +295,7 @@ function normalizeHeader(value) {
   return String(value || "").trim().toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
 }
 
-function parseCsvPreview(text, maxRows = 4000) {
+function parseCsvPreview(text, maxRows = 4000, delimiter = ",") {
   const rows = [];
   let row = [];
   let field = "";
@@ -309,7 +309,7 @@ function parseCsvPreview(text, maxRows = 4000) {
       i += 1;
     } else if (char === '"') {
       inQuotes = !inQuotes;
-    } else if (char === "," && !inQuotes) {
+    } else if (char === delimiter && !inQuotes) {
       row.push(field);
       field = "";
     } else if ((char === "\n" || char === "\r") && !inQuotes) {
@@ -330,7 +330,8 @@ function parseCsvPreview(text, maxRows = 4000) {
   if (rows.length < 2) return [];
   const headerIndex = rows.findIndex((candidate) => {
     const normalized = candidate.map((header) => normalizeHeader(header));
-    return normalized.includes("description") && normalized.some((header) => header.includes("standard_charge"));
+    return (normalized.includes("description") || normalized.includes("line_item"))
+      && (normalized.includes("setting") || normalized.includes("billing_class") || normalized.some((header) => header.startsWith("code")));
   });
   const headers = rows[Math.max(headerIndex, 0)].map((header) => normalizeHeader(header));
   return rows.slice(Math.max(headerIndex, 0) + 1).map((values) => Object.fromEntries(headers.map((header, index) => [header || `column_${index}`, values[index] || ""])));
@@ -562,15 +563,70 @@ function classifyPriceTransparencyRow(text) {
   return null;
 }
 
+function getPriceValue(row, aliases) {
+  const normalized = new Map(Object.entries(row).map(([key, value]) => [normalizeHeader(key), value]));
+  for (const alias of aliases) {
+    const value = normalized.get(normalizeHeader(alias));
+    if (value !== undefined && String(value).trim() !== "") return toNumberOrNull(value);
+  }
+  return null;
+}
+
 function getPriceAmount(row) {
-  const keys = Object.keys(row);
-  const preferred = keys.find((key) => /cash|gross|negotiated|standard|charge|rate|price|amount/.test(key));
-  return toNumberOrNull(preferred ? row[preferred] : "");
+  return getPriceValue(row, [
+    "discounted_cash",
+    "standard_charge|gross",
+    "gross_charge",
+    "gross charge",
+    "cash price",
+    "cash_price",
+    "standard charge gross",
+    "standard_charge",
+    "charge",
+    "rate",
+    "amount"
+  ]);
 }
 
 function getChargeType(row) {
-  const key = Object.keys(row).find((item) => /cash|gross|negotiated|standard|charge|rate|price|amount/.test(item));
+  const key = Object.keys(row).find((item) => /cash|gross|negotiated|standard|charge|rate|price|amount/i.test(item));
   return key ? key.replace(/_/g, " ").replace(/\b\w/g, (char) => char.toUpperCase()) : "Price field";
+}
+
+function getFirstCode(row) {
+  return getFirstField(row, ["code", "code_1", "code_2", "billing_code", "hcpcs_cpt", "cpt_hcpcs", "ms_drg", "apr_drg", "drg", "revenue_code", "billing code"]);
+}
+
+function getCodeType(row) {
+  return getFirstField(row, ["code_type", "type", "code_type_1", "billing_code_type", "coding_system", "code type"]);
+}
+
+function normalizePriceExample(example, source) {
+  return {
+    facilityId: source.facilityId,
+    facilityName: source.facilityName,
+    systemName: source.systemName || "",
+    category: example.category,
+    description: example.description || "Matched price transparency row",
+    code: example.code || "",
+    codeType: example.codeType || "",
+    setting: example.setting || "",
+    billingClass: example.billingClass || "",
+    payer: example.payer || "",
+    plan: example.plan || "",
+    chargeType: example.chargeType || "Price field",
+    amount: Number.isFinite(example.amount) ? example.amount : null,
+    grossCharge: Number.isFinite(example.grossCharge) ? example.grossCharge : null,
+    cashPrice: Number.isFinite(example.cashPrice) ? example.cashPrice : null,
+    minRate: Number.isFinite(example.minRate) ? example.minRate : null,
+    maxRate: Number.isFinite(example.maxRate) ? example.maxRate : null,
+    rateMethod: example.rateMethod || "",
+    sourceUrl: source.machineReadableFileUrl,
+    priceTransparencyPageUrl: source.priceTransparencyPageUrl,
+    observedDate: new Date().toISOString().slice(0, 10),
+    evidenceType: "charge",
+    limitations: "Hospital price transparency rows are published charge/rate signals. They do not prove actual paid claims, patient responsibility, volume, denials, medical necessity, or margin."
+  };
 }
 
 function extractPriceExamples(rows, source) {
@@ -578,7 +634,8 @@ function extractPriceExamples(rows, source) {
   const seen = new Set();
   rows.forEach((row) => {
     const description = getFirstField(row, ["description", "item_description", "service_description", "billing_description", "standard_charge_description", "line_item"]);
-    const code = getFirstField(row, ["code", "code_1", "code_2", "billing_code", "hcpcs_cpt", "cpt_hcpcs", "ms_drg", "apr_drg", "drg", "revenue_code"]);
+    const code = getFirstCode(row);
+    const codeType = getCodeType(row);
     const setting = getFirstField(row, ["setting", "patient_type", "inpatient_outpatient", "service_setting"]);
     const billingClass = getFirstField(row, ["billing_class", "billing_classification"]);
     const haystack = `${description} ${code} ${setting} ${billingClass}`.toLowerCase();
@@ -586,23 +643,151 @@ function extractPriceExamples(rows, source) {
     if (!category) return;
     const amount = getPriceAmount(row);
     const payer = getFirstField(row, ["payer", "payer_name", "plan", "plan_name", "third_party_payer_name"]);
+    const plan = getFirstField(row, ["plan", "plan_name", "payer_plan", "third_party_payer_plan_name"]);
     const chargeType = getChargeType(row);
     const key = `${category}|${description}|${code}|${chargeType}|${amount}|${payer}`;
     if (seen.has(key)) return;
     seen.add(key);
-    examples.push({
-      facilityId: source.facilityId,
-      facilityName: source.facilityName,
+    examples.push(normalizePriceExample({
       category,
-      description: description || "Matched price transparency row",
+      description,
       code,
+      codeType,
       amount,
+      grossCharge: getPriceValue(row, ["gross_charge", "gross charge", "standard_charge|gross", "standard charge gross"]),
+      cashPrice: getPriceValue(row, ["discounted_cash", "cash_price", "cash price", "standard_charge|discounted_cash"]),
+      minRate: getPriceValue(row, ["minimum", "min", "deidentified_min", "de-identified minimum negotiated charge"]),
+      maxRate: getPriceValue(row, ["maximum", "max", "deidentified_max", "de-identified maximum negotiated charge"]),
       payer,
+      plan,
       chargeType,
-      setting
-    });
+      setting,
+      billingClass
+    }, source));
   });
   return examples.sort((a, b) => a.category.localeCompare(b.category) || (b.amount || 0) - (a.amount || 0)).slice(0, 160);
+}
+
+function extractJsonArrayObjects(text, arrayName, maxObjects = 600) {
+  const startKey = text.indexOf(`"${arrayName}"`);
+  if (startKey === -1) return [];
+  const arrayStart = text.indexOf("[", startKey);
+  if (arrayStart === -1) return [];
+  const objects = [];
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  let objectStart = -1;
+  for (let index = arrayStart + 1; index < text.length && objects.length < maxObjects; index += 1) {
+    const char = text[index];
+    if (inString) {
+      escaped = char === "\\" && !escaped;
+      if (char === "\"" && !escaped) inString = false;
+      if (char !== "\\") escaped = false;
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+    } else if (char === "{") {
+      if (depth === 0) objectStart = index;
+      depth += 1;
+    } else if (char === "}") {
+      depth -= 1;
+      if (depth === 0 && objectStart !== -1) {
+        try {
+          objects.push(JSON.parse(text.slice(objectStart, index + 1)));
+        } catch {
+          // Skip malformed preview fragments.
+        }
+        objectStart = -1;
+      }
+    } else if (char === "]" && depth === 0) {
+      break;
+    }
+  }
+  return objects;
+}
+
+function extractJsonPriceExamples(text, source) {
+  const items = extractJsonArrayObjects(text, "standard_charge_information");
+  const examples = [];
+  const seen = new Set();
+  for (const item of items) {
+    const description = item.description || item.item_description || "";
+    const codes = Array.isArray(item.code_information) ? item.code_information : [];
+    const code = codes[0]?.code || item.code || "";
+    const codeType = codes[0]?.type || item.code_type || "";
+    const charges = Array.isArray(item.standard_charges) ? item.standard_charges : [];
+    for (const charge of charges.slice(0, 3)) {
+      const setting = charge.setting || item.setting || "";
+      const category = classifyPriceTransparencyRow(`${description} ${code} ${codeType} ${setting}`.toLowerCase());
+      if (!category) continue;
+      const baseExamples = [
+        ["Gross charge", toNumberOrNull(charge.gross_charge)],
+        ["Discounted cash", toNumberOrNull(charge.discounted_cash)],
+        ["De-identified minimum", toNumberOrNull(charge.minimum)],
+        ["De-identified maximum", toNumberOrNull(charge.maximum)]
+      ];
+      for (const [chargeType, amount] of baseExamples) {
+        if (!Number.isFinite(amount)) continue;
+        const key = `${description}|${code}|${setting}|${chargeType}|${amount}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        examples.push(normalizePriceExample({
+          category,
+          description,
+          code,
+          codeType,
+          setting,
+          chargeType,
+          amount,
+          grossCharge: toNumberOrNull(charge.gross_charge),
+          cashPrice: toNumberOrNull(charge.discounted_cash),
+          minRate: toNumberOrNull(charge.minimum),
+          maxRate: toNumberOrNull(charge.maximum)
+        }, source));
+      }
+      const payerRows = Array.isArray(charge.payers_information) ? charge.payers_information.slice(0, 2) : [];
+      for (const payerRow of payerRows) {
+        const amount = toNumberOrNull(payerRow.standard_charge_dollar) || toNumberOrNull(payerRow.negotiated_dollar) || toNumberOrNull(payerRow.median_amount);
+        const percentage = toNumberOrNull(payerRow.standard_charge_percentage);
+        if (!Number.isFinite(amount) && !Number.isFinite(percentage)) continue;
+        const key = `${description}|${code}|${setting}|${payerRow.payer_name}|${payerRow.plan_name}|${amount || percentage}`;
+        if (seen.has(key)) continue;
+        seen.add(key);
+        examples.push(normalizePriceExample({
+          category,
+          description,
+          code,
+          codeType,
+          setting,
+          payer: payerRow.payer_name,
+          plan: payerRow.plan_name,
+          chargeType: Number.isFinite(amount) ? "Payer negotiated dollar" : "Payer negotiated percentage",
+          amount: Number.isFinite(amount) ? amount : percentage,
+          grossCharge: toNumberOrNull(charge.gross_charge),
+          cashPrice: toNumberOrNull(charge.discounted_cash),
+          minRate: toNumberOrNull(charge.minimum),
+          maxRate: toNumberOrNull(charge.maximum),
+          rateMethod: payerRow.methodology || payerRow.standard_charge_algorithm || ""
+        }, source));
+      }
+    }
+  }
+  return examples.sort((a, b) => a.category.localeCompare(b.category) || (b.amount || 0) - (a.amount || 0)).slice(0, 160);
+}
+
+function detectDelimiter(text) {
+  const firstLine = text.split(/\r?\n/).find((line) => line.trim()) || "";
+  const candidates = [",", "\t", "|"];
+  return candidates
+    .map((delimiter) => [delimiter, firstLine.split(delimiter).length])
+    .sort((a, b) => b[1] - a[1])[0][0];
+}
+
+function parseDelimitedPreview(text) {
+  const delimiter = detectDelimiter(text);
+  return parseCsvPreview(text, 3000, delimiter);
 }
 
 async function queryPriceTransparency() {
@@ -610,22 +795,43 @@ async function queryPriceTransparency() {
   const sources = JSON.parse(sourceText);
   const records = [];
   const errors = [];
+  const updatedSources = [];
 
   for (const source of sources) {
+    const updatedSource = { ...source, parserStatus: "not_run", recordsParsed: 0, lastQueried: new Date().toISOString().slice(0, 10) };
     try {
+      if (source.sourceStatus === "portal_only" || source.fileFormat === "html_portal") {
+        updatedSource.parserStatus = "portal_only";
+        updatedSource.parserMessage = "Mapped to a public portal page; direct machine-readable CSV/JSON endpoint still needs discovery.";
+        updatedSources.push(updatedSource);
+        continue;
+      }
       const text = await fetchTextPreview(source.machineReadableFileUrl);
-      const rows = parseCsvPreview(text);
-      records.push(...extractPriceExamples(rows, source));
+      const examples = source.fileFormat === "json" || /^\s*[{[]/.test(text)
+        ? extractJsonPriceExamples(text, source)
+        : extractPriceExamples(parseDelimitedPreview(text), source);
+      records.push(...examples);
+      updatedSource.parserStatus = examples.length ? "parsed" : "no_examples";
+      updatedSource.recordsParsed = examples.length;
+      updatedSource.parserMessage = examples.length
+        ? `Parsed ${examples.length} service examples from preview.`
+        : "File loaded, but no benchmark service examples were found in the preview.";
     } catch (error) {
+      updatedSource.parserStatus = "error";
+      updatedSource.parserMessage = error.message || String(error);
       errors.push(`${source.facilityName}: ${error.message || error}`);
     }
+    updatedSources.push(updatedSource);
   }
+
+  await fs.writeFile(path.join(root, "data", "price-transparency-sources.json"), JSON.stringify(updatedSources, null, 2), "utf8");
+  await fs.writeFile(path.join(root, "data", "price-transparency-records.json"), JSON.stringify(records, null, 2), "utf8");
 
   return {
     status: errors.length
       ? `Price source metadata loaded, but server preview had errors: ${errors.join("; ")}`
-      : `Server parsed ${records.length} service examples from ${sources.length} mapped price transparency file${sources.length === 1 ? "" : "s"}.`,
-    sources,
+      : `Server parsed ${records.length} service examples from ${updatedSources.length} mapped price transparency source${updatedSources.length === 1 ? "" : "s"}.`,
+    sources: updatedSources,
     records,
     errors
   };
