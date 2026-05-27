@@ -1708,6 +1708,17 @@ h3 {
   min-width: 1080px;
 }
 
+.table-row.binder-peer-row {
+  grid-template-columns: minmax(280px, 1.4fr) 90px repeat(4, minmax(92px, 0.42fr)) minmax(180px, 0.8fr) 95px minmax(190px, 0.8fr);
+  min-width: 1320px;
+  cursor: pointer;
+}
+
+.table-row.selected-peer-row {
+  border-color: #99d8ca;
+  background: #f2fbf8;
+}
+
 .table-row.price-example-row {
   grid-template-columns: minmax(300px, 1.5fr) minmax(150px, 0.7fr) minmax(110px, 0.4fr) minmax(190px, 0.8fr) minmax(190px, 0.8fr);
   min-width: 1100px;
@@ -2128,7 +2139,8 @@ h3 {
 }
 
 .binder-price-basket-row .numeric,
-.binder-payer-spread-row .numeric {
+.binder-payer-spread-row .numeric,
+.binder-peer-row .numeric {
   white-space: normal;
 }
 
@@ -2346,6 +2358,7 @@ h3 {
   .table-row.price-basket-row,
   .table-row.binder-price-basket-row,
   .table-row.binder-payer-spread-row,
+  .table-row.binder-peer-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {
@@ -2364,6 +2377,7 @@ h3 {
   .table-row.price-basket-row,
   .table-row.binder-price-basket-row,
   .table-row.binder-payer-spread-row,
+  .table-row.binder-peer-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {

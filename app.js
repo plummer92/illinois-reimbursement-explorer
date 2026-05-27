@@ -162,6 +162,8 @@ Object.assign(els, {
   binderSnapshotCards: document.querySelector("#binderSnapshotCards"),
   binderEvidenceStack: document.querySelector("#binderEvidenceStack"),
   binderEvidenceCompleteness: document.querySelector("#binderEvidenceCompleteness"),
+  binderPeerFindings: document.querySelector("#binderPeerFindings"),
+  binderPeerRows: document.querySelector("#binderPeerRows"),
   binderPriceBasketRows: document.querySelector("#binderPriceBasketRows"),
   binderPayerSpreadRows: document.querySelector("#binderPayerSpreadRows"),
   binderServiceExamples: document.querySelector("#binderServiceExamples"),
@@ -1461,6 +1463,8 @@ function renderFacilityBinderPage() {
     els.binderSnapshotCards.innerHTML = "";
     els.binderEvidenceStack.innerHTML = '<p class="status">No hospital record is available for the evidence binder.</p>';
     els.binderEvidenceCompleteness.innerHTML = "";
+    els.binderPeerFindings.innerHTML = "";
+    els.binderPeerRows.innerHTML = "";
     els.binderPriceBasketRows.innerHTML = "";
     els.binderPayerSpreadRows.innerHTML = "";
     els.binderServiceExamples.innerHTML = "";
@@ -1484,6 +1488,9 @@ function renderFacilityBinderPage() {
   els.binderSnapshotCards.innerHTML = renderBinderSnapshotCards(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
   els.binderEvidenceStack.innerHTML = renderBinderEvidenceStack(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
   els.binderEvidenceCompleteness.innerHTML = renderBinderEvidenceCompleteness(selected, binder, priceRows, paymentRows, costReport, rateSheet, hfsPayment);
+  const peerProfiles = buildBinderPeerProfiles(selected);
+  els.binderPeerFindings.innerHTML = renderBinderPeerFindings(selected, peerProfiles);
+  els.binderPeerRows.innerHTML = renderBinderPeerRows(peerProfiles);
   els.binderPriceBasketRows.innerHTML = renderBinderPriceBasketComparison(selected, priceRows);
   els.binderPayerSpreadRows.innerHTML = renderBinderPayerSpreadRows(selected, priceRows);
   els.binderServiceExamples.innerHTML = renderBinderServiceExampleRows(priceRows);
@@ -3179,6 +3186,138 @@ function renderBinderEvidenceCompleteness(hospital, binder, priceRows, paymentRo
       <small>${escapeHtml(detail)}</small>
     </article>
   `).join("");
+}
+
+function buildBinderPeerProfiles(selectedHospital) {
+  const allHospitals = getFilteredHospitals();
+  const selectedSystem = selectedHospital.systemAffiliation?.systemName || "";
+  const selectedRurality = selectedHospital.countyContext?.ruralUrbanClassification || "";
+  const selectedType = selectedHospital.hospitalType || "";
+  const candidates = allHospitals
+    .filter((hospital) => String(hospital.facilityId) !== String(selectedHospital.facilityId))
+    .map((hospital) => {
+      let peerScore = 0;
+      if (hospital.hospitalType === selectedType) peerScore += 35;
+      if (selectedSystem && hospital.systemAffiliation?.systemName === selectedSystem) peerScore += 25;
+      if (selectedRurality && hospital.countyContext?.ruralUrbanClassification === selectedRurality) peerScore += 15;
+      if (hospital.county === selectedHospital.county) peerScore += 10;
+      if (hospital.emergencyServices === selectedHospital.emergencyServices) peerScore += 5;
+      if (Number.isFinite(hospital.overallRating) && Number.isFinite(selectedHospital.overallRating)) {
+        peerScore += Math.max(0, 10 - Math.abs(hospital.overallRating - selectedHospital.overallRating) * 2);
+      }
+      return { hospital, peerScore };
+    })
+    .filter((item) => item.peerScore >= 30)
+    .sort((a, b) => b.peerScore - a.peerScore || a.hospital.facilityName.localeCompare(b.hospital.facilityName))
+    .slice(0, 10);
+
+  return [
+    buildBinderPeerProfile(selectedHospital, 100, true),
+    ...candidates.map((item) => buildBinderPeerProfile(item.hospital, item.peerScore, false))
+  ];
+}
+
+function buildBinderPeerProfile(hospital, peerScore, selected) {
+  const costReport = getCostReportForHospital(hospital);
+  const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const paymentRows = getProviderPaymentRowsForHospital(hospital);
+  const careers = getFacilityCareerRecord(hospital);
+  const priceCoverage = buildFacilityPriceEvidenceCoverage(priceRows);
+  const evidenceCompletenessScore = scoreEvidenceCompleteness(hospital, { costReport, priceRows, paymentRows, careers, priceCoverage });
+  const fields = hospital.hfsPayment?.paymentFields || {};
+  return {
+    hospital,
+    selected,
+    peerScore,
+    costReport,
+    priceRows,
+    paymentRows,
+    priceCoverage,
+    evidenceCompletenessScore,
+    operatingMargin: costReport?.derived?.operatingMargin,
+    occupancyRate: costReport?.derived?.occupancyRate,
+    ftePerOccupiedBed: costReport?.derived?.ftePerOccupiedBed,
+    costToChargeRatio: costReport?.costToChargeRatio,
+    totalPaid: sum(paymentRows.map((record) => record.totalPaid)),
+    acuteDrgRate: fields.ipCos20AcuteDrgRate,
+    opEapgBase: fields.opCos24AcuteEapgConversionFactorBaseRate
+  };
+}
+
+function renderBinderPeerFindings(selectedHospital, profiles) {
+  const selected = profiles.find((profile) => profile.selected);
+  if (!selected) return '<p class="status">No peer profile is available.</p>';
+  const peers = profiles.filter((profile) => !profile.selected);
+  const peerCompleteness = peers.map((profile) => profile.evidenceCompletenessScore).filter(Number.isFinite);
+  const peerMargins = peers.map((profile) => profile.operatingMargin).filter(Number.isFinite);
+  const peerOccupancy = peers.map((profile) => profile.occupancyRate).filter(Number.isFinite);
+  const peerCcr = peers.map((profile) => profile.costToChargeRatio).filter(Number.isFinite);
+  const completenessRank = profiles
+    .slice()
+    .sort((a, b) => b.evidenceCompletenessScore - a.evidenceCompletenessScore)
+    .findIndex((profile) => profile.selected) + 1;
+
+  const findings = [
+    `${selectedHospital.facilityName} is ranked ${completenessRank} of ${profiles.length} in this binder peer set by evidence completeness, not by price level.`,
+    peerMargins.length
+      ? `Its operating margin is ${formatOptionalPercent(selected.operatingMargin)}, compared with a peer median of ${formatOptionalPercent(percentile(peerMargins, 0.5))}.`
+      : "Peer operating-margin context is limited until more HCRIS rows are matched.",
+    peerOccupancy.length
+      ? `Its occupancy is ${formatOptionalPercent(selected.occupancyRate)}, compared with a peer median of ${formatOptionalPercent(percentile(peerOccupancy, 0.5))}.`
+      : "Peer occupancy context is limited until more cost-report utilization fields are matched.",
+    peerCcr.length
+      ? `Its cost-to-charge ratio is ${formatNumberOrNA(selected.costToChargeRatio, 3)}, compared with a peer median of ${formatNumberOrNA(percentile(peerCcr, 0.5), 3)}.`
+      : "Peer cost-to-charge context is limited until more HCRIS charge/cost rows are matched.",
+    `Price basket coverage is ${formatIntegerOrNA(selected.priceCoverage.basketCount)} of ${priceServiceBasket.length}; this tells you whether price evidence is usable, not whether the hospital is best or cheapest.`
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderBinderPeerRows(profiles) {
+  if (!profiles.length) return '<p class="status">No peer hospitals are available under the current filters.</p>';
+  return `
+    <article class="table-row binder-peer-row header">
+      <div>Hospital</div>
+      <div class="numeric">Evidence</div>
+      <div class="numeric">Margin</div>
+      <div class="numeric">Occupancy</div>
+      <div class="numeric">FTE / Occ Bed</div>
+      <div class="numeric">CCR</div>
+      <div class="numeric">HFS Context</div>
+      <div class="numeric">Price Basket</div>
+      <div>Why It Looks Different</div>
+    </article>
+    ${profiles
+      .slice()
+      .sort((a, b) => Number(b.selected) - Number(a.selected) || b.evidenceCompletenessScore - a.evidenceCompletenessScore)
+      .map((profile) => `
+        <article class="table-row binder-peer-row ${profile.selected ? "selected-peer-row" : ""}" data-binder-peer-id="${escapeHtml(profile.hospital.facilityId)}">
+          <div>
+            <strong>${profile.selected ? "Selected: " : ""}${escapeHtml(profile.hospital.facilityName)}</strong>
+            <small>${escapeHtml(profile.hospital.city)} / ${escapeHtml(profile.hospital.county)} / ${escapeHtml(profile.hospital.hospitalType)}</small>
+            <small>${escapeHtml(profile.hospital.systemAffiliation?.systemName || "No mapped system")} / peer match ${formatNumberOrNA(profile.peerScore, 0)}</small>
+          </div>
+          <div class="numeric">${formatNumberOrNA(profile.evidenceCompletenessScore, 0)} / 100</div>
+          <div class="numeric">${formatOptionalPercent(profile.operatingMargin)}</div>
+          <div class="numeric">${formatOptionalPercent(profile.occupancyRate)}</div>
+          <div class="numeric">${formatNumberOrNA(profile.ftePerOccupiedBed, 2)}</div>
+          <div class="numeric">${formatNumberOrNA(profile.costToChargeRatio, 3)}</div>
+          <div class="numeric">DRG ${formatCurrencyOrNA(profile.acuteDrgRate)} / OP ${formatCurrencyOrNA(profile.opEapgBase)}</div>
+          <div class="numeric">${formatIntegerOrNA(profile.priceCoverage.basketCount)} / ${priceServiceBasket.length}</div>
+          <div>${renderBinderPeerDifferenceTags(profile)}</div>
+        </article>
+      `).join("")}
+  `;
+}
+
+function renderBinderPeerDifferenceTags(profile) {
+  const tags = [];
+  if (profile.costReport) tags.push("cost report loaded");
+  if (profile.paymentRows.length || profile.hospital.hfsPayment) tags.push("HFS loaded");
+  if (profile.priceRows.length) tags.push("price parsed");
+  if (profile.priceCoverage.basketCount >= 4) tags.push("basket usable");
+  if (!tags.length) tags.push("evidence gap");
+  return tags.slice(0, 4).map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join(" ");
 }
 
 function renderBinderPriceBasketComparison(hospital, priceRows) {
@@ -6723,6 +6862,18 @@ els.leaderboardRows.addEventListener("click", (event) => {
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+});
+
+els.binderPeerRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-binder-peer-id]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.binderPeerId;
+  renderHospitalIntelligence();
+  renderHospitalLeaderboard();
+  renderFacilityBinderPage();
+  renderHospitalPaymentExplorer();
+  renderFinancialPressure();
+  els.binderPeerRows.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 els.hospitalDrilldown.addEventListener("click", (event) => {
