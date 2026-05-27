@@ -1020,9 +1020,13 @@ function renderSystemFinancialFactRows(facts) {
       .slice()
       .sort((a, b) => a.systemName.localeCompare(b.systemName) || String(b.period).localeCompare(String(a.period)))
       .map((fact) => {
-        const metrics = fact.metrics || {};
-        const revenue = Number.isFinite(metrics.totalRevenue) ? metrics.totalRevenue : metrics.totalNetRevenue;
-        const margin = Number.isFinite(metrics.netIncome) && Number.isFinite(revenue) && revenue !== 0
+      const metrics = fact.metrics || {};
+      const revenue = Number.isFinite(metrics.totalRevenue) ? metrics.totalRevenue : metrics.totalNetRevenue;
+      const margin = Number.isFinite(metrics.operatingMargin)
+        ? metrics.operatingMargin
+        : Number.isFinite(metrics.operatingIncome) && Number.isFinite(revenue) && revenue !== 0
+          ? metrics.operatingIncome / revenue
+          : Number.isFinite(metrics.netIncome) && Number.isFinite(revenue) && revenue !== 0
           ? metrics.netIncome / revenue
           : null;
         return `
@@ -1053,12 +1057,22 @@ function renderSystemFinancialMetricTags(metrics = {}) {
     ["netAssets", "Net assets", formatCurrencyOrNA(metrics.netAssets, 0)],
     ["totalAssets", "Assets", formatCurrencyOrNA(metrics.totalAssets, 0)],
     ["totalLiabilities", "Liabilities", formatCurrencyOrNA(metrics.totalLiabilities, 0)],
+    ["operatingIncome", "Op income", formatCurrencyOrNA(metrics.operatingIncome, 0)],
+    ["operatingMargin", "Op margin", formatOptionalPercent(metrics.operatingMargin)],
+    ["cash", "Cash", formatCurrencyOrNA(metrics.cash, 0)],
+    ["cashAndInvestments", "Cash + investments", formatCurrencyOrNA(metrics.cashAndInvestments, 0)],
+    ["daysCashOnHand", "Days cash", formatNumberOrNA(metrics.daysCashOnHand, 1)],
+    ["longTermDebt", "Debt", formatCurrencyOrNA(metrics.longTermDebt, 0)],
+    ["annualDebtServiceCoverage", "DSC", `${formatNumberOrNA(metrics.annualDebtServiceCoverage, 1)}x`],
     ["licensedBeds", "Beds", formatIntegerOrNA(metrics.licensedBeds)],
+    ["staffedBeds", "Staffed beds", formatIntegerOrNA(metrics.staffedBeds)],
     ["licensedHospitals", "Hospitals", formatIntegerOrNA(metrics.licensedHospitals)],
+    ["careLocations", "Care sites", formatIntegerOrNA(metrics.careLocations)],
     ["inpatientAdmissions", "Admissions", formatIntegerOrNA(metrics.inpatientAdmissions)],
     ["outpatientVisits", "OP visits", formatIntegerOrNA(metrics.outpatientVisits)],
     ["personsServed", "Persons served", formatIntegerOrNA(metrics.personsServed)],
     ["totalMissionPartners", "Workforce", formatIntegerOrNA(metrics.totalMissionPartners)],
+    ["totalColleagues", "Colleagues", formatIntegerOrNA(metrics.totalColleagues)],
     ["foundationContribution", "Foundation", formatCurrencyOrNA(metrics.foundationContribution, 0)],
     ["fitchLongTermRating", "Fitch", metrics.fitchLongTermRating],
     ["moodyLongTermRating", "Moody", metrics.moodyLongTermRating],
@@ -1771,6 +1785,11 @@ function buildSystemFinanceSummaries() {
       const assets = getBestSystemMetric(facts, ["totalAssets"]);
       const liabilities = getBestSystemMetric(facts, ["totalLiabilities"]);
       const liabilityRatio = Number.isFinite(assets) && assets !== 0 && Number.isFinite(liabilities) ? liabilities / assets : null;
+      const operatingMargin = Number.isFinite(primaryFact?.metrics?.operatingMargin)
+        ? primaryFact.metrics.operatingMargin
+        : Number.isFinite(primaryFact?.metrics?.operatingIncome) && Number.isFinite(revenue) && revenue !== 0
+          ? primaryFact.metrics.operatingIncome / revenue
+          : null;
       return {
         system,
         facts,
@@ -1782,7 +1801,9 @@ function buildSystemFinanceSummaries() {
         revenue,
         expenses,
         netIncome,
-        margin: Number.isFinite(netIncome) && Number.isFinite(revenue) && revenue !== 0 ? netIncome / revenue : primaryFact?.margin,
+        margin: Number.isFinite(operatingMargin)
+          ? operatingMargin
+          : Number.isFinite(netIncome) && Number.isFinite(revenue) && revenue !== 0 ? netIncome / revenue : primaryFact?.margin,
         assets,
         liabilities,
         liabilityRatio
@@ -1903,7 +1924,8 @@ function renderSystemFinanceDetail(summary) {
   const factCards = [
     ["System revenue", formatCurrencyOrNA(summary.revenue, 0), summary.primaryFact?.period || "Primary extract"],
     ["System expenses", formatCurrencyOrNA(summary.expenses, 0), "Form 990 or extracted statement"],
-    ["System net income", formatCurrencyOrNA(summary.netIncome, 0), `${formatOptionalPercent(summary.margin)} margin signal`],
+    ["Operating income", formatCurrencyOrNA(summary.primaryFact?.metrics?.operatingIncome, 0), `${formatOptionalPercent(summary.margin)} operating margin signal`],
+    ["Net income", formatCurrencyOrNA(summary.netIncome, 0), "Includes nonoperating gains/losses where reported"],
     ["Assets", formatCurrencyOrNA(summary.assets, 0), `${formatOptionalPercent(summary.liabilityRatio)} liabilities to assets`],
     ["Liabilities", formatCurrencyOrNA(summary.liabilities, 0), "Debt/liability context needs bond/audit validation"],
     ["Mapped hospitals", formatIntegerOrNA(summary.hospitals.length), `${formatIntegerOrNA(summary.costReports.length)} with HCRIS economics`]

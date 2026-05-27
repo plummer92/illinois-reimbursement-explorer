@@ -194,5 +194,61 @@
     "evidenceUse": "IRS Form 990 revenue, expenses, net income, net assets, compensation, and Schedule H context.",
     "limitations": "Form 990 should be reconciled to audited statements and HCRIS before making facility-specific finance arguments.",
     "discoveredDate": "2026-05-27"
+  },
+  {
+    "systemId": "rush",
+    "systemName": "Rush",
+    "sourceType": "audited_annual_report_pdf",
+    "title": "Rush FY2024 Annual Financial Report Audited",
+    "url": "https://www.rush.edu/sites/default/files/media-documents/2024-annual-financial-report-audited.pdf",
+    "publisher": "Rush University System for Health",
+    "latestPeriod": "Fiscal year ended June 30, 2024",
+    "confidence": "high",
+    "status": "extracted",
+    "evidenceUse": "Obligated-group audited operating result, liquidity, debt capacity, days cash, debt-service coverage, and bond-rating context.",
+    "limitations": "Obligated-group evidence is system capacity evidence, not facility-level profitability for RUMC, Rush Oak Park, or Copley individually.",
+    "discoveredDate": "2026-05-27"
+  },
+  {
+    "systemId": "northwestern-medicine",
+    "systemName": "Northwestern Medicine",
+    "sourceType": "audited_financial_statement_pdf",
+    "title": "Northwestern Memorial HealthCare FY2025 Audited Financial Statements",
+    "url": "https://www.nm.org/-/media/northwestern/resources/about-us/northwestern-medicine-fiscal-audit.pdf",
+    "publisher": "Northwestern Medicine",
+    "latestPeriod": "Fiscal year ended Aug. 31, 2025",
+    "confidence": "high",
+    "status": "extracted",
+    "evidenceUse": "Consolidated audited balance sheet and operating statement fields for system capacity comparison.",
+    "limitations": "Consolidated Northwestern Memorial HealthCare evidence should not be read as any single hospital's HCRIS result.",
+    "discoveredDate": "2026-05-27"
+  },
+  {
+    "systemId": "uchicago-medicine",
+    "systemName": "UChicago Medicine",
+    "sourceType": "audited_financial_statement_pdf",
+    "title": "UChicago Medicine 2025 Audited Financial Statements",
+    "url": "https://edge.sitecorecloud.io/unichicagomc-81nbqnb3/media/pdfs/adult-pdfs/about-us/financial-information/2025-audited.pdf",
+    "publisher": "UChicago Medicine",
+    "latestPeriod": "Fiscal year ended June 30, 2025",
+    "confidence": "high",
+    "status": "extracted",
+    "evidenceUse": "Consolidated audited operating revenues, operating expenses, operating result, assets, liabilities, cash, investments, and debt.",
+    "limitations": "Academic medical center finance can include hospital, network, affiliate, university, and physician relationships.",
+    "discoveredDate": "2026-05-27"
+  },
+  {
+    "systemId": "hshs",
+    "systemName": "Hospital Sisters Health System",
+    "sourceType": "official_system_profile",
+    "title": "HSHS About Us System Profile",
+    "url": "https://www.hshs.org/about",
+    "publisher": "Hospital Sisters Health System",
+    "latestPeriod": "Current system profile",
+    "confidence": "high",
+    "status": "extracted",
+    "evidenceUse": "System footprint, mission, governance, hospital count, physician partner, and colleague scale context.",
+    "limitations": "Footprint facts do not prove liquidity, debt capacity, audited margin, or facility-specific subsidies.",
+    "discoveredDate": "2026-05-27"
   }
 ]
