@@ -98,6 +98,20 @@
     "bestFor": "Nursing home ownership, certified beds, star ratings, and reported staffing hours per resident day."
   },
   {
+    "name": "CMS Nursing Home Penalties",
+    "category": "Nursing Home Enforcement",
+    "url": "https://data.cms.gov/provider-data/dataset/g6vv-u9sr",
+    "public": true,
+    "bestFor": "Fine and payment-denial events by nursing home, including penalty date, penalty type, fine amount, and denial timing."
+  },
+  {
+    "name": "CMS Nursing Home Health Deficiencies",
+    "category": "Nursing Home Enforcement",
+    "url": "https://data.cms.gov/provider-data/dataset/r5ix-sfxw",
+    "public": true,
+    "bestFor": "Survey citation details by nursing home, including deficiency tag, category, description, scope/severity, correction status, and survey date."
+  },
+  {
     "name": "County Health Rankings 2025 Illinois Data",
     "category": "County Disparity Context",
     "url": "https://www.countyhealthrankings.org/health-data/illinois/data-and-resources",

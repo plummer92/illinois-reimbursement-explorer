@@ -20,6 +20,8 @@ const state = {
   facilityCareers: [],
   countyContext: [],
   countySummaries: [],
+  nursingHomeEnforcementSummary: [],
+  nursingHomeEnforcementDetails: [],
   sources: [],
   sourceRegistry: [],
   activeTab: "executive",
@@ -239,6 +241,8 @@ async function loadData() {
   state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
+  state.nursingHomeEnforcementSummary = await fetchOptionalJson("data/cms-nursing-home-enforcement-summary.json");
+  state.nursingHomeEnforcementDetails = await fetchOptionalJson("data/cms-nursing-home-enforcement-details.json");
   state.sourceRegistry = await fetchOptionalJson("data/source-registry.json");
   state.records = [...nursingRates, ...starterRecords];
   state.sources = await sourcesResponse.json();
@@ -5087,6 +5091,11 @@ function renderChainSummaryRows(chains) {
 
 function renderChainDrilldown(chain) {
   if (!chain) return '<p class="status">Select an operator row to view portfolio details.</p>';
+  const enforcementDetails = getChainEnforcementDetails(chain);
+  const eventPenaltyCount = sum(enforcementDetails.map((detail) => detail.penaltyEvents?.length || 0));
+  const eventFineAmount = sum(enforcementDetails.flatMap((detail) => detail.penaltyEvents || []).map((event) => event.fineAmount));
+  const eventDenialCount = sum(enforcementDetails.flatMap((detail) => detail.penaltyEvents || []).map((event) => /denial/i.test(event.penaltyType || "") ? 1 : 0));
+  const citationCount = sum(enforcementDetails.map((detail) => detail.deficiencyCount));
   return `
     <div class="profile-header">
       <div>
@@ -5114,6 +5123,17 @@ function renderChainDrilldown(chain) {
       <p class="profile-note">Operator rollups can reveal portfolio patterns, but CMS chain fields may not fully reflect current ownership, management, lease, or real-estate control.</p>
     </section>
     <section class="profile-section">
+      <h4>Penalty & Deficiency Drilldown</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Event-file penalties", formatIntegerOrNA(eventPenaltyCount))}
+        ${renderProfileMetric("Event-file fine dollars", formatCurrencyOrNA(eventFineAmount, 0))}
+        ${renderProfileMetric("Payment denial events", formatIntegerOrNA(eventDenialCount))}
+        ${renderProfileMetric("Deficiency citations", formatIntegerOrNA(citationCount))}
+      </div>
+      ${renderChainEnforcementRows(enforcementDetails)}
+      <p class="profile-note">Penalty records show enforcement remedies and dates. Deficiency records show survey citations. Likely-related citations are joined by CCN and timing only, so validate source survey/enforcement documents before saying a specific citation caused a specific fine. Event-file totals may differ slightly from CMS Provider Info aggregate fields when processing dates differ.</p>
+    </section>
+    <section class="profile-section">
       <h4>Footprint</h4>
       <div class="profile-grid">
         ${renderProfileMetric("Geographies", chain.geographyList.join(", ") || "Unclassified")}
@@ -5122,6 +5142,63 @@ function renderChainDrilldown(chain) {
         ${renderProfileMetric("Low quality facilities", formatIntegerOrNA(chain.lowQualityCount))}
       </div>
     </section>
+  `;
+}
+
+function getEnforcementDetails() {
+  return Array.isArray(state.nursingHomeEnforcementDetails) ? state.nursingHomeEnforcementDetails : [];
+}
+
+function getEnforcementSummary() {
+  return Array.isArray(state.nursingHomeEnforcementSummary) ? state.nursingHomeEnforcementSummary : [];
+}
+
+function getFacilityEnforcementDetail(facility) {
+  const ccn = String(facility?.quality?.cmsCertificationNumber || "");
+  return getEnforcementDetails().find((detail) => String(detail.cmsCertificationNumber) === ccn) || null;
+}
+
+function getFacilityEnforcementSummary(facility) {
+  const ccn = String(facility?.quality?.cmsCertificationNumber || "");
+  return getEnforcementSummary().find((summary) => String(summary.cmsCertificationNumber) === ccn) || null;
+}
+
+function getChainEnforcementDetails(chain) {
+  if (!chain) return [];
+  return chain.facilities
+    .map(getFacilityEnforcementDetail)
+    .filter(Boolean);
+}
+
+function renderChainEnforcementRows(details) {
+  if (!details.length) {
+    return '<p class="status">No CMS penalty/deficiency event records are attached for this operator yet.</p>';
+  }
+  return `
+    <div class="enforcement-table">
+      ${details
+        .slice()
+        .sort((a, b) => sum((b.penaltyEvents || []).map((event) => event.fineAmount)) - sum((a.penaltyEvents || []).map((event) => event.fineAmount)) || b.deficiencyCount - a.deficiencyCount)
+        .map((detail) => {
+          const fineAmount = sum((detail.penaltyEvents || []).map((event) => event.fineAmount));
+          const denials = (detail.penaltyEvents || []).filter((event) => /denial/i.test(event.penaltyType || "")).length;
+          const latestPenalty = (detail.penaltyEvents || [])[0];
+          return `
+            <article class="table-row enforcement-row">
+              <div>
+                <strong>${escapeHtml(detail.providerName || "Unknown facility")}</strong>
+                <small>${escapeHtml(detail.city || "Unknown city")} / CCN ${escapeHtml(detail.cmsCertificationNumber || "N/A")}</small>
+                <small>${escapeHtml((detail.topDeficiencyCategories || []).slice(0, 2).map((item) => `${item.category} (${item.count})`).join(" / ") || "No deficiency categories")}</small>
+              </div>
+              <div class="numeric">${formatIntegerOrNA(detail.penaltyEvents?.length || 0)} penalties</div>
+              <div class="numeric">${formatCurrencyOrNA(fineAmount, 0)}</div>
+              <div class="numeric">${formatIntegerOrNA(denials)} denials</div>
+              <div class="numeric">${formatIntegerOrNA(detail.deficiencyCount)} citations</div>
+              <div>${latestPenalty ? `${escapeHtml(latestPenalty.penaltyDate || "Unknown date")} / ${escapeHtml(latestPenalty.penaltyType || "Penalty")}` : "No penalty event"}</div>
+            </article>
+          `;
+        }).join("")}
+    </div>
   `;
 }
 
@@ -5306,6 +5383,8 @@ function markerRadius(score) {
 function renderFacilityDrilldown(facility) {
   if (!facility) return '<p class="status">Select a facility marker or row to view details.</p>';
   const quality = facility.quality || {};
+  const enforcementDetail = getFacilityEnforcementDetail(facility);
+  const enforcementSummary = getFacilityEnforcementSummary(facility);
   const capitalShare = Number.isFinite(facility.components?.capitalRate) && Number.isFinite(facility.publishedAmount) && facility.publishedAmount > 0
     ? facility.components.capitalRate / facility.publishedAmount
     : null;
@@ -5397,6 +5476,11 @@ function renderFacilityDrilldown(facility) {
     </section>
 
     <section class="profile-section">
+      <h4>Penalty & Deficiency Drilldown</h4>
+      ${renderFacilityEnforcementDrilldown(enforcementDetail, enforcementSummary, quality)}
+    </section>
+
+    <section class="profile-section">
       <h4>Financial Visibility</h4>
       <div class="profile-grid">
         ${renderProfileMetric("Public rate signal", `${formatCurrencyOrNA(facility.publishedAmount)} per resident day`)}
@@ -5411,6 +5495,79 @@ function renderFacilityDrilldown(facility) {
       <h4>Risk Factors Triggered</h4>
       <div class="risk-factor-list">${factors}</div>
     </section>
+  `;
+}
+
+function renderFacilityEnforcementDrilldown(detail, summary, quality) {
+  if (!detail && !summary) {
+    return '<p class="status">No event-level CMS penalty or deficiency records are attached for this facility yet.</p>';
+  }
+  const penaltyEvents = detail?.penaltyEvents || [];
+  const recentDeficiencies = detail?.recentDeficiencies || [];
+  const fineAmount = sum(penaltyEvents.map((event) => event.fineAmount));
+  const denialEvents = penaltyEvents.filter((event) => /denial/i.test(event.penaltyType || ""));
+  return `
+    <div class="profile-grid">
+      ${renderProfileMetric("Penalty events", formatIntegerOrNA(penaltyEvents.length || summary?.penaltyCount || quality.totalNumberOfPenalties))}
+      ${renderProfileMetric("Fine events", formatIntegerOrNA(summary?.fineCount !== undefined && summary?.fineCount !== null ? summary.fineCount : quality.numberOfFines))}
+      ${renderProfileMetric("Fine dollars", formatCurrencyOrNA(fineAmount || summary?.fineAmount || quality.totalFinesDollars, 0))}
+      ${renderProfileMetric("Payment denial events", formatIntegerOrNA(denialEvents.length || summary?.paymentDenialCount || quality.numberOfPaymentDenials))}
+      ${renderProfileMetric("Deficiency citations", formatIntegerOrNA(detail?.deficiencyCount || summary?.deficiencyCount))}
+      ${renderProfileMetric("Latest survey date", summary?.latestSurveyDate || recentDeficiencies[0]?.surveyDate || "N/A")}
+    </div>
+    ${renderPenaltyEventRows(penaltyEvents)}
+    ${renderRecentDeficiencyRows(recentDeficiencies)}
+    <p class="profile-note">${escapeHtml(detail?.evidenceLimit || "Penalty records show what enforcement remedy happened and when. Deficiency records show survey citations. The app links them by facility and timing, not by definitive causation.")} Event-file totals may differ slightly from CMS Provider Info aggregate fields when processing dates differ.</p>
+  `;
+}
+
+function renderPenaltyEventRows(events) {
+  if (!events.length) {
+    return '<p class="status">No penalty events are listed in the CMS penalties file for this facility.</p>';
+  }
+  return `
+    <div class="enforcement-subsection">
+      <strong>Penalty Events</strong>
+      ${events.map((event) => `
+        <article class="table-row penalty-event-row">
+          <div>
+            <strong>${escapeHtml(event.penaltyType || "Penalty")}</strong>
+            <small>${escapeHtml(event.penaltyDate || "Unknown penalty date")}</small>
+          </div>
+          <div class="numeric">${formatCurrencyOrNA(event.fineAmount, 0)}</div>
+          <div>${event.paymentDenialStartDate ? `${escapeHtml(event.paymentDenialStartDate)} / ${formatIntegerOrNA(event.paymentDenialLengthDays)} days` : "N/A"}</div>
+          <div>${renderLikelyCitationTags(event.likelyRelatedCitations || [])}</div>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderLikelyCitationTags(citations) {
+  if (!citations.length) return '<span class="tag">no timed citation match</span>';
+  return citations.slice(0, 3).map((citation) =>
+    `<span class="tag">${escapeHtml(citation.surveyDate)} ${escapeHtml(citation.tag || "")} ${escapeHtml(citation.scopeSeverityCode || "")}</span>`
+  ).join(" ");
+}
+
+function renderRecentDeficiencyRows(deficiencies) {
+  if (!deficiencies.length) {
+    return '<p class="status">No recent citation examples are attached for this facility.</p>';
+  }
+  return `
+    <div class="enforcement-subsection">
+      <strong>Recent Citation Examples</strong>
+      ${deficiencies.slice(0, 8).map((deficiency) => `
+        <article class="table-row deficiency-row">
+          <div>
+            <strong>${escapeHtml(deficiency.tag || "Deficiency")}: ${escapeHtml(deficiency.category || "Uncategorized")}</strong>
+            <small>${escapeHtml(deficiency.surveyDate || "Unknown survey date")} / ${escapeHtml(deficiency.surveyType || "Survey")} / scope ${escapeHtml(deficiency.scopeSeverityCode || "N/A")}</small>
+          </div>
+          <div>${escapeHtml(deficiency.description || "No description available")}</div>
+          <div>${escapeHtml(deficiency.corrected || "N/A")} ${deficiency.correctionDate ? `/ ${escapeHtml(deficiency.correctionDate)}` : ""}</div>
+        </article>
+      `).join("")}
+    </div>
   `;
 }
 

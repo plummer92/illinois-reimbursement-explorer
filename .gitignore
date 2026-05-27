@@ -1,1 +1,3 @@
 data/raw/hfs_hospital_rate_sheets/
+data/raw/NH_HealthCitations_*.csv
+data/raw/NH_Penalties_*.csv

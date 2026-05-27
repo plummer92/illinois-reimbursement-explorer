@@ -1724,13 +1724,46 @@ h3 {
   min-width: 1320px;
 }
 
+.table-row.enforcement-row {
+  grid-template-columns: minmax(280px, 1.2fr) repeat(4, minmax(105px, 0.45fr)) minmax(180px, 0.8fr);
+  min-width: 1040px;
+}
+
+.table-row.penalty-event-row {
+  grid-template-columns: minmax(180px, 0.8fr) minmax(110px, 0.4fr) minmax(160px, 0.7fr) minmax(320px, 1.3fr);
+  min-width: 880px;
+}
+
+.table-row.deficiency-row {
+  grid-template-columns: minmax(260px, 0.9fr) minmax(420px, 1.5fr) minmax(120px, 0.45fr);
+  min-width: 960px;
+}
+
+.enforcement-table,
+.enforcement-subsection {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.enforcement-subsection > strong {
+  color: var(--ink);
+  font-size: 0.85rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .system-financial-row .tag,
-.system-financial-fact-row .tag {
+.system-financial-fact-row .tag,
+.penalty-event-row .tag {
   white-space: normal;
 }
 
 .system-financial-row div,
-.system-financial-fact-row div {
+.system-financial-fact-row div,
+.enforcement-row div,
+.penalty-event-row div,
+.deficiency-row div {
   overflow-wrap: anywhere;
 }
 
@@ -2381,6 +2414,9 @@ h3 {
   .table-row.binder-peer-row,
   .table-row.system-financial-row,
   .table-row.system-financial-fact-row,
+  .table-row.enforcement-row,
+  .table-row.penalty-event-row,
+  .table-row.deficiency-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {
@@ -2402,6 +2438,9 @@ h3 {
   .table-row.binder-peer-row,
   .table-row.system-financial-row,
   .table-row.system-financial-fact-row,
+  .table-row.enforcement-row,
+  .table-row.penalty-event-row,
+  .table-row.deficiency-row,
   .table-row.price-example-row,
   .table-row.capital-geography-row,
   .table-row.leaderboard-row {
