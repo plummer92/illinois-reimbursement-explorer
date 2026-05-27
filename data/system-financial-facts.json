@@ -1,0 +1,186 @@
+[
+  {
+    "systemId": "memorial-health-central-il",
+    "systemName": "Memorial Health",
+    "period": "FY ending Sept. 2024",
+    "basis": "IRS Form 990 extract",
+    "sourceTitle": "Memorial Health System Form 990",
+    "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/900756744",
+    "extractionStatus": "numeric_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "totalRevenue": 1627266717,
+      "totalExpenses": 1589771872,
+      "netIncome": 37494845,
+      "netAssets": 1313933115,
+      "totalAssets": 1985550664,
+      "totalLiabilities": 671617549,
+      "programServiceRevenue": 1553087597,
+      "investmentIncome": 16650540,
+      "otherSalariesAndWages": 555113151
+    },
+    "notes": "Form 990 system/legal-entity extract. Useful for system scale, margin direction, assets, liabilities, and wage burden context.",
+    "limitations": "Not Taylorville-only margin. Reconcile to audited statements and facility HCRIS before drawing facility-specific conclusions."
+  },
+  {
+    "systemId": "hshs",
+    "systemName": "Hospital Sisters Health System",
+    "period": "FY ending June 2024",
+    "basis": "IRS Form 990 extract",
+    "sourceTitle": "Hospital Sisters Health System Form 990",
+    "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/371058692",
+    "extractionStatus": "numeric_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "totalRevenue": 577840016,
+      "totalExpenses": 614742656,
+      "netIncome": -36902640,
+      "netAssets": 302607907,
+      "totalAssets": 582768997,
+      "totalLiabilities": 280161090,
+      "programServiceRevenue": 363562209,
+      "investmentIncome": 10012741,
+      "otherSalariesAndWages": 170649660
+    },
+    "notes": "Form 990 legal-entity extract. The negative net-income signal should be kept separate from hospital-level HCRIS margins.",
+    "limitations": "HSHS operates multiple hospitals and related entities. This is not the same thing as any single Illinois hospital's cost report."
+  },
+  {
+    "systemId": "hshs",
+    "systemName": "Hospital Sisters Health System",
+    "period": "2024 annual community benefit report",
+    "basis": "Annual report program extract",
+    "sourceTitle": "HSHS 2024 Annual Community Benefit and Economic Impact Report",
+    "sourceUrl": "https://www.hshs.org/getmedia/d0d748fa-322b-48fe-8da7-783d64e52853/HSHS-AR_2024_DY_FINAL_IND-PGS.pdf",
+    "extractionStatus": "summary_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "communityProgramAnnualSupport": 115000,
+      "communityProgramSecondarySupport": 150000
+    },
+    "notes": "Annual report lists examples of annual financial support for community programs, including ED high-user navigation and Beyond the NICU support.",
+    "limitations": "Program examples are not total community benefit, system operating income, or hospital-level reimbursement evidence."
+  },
+  {
+    "systemId": "osf-healthcare",
+    "systemName": "OSF HealthCare",
+    "period": "FY25",
+    "basis": "Official facts and figures summary",
+    "sourceTitle": "OSF HealthCare Facts & Figures",
+    "sourceUrl": "https://www.osfhealthcare.org/patients-visitors/about/facts-figures",
+    "extractionStatus": "summary_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "totalNetRevenue": 5300000000,
+      "licensedHospitals": 16,
+      "licensedBeds": 2141,
+      "totalMissionPartners": 27000,
+      "inpatientAdmissions": 89570,
+      "outpatientVisits": 2437554,
+      "personsServed": 1179272,
+      "foundationContribution": 23485337
+    },
+    "notes": "Official system summary gives scale, volume, workforce, and total net revenue context.",
+    "limitations": "Summary page does not provide audited operating income, debt, days cash, payer mix, or facility-level margin."
+  },
+  {
+    "systemId": "northwestern-medicine",
+    "systemName": "Northwestern Medicine",
+    "period": "FY2025 documents listed",
+    "basis": "Audited financial statements registry",
+    "sourceTitle": "Northwestern Medicine Financial Statements and Annual Reports",
+    "sourceUrl": "https://www.nm.org/about-us/financial-statements-and-annual-reports",
+    "extractionStatus": "source_mapped",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "listedParentHospitalCount": 11
+    },
+    "notes": "Northwestern states its financial statements are consolidated for Northwestern Memorial HealthCare and subsidiaries, with FY2025 community-benefit documents listed.",
+    "limitations": "Numeric statement fields still need PDF extraction. Consolidated statements should not be treated as facility-level margin."
+  },
+  {
+    "systemId": "rush",
+    "systemName": "Rush",
+    "period": "Current bondholder page",
+    "basis": "Bondholder / obligated-group context",
+    "sourceTitle": "Rush Bondholder Information",
+    "sourceUrl": "https://www.rush.edu/about-us/bondholder-information",
+    "extractionStatus": "summary_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "rumcLicensedBeds": 727,
+      "rumcStaffedBeds": 660,
+      "rushOakParkLicensedBeds": 201,
+      "rushOakParkStaffedBeds": 118,
+      "copleyLicensedBeds": 210,
+      "copleyStaffedBeds": 210,
+      "rushUniversityStudents": 2700,
+      "rushHealthAffiliatedPhysicians": 1800
+    },
+    "notes": "Bondholder page maps the obligated group and separates hospitals, university, physician network, and affiliates.",
+    "limitations": "Operational scale facts do not equal system profitability, debt service coverage, or facility-level payment performance."
+  },
+  {
+    "systemId": "endeavor-health",
+    "systemName": "Endeavor Health",
+    "period": "FY ending Dec. 2024",
+    "basis": "IRS Form 990 extract",
+    "sourceTitle": "Endeavor Health Form 990",
+    "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/874520691",
+    "extractionStatus": "numeric_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "totalRevenue": 109646434,
+      "totalExpenses": 107365079,
+      "netIncome": 2281355,
+      "netAssets": 14503756,
+      "totalAssets": 26444182,
+      "totalLiabilities": 11940426,
+      "programServiceRevenue": 102534330,
+      "investmentIncome": 182152,
+      "otherSalariesAndWages": 18712896
+    },
+    "notes": "Newer Endeavor Health Form 990 seed. Useful for the legal entity now carrying Endeavor branding.",
+    "limitations": "Legacy NorthShore/Edward-Elmhurst entities and consolidated audited statements may be needed for full system history."
+  },
+  {
+    "systemId": "advocate-health",
+    "systemName": "Advocate Health",
+    "period": "2025 documents listed",
+    "basis": "Investor relations / bond ratings",
+    "sourceTitle": "Advocate Health Investor Relations",
+    "sourceUrl": "https://www.advocatehealth.org/investor-relations",
+    "extractionStatus": "summary_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "fitchLongTermRating": "AA",
+      "moodyLongTermRating": "Aa2",
+      "spLongTermRating": "AA"
+    },
+    "notes": "Investor page lists 2025 annual, audited, quarterly, and rating-agency disclosure documents.",
+    "limitations": "Advocate Health is a large multi-state system. Illinois facility analysis still needs HCRIS, HFS, and facility price files."
+  },
+  {
+    "systemId": "uchicago-medicine",
+    "systemName": "UChicago Medicine",
+    "period": "FY ending June 2024",
+    "basis": "IRS Form 990 extract",
+    "sourceTitle": "University of Chicago Medical Center Form 990",
+    "sourceUrl": "https://projects.propublica.org/nonprofits/organizations/363488183",
+    "extractionStatus": "numeric_extracted",
+    "extractionDate": "2026-05-27",
+    "metrics": {
+      "totalRevenue": 3211988766,
+      "totalExpenses": 2938267455,
+      "netIncome": 273721311,
+      "netAssets": 2611285313,
+      "totalAssets": 4767527210,
+      "totalLiabilities": 2156241897,
+      "programServiceRevenue": 3052252596,
+      "investmentIncome": 15092300,
+      "otherSalariesAndWages": 948298261
+    },
+    "notes": "Form 990 extract gives parent/legal-entity scale and positive net-income context.",
+    "limitations": "Academic medicine finance can include hospital, university, physician, and research relationships. Reconcile to audited statements and HCRIS."
+  }
+]

@@ -14,6 +14,7 @@ const state = {
   hcrisCostReports: [],
   benchmarkScorecards: [],
   systemFinancialSources: [],
+  systemFinancialFacts: [],
   priceTransparencySources: [],
   priceTransparencyRecords: [],
   facilityCareers: [],
@@ -201,6 +202,8 @@ Object.assign(els, {
   priceTransparencyQualityRows: document.querySelector("#priceTransparencyQualityRows"),
   priceTransparencyLimitCards: document.querySelector("#priceTransparencyLimitCards"),
   systemFinancialMetricCards: document.querySelector("#systemFinancialMetricCards"),
+  systemFinancialFactCards: document.querySelector("#systemFinancialFactCards"),
+  systemFinancialFactRows: document.querySelector("#systemFinancialFactRows"),
   systemFinancialRows: document.querySelector("#systemFinancialRows"),
   refreshCareersButton: document.querySelector("#refreshCareersButton"),
   careersStatus: document.querySelector("#careersStatus"),
@@ -230,6 +233,7 @@ async function loadData() {
   state.hcrisCostReports = await fetchOptionalJson("data/hcris-cost-report-economics.json");
   state.benchmarkScorecards = await fetchOptionalJson("data/hospital-benchmark-scorecards.json");
   state.systemFinancialSources = await fetchOptionalJson("data/system-financial-sources.json");
+  state.systemFinancialFacts = await fetchOptionalJson("data/system-financial-facts.json");
   state.priceTransparencySources = await fetchOptionalJson("data/price-transparency-sources.json");
   state.priceTransparencyRecords = await fetchOptionalJson("data/price-transparency-records.json");
   state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
@@ -539,9 +543,12 @@ function renderSummary(records) {
 
 function renderSources() {
   const financialSources = getSystemFinancialSources();
+  const financialFacts = getSystemFinancialFacts();
   const systemsWithFinancials = new Set(financialSources.map((source) => source.systemId).filter(Boolean));
+  const systemsWithExtracts = new Set(financialFacts.map((fact) => fact.systemId).filter(Boolean));
   const auditedSources = financialSources.filter((source) => /audit|financial_statement|investor|bond/i.test(source.sourceType || source.title || ""));
   const form990Sources = financialSources.filter((source) => source.sourceType === "form_990");
+  const numericFacts = financialFacts.filter((fact) => fact.extractionStatus === "numeric_extracted");
 
   els.systemFinancialMetricCards.innerHTML = renderWorkforceMetricCards([
     ["Systems mapped", systemsWithFinancials.size],
@@ -549,7 +556,14 @@ function renderSources() {
     ["Form 990 seeds", form990Sources.length],
     ["Audit/bond sources", auditedSources.length]
   ]);
+  els.systemFinancialFactCards.innerHTML = renderWorkforceMetricCards([
+    ["Systems with facts", systemsWithExtracts.size],
+    ["Fact records", financialFacts.length],
+    ["Numeric extracts", numericFacts.length],
+    ["Total revenue evidence", formatCurrencyOrNA(sum(numericFacts.map((fact) => fact.metrics?.totalRevenue)), 0)]
+  ]);
 
+  els.systemFinancialFactRows.innerHTML = renderSystemFinancialFactRows(financialFacts);
   els.systemFinancialRows.innerHTML = renderSystemFinancialRows(financialSources);
 
   els.sources.innerHTML = state.sources.map((source) => `
@@ -955,11 +969,91 @@ function getSystemFinancialSources() {
   return Array.isArray(state.systemFinancialSources) ? state.systemFinancialSources : [];
 }
 
+function getSystemFinancialFacts() {
+  return Array.isArray(state.systemFinancialFacts) ? state.systemFinancialFacts : [];
+}
+
 function getSystemFinancialSourcesForHospital(hospital) {
   const system = hospital?.systemAffiliation;
   if (!system) return [];
   const ids = new Set([system.systemId, ...(system.financialSourceIds || [])].filter(Boolean));
   return getSystemFinancialSources().filter((source) => ids.has(source.systemId));
+}
+
+function getSystemFinancialFactsForHospital(hospital) {
+  const system = hospital?.systemAffiliation;
+  if (!system) return [];
+  const ids = new Set([system.systemId, ...(system.financialSourceIds || [])].filter(Boolean));
+  return getSystemFinancialFacts().filter((fact) => ids.has(fact.systemId));
+}
+
+function renderSystemFinancialFactRows(facts) {
+  if (!facts.length) {
+    return '<p class="status">No system financial facts are extracted yet.</p>';
+  }
+  return `
+    <article class="table-row system-financial-fact-row header">
+      <div>System / Basis</div>
+      <div class="numeric">Revenue</div>
+      <div class="numeric">Expenses</div>
+      <div class="numeric">Net Income</div>
+      <div class="numeric">Margin</div>
+      <div>Other Extracts</div>
+      <div>Use / Limits</div>
+    </article>
+    ${facts
+      .slice()
+      .sort((a, b) => a.systemName.localeCompare(b.systemName) || String(b.period).localeCompare(String(a.period)))
+      .map((fact) => {
+        const metrics = fact.metrics || {};
+        const revenue = Number.isFinite(metrics.totalRevenue) ? metrics.totalRevenue : metrics.totalNetRevenue;
+        const margin = Number.isFinite(metrics.netIncome) && Number.isFinite(revenue) && revenue !== 0
+          ? metrics.netIncome / revenue
+          : null;
+        return `
+          <article class="table-row system-financial-fact-row">
+            <div>
+              <strong>${escapeHtml(fact.systemName)}</strong>
+              <small>${escapeHtml(fact.period || "Unknown period")} / ${escapeHtml(fact.basis || "Unknown basis")}</small>
+              <small><span class="tag">${escapeHtml(fact.extractionStatus || "mapped")}</span></small>
+            </div>
+            <div class="numeric">${formatCurrencyOrNA(revenue, 0)}</div>
+            <div class="numeric">${formatCurrencyOrNA(metrics.totalExpenses, 0)}</div>
+            <div class="numeric">${formatCurrencyOrNA(metrics.netIncome, 0)}</div>
+            <div class="numeric">${formatOptionalPercent(margin)}</div>
+            <div>${renderSystemFinancialMetricTags(metrics)}</div>
+            <div>
+              <small>${escapeHtml(fact.notes || "")}</small>
+              <small>${escapeHtml(fact.limitations || "")}</small>
+              <a href="${escapeHtml(fact.sourceUrl)}" target="_blank" rel="noreferrer">Source</a>
+            </div>
+          </article>
+        `;
+      }).join("")}
+  `;
+}
+
+function renderSystemFinancialMetricTags(metrics = {}) {
+  const tagMap = [
+    ["netAssets", "Net assets", formatCurrencyOrNA(metrics.netAssets, 0)],
+    ["totalAssets", "Assets", formatCurrencyOrNA(metrics.totalAssets, 0)],
+    ["totalLiabilities", "Liabilities", formatCurrencyOrNA(metrics.totalLiabilities, 0)],
+    ["licensedBeds", "Beds", formatIntegerOrNA(metrics.licensedBeds)],
+    ["licensedHospitals", "Hospitals", formatIntegerOrNA(metrics.licensedHospitals)],
+    ["inpatientAdmissions", "Admissions", formatIntegerOrNA(metrics.inpatientAdmissions)],
+    ["outpatientVisits", "OP visits", formatIntegerOrNA(metrics.outpatientVisits)],
+    ["personsServed", "Persons served", formatIntegerOrNA(metrics.personsServed)],
+    ["totalMissionPartners", "Workforce", formatIntegerOrNA(metrics.totalMissionPartners)],
+    ["foundationContribution", "Foundation", formatCurrencyOrNA(metrics.foundationContribution, 0)],
+    ["fitchLongTermRating", "Fitch", metrics.fitchLongTermRating],
+    ["moodyLongTermRating", "Moody", metrics.moodyLongTermRating],
+    ["spLongTermRating", "S&P", metrics.spLongTermRating]
+  ];
+  const tags = tagMap
+    .filter(([key]) => metrics[key] !== undefined && metrics[key] !== null && metrics[key] !== "")
+    .slice(0, 5)
+    .map(([, label, value]) => `<span class="tag">${escapeHtml(label)} ${escapeHtml(value)}</span>`);
+  return tags.length ? tags.join(" ") : '<span class="tag">source mapped</span>';
 }
 
 function renderSystemFinancialRows(sources) {
@@ -3103,11 +3197,13 @@ function renderFacilityEvidenceBinder(hospital) {
 function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment) {
   const totalPaid = sum(paymentRows.map((record) => record.totalPaid));
   const patientCount = sum(paymentRows.map((record) => record.patientsServed));
+  const systemFinancialFacts = getSystemFinancialFactsForHospital(hospital);
+  const primarySystemFact = getPrimarySystemFinancialFact(systemFinancialFacts);
   const loadedLayers = [
     priceRows.length > 0,
     paymentRows.length > 0 || rateSheet || hfsPayment,
     Boolean(costReport),
-    Boolean(hospital.systemAffiliation),
+    Boolean(systemFinancialFacts.length || hospital.systemAffiliation),
     Boolean(binder?.clinicalScenarios?.length)
   ].filter(Boolean).length;
 
@@ -3147,7 +3243,9 @@ function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enr
     {
       label: "System",
       value: hospital.systemAffiliation?.systemName || binder?.systemName || "Not mapped",
-      detail: "System context must stay separate from facility CCN evidence"
+      detail: primarySystemFact
+        ? `${formatCurrencyOrNA(primarySystemFact.revenue, 0)} revenue evidence / ${formatOptionalPercent(primarySystemFact.margin)} margin signal`
+        : "System context must stay separate from facility CCN evidence"
     }
   ];
 
@@ -3162,6 +3260,8 @@ function renderBinderSnapshotCards(hospital, binder, priceRows, paymentRows, enr
 
 function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment) {
   const systemFinancialSources = getSystemFinancialSourcesForHospital(hospital);
+  const systemFinancialFacts = getSystemFinancialFactsForHospital(hospital);
+  const primarySystemFact = getPrimarySystemFinancialFact(systemFinancialFacts);
   const layers = [
     {
       title: "Prices",
@@ -3192,13 +3292,15 @@ function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enr
     },
     {
       title: "System Financials",
-      status: systemFinancialSources.length ? "mapped" : (hospital.systemAffiliation ? "partial" : "next"),
-      evidence: systemFinancialSources.length
-        ? `${hospital.systemAffiliation?.systemName || "System"} has ${formatIntegerOrNA(systemFinancialSources.length)} Form 990, annual-report, audited-statement, investor, or bond source${systemFinancialSources.length === 1 ? "" : "s"} mapped`
-        : hospital.systemAffiliation
-          ? `${hospital.systemAffiliation.systemName} affiliation mapped; financial source still needs attachment`
-        : "Attach Form 990, audited statements, and bond disclosures",
-      proves: "Parent/system-level finances and possible subsidy, debt, or capital context.",
+      status: systemFinancialFacts.length ? "loaded" : (systemFinancialSources.length ? "mapped" : (hospital.systemAffiliation ? "partial" : "next")),
+      evidence: primarySystemFact
+        ? `${hospital.systemAffiliation?.systemName || "System"} has ${formatIntegerOrNA(systemFinancialFacts.length)} extracted financial fact record${systemFinancialFacts.length === 1 ? "" : "s"}; primary extract shows ${formatCurrencyOrNA(primarySystemFact.revenue, 0)} revenue evidence and ${formatOptionalPercent(primarySystemFact.margin)} margin signal`
+        : systemFinancialSources.length
+          ? `${hospital.systemAffiliation?.systemName || "System"} has ${formatIntegerOrNA(systemFinancialSources.length)} Form 990, annual-report, audited-statement, investor, or bond source${systemFinancialSources.length === 1 ? "" : "s"} mapped`
+          : hospital.systemAffiliation
+            ? `${hospital.systemAffiliation.systemName} affiliation mapped; financial source still needs attachment`
+          : "Attach Form 990, audited statements, and bond disclosures",
+      proves: "Parent/system-level finances, scale, debt/rating context, assets, liabilities, and possible subsidy or capital capacity signals.",
       limit: "System financials may not equal facility-level margin."
     },
     {
@@ -3231,6 +3333,20 @@ function renderBinderEvidenceStack(hospital, binder, priceRows, paymentRows, enr
       </dl>
     </article>
   `).join("");
+}
+
+function getPrimarySystemFinancialFact(facts) {
+  const sorted = (facts || [])
+    .map((fact) => {
+      const metrics = fact.metrics || {};
+      const revenue = Number.isFinite(metrics.totalRevenue) ? metrics.totalRevenue : metrics.totalNetRevenue;
+      const margin = Number.isFinite(metrics.netIncome) && Number.isFinite(revenue) && revenue !== 0
+        ? metrics.netIncome / revenue
+        : null;
+      return { ...fact, revenue, margin };
+    })
+    .sort((a, b) => Number(b.extractionStatus === "numeric_extracted") - Number(a.extractionStatus === "numeric_extracted") || (b.revenue || 0) - (a.revenue || 0));
+  return sorted[0] || null;
 }
 
 function renderBinderEvidenceCompleteness(hospital, binder, priceRows, paymentRows, costReport, rateSheet, hfsPayment) {
@@ -3740,6 +3856,7 @@ function renderBinderClinicalWorkbench(hospital, binder) {
 
 function renderBinderProofTasks(hospital, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment) {
   const systemFinancialSources = getSystemFinancialSourcesForHospital(hospital);
+  const systemFinancialFacts = getSystemFinancialFactsForHospital(hospital);
   const tasks = [
     {
       label: "Import CMS HCRIS cost report economics",
@@ -3762,11 +3879,13 @@ function renderBinderProofTasks(hospital, binder, priceRows, paymentRows, enroll
       detail: "Build ED-to-admit, observation, transfer, outlier, HAC/POA, and readmission examples."
     },
     {
-      label: "Attach system financials",
-      done: Boolean(systemFinancialSources.length),
-      detail: systemFinancialSources.length
-        ? `${formatIntegerOrNA(systemFinancialSources.length)} system financial source${systemFinancialSources.length === 1 ? "" : "s"} mapped for ${hospital.systemAffiliation?.systemName || hospital.facilityName}.`
-        : "Add Form 990, audited statements, annual reports, investor pages, and bond disclosure links as system-level evidence."
+      label: "Extract system financial facts",
+      done: Boolean(systemFinancialFacts.length),
+      detail: systemFinancialFacts.length
+        ? `${formatIntegerOrNA(systemFinancialFacts.length)} system financial fact record${systemFinancialFacts.length === 1 ? "" : "s"} extracted for ${hospital.systemAffiliation?.systemName || hospital.facilityName}.`
+        : systemFinancialSources.length
+          ? `${formatIntegerOrNA(systemFinancialSources.length)} system financial source${systemFinancialSources.length === 1 ? "" : "s"} mapped; extract revenue, expenses, margin, debt, days cash, and community benefit next.`
+          : "Add Form 990, audited statements, annual reports, investor pages, and bond disclosure links as system-level evidence."
     },
     {
       label: "Keep evidence limits visible",
