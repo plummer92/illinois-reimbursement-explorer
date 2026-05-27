@@ -173,6 +173,7 @@ Object.assign(els, {
   binderServiceExamples: document.querySelector("#binderServiceExamples"),
   binderPaymentRows: document.querySelector("#binderPaymentRows"),
   binderCostReportRows: document.querySelector("#binderCostReportRows"),
+  binderOperatingContext: document.querySelector("#binderOperatingContext"),
   binderBenchmarkRows: document.querySelector("#binderBenchmarkRows"),
   binderClinicalWorkbench: document.querySelector("#binderClinicalWorkbench"),
   binderProofTasks: document.querySelector("#binderProofTasks"),
@@ -186,6 +187,7 @@ Object.assign(els, {
   pressureFindingCards: document.querySelector("#pressureFindingCards"),
   pressureHospitalRows: document.querySelector("#pressureHospitalRows"),
   pressureDrilldown: document.querySelector("#pressureDrilldown"),
+  pressureOperatingContext: document.querySelector("#pressureOperatingContext"),
   pressureScenarioCards: document.querySelector("#pressureScenarioCards"),
   pressureEvidenceRows: document.querySelector("#pressureEvidenceRows"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
@@ -1633,6 +1635,7 @@ function renderFacilityBinderPage() {
     els.binderServiceExamples.innerHTML = "";
     els.binderPaymentRows.innerHTML = "";
     els.binderCostReportRows.innerHTML = "";
+    els.binderOperatingContext.innerHTML = "";
     els.binderBenchmarkRows.innerHTML = "";
     els.binderClinicalWorkbench.innerHTML = "";
     els.binderProofTasks.innerHTML = "";
@@ -1659,6 +1662,7 @@ function renderFacilityBinderPage() {
   els.binderServiceExamples.innerHTML = renderBinderServiceExampleRows(priceRows);
   els.binderPaymentRows.innerHTML = renderBinderPaymentEvidenceRows(paymentRows, rateSheet, hfsPayment);
   els.binderCostReportRows.innerHTML = renderBinderCostReportRows(selected, costReport);
+  els.binderOperatingContext.innerHTML = renderOperatingContinuityPanel(selected, costReport);
   els.binderBenchmarkRows.innerHTML = renderBinderBenchmarkRows(selected, scorecard, costReport, paymentRows, priceRows);
   els.binderClinicalWorkbench.innerHTML = renderBinderClinicalWorkbench(selected, binder);
   els.binderProofTasks.innerHTML = renderBinderProofTasks(selected, binder, priceRows, paymentRows, enrollmentContext, costReport, rateSheet, hfsPayment);
@@ -1704,6 +1708,7 @@ function renderFinancialPressure() {
   els.pressureFindingCards.innerHTML = renderPressureFindings(scored, selected);
   els.pressureHospitalRows.innerHTML = renderPressureHospitalRows(scored);
   els.pressureDrilldown.innerHTML = renderPressureDrilldown(selected);
+  els.pressureOperatingContext.innerHTML = renderOperatingContinuityPanel(selected?.hospital, selected?.costReport);
   els.pressureScenarioCards.innerHTML = renderPressureScenarioCards(selected);
   els.pressureEvidenceRows.innerHTML = renderPressureEvidenceRows(selected);
 }
@@ -3726,6 +3731,110 @@ function renderBinderCostReportRows(hospital, costReport) {
       <a href="${escapeHtml(costReport.sourceUrl || "https://data.cms.gov/provider-compliance/cost-reports/hospital-provider-cost-report")}" target="_blank" rel="noreferrer">Open CMS HCRIS source</a>
     </article>
   `;
+}
+
+function renderOperatingContinuityPanel(hospital, costReport) {
+  if (!hospital) {
+    return '<p class="status">Select a hospital to view operating-continuity context.</p>';
+  }
+  const systemFacts = getSystemFinancialFactsForHospital(hospital);
+  const systemSources = getSystemFinancialSourcesForHospital(hospital);
+  const primaryFact = getPrimarySystemFinancialFact(systemFacts);
+  const systemName = hospital.systemAffiliation?.systemName || "No mapped system";
+  const operatingGap = costReport && Number.isFinite(costReport.netPatientRevenue) && Number.isFinite(costReport.totalOperatingExpense)
+    ? costReport.netPatientRevenue - costReport.totalOperatingExpense
+    : null;
+  const totalResultAfterOtherIncome = costReport && Number.isFinite(costReport.netIncomeFromServiceToPatients) && Number.isFinite(costReport.totalOtherIncome)
+    ? costReport.netIncomeFromServiceToPatients + costReport.totalOtherIncome
+    : null;
+  const supportReasons = buildOperatingContinuityReasons(hospital, costReport, primaryFact, systemSources);
+  const limitationCards = [
+    ["HCRIS is not GAAP", "Medicare cost reports are facility-reported reimbursement/accounting evidence. They are not the same as audited GAAP financial statements."],
+    ["Not service-line profit", "HCRIS does not prove ED, pharmacy, surgery, OB, behavioral health, or any department's true profitability."],
+    ["Not real-time cash", "Cost reports are annual and lagged. They do not prove current cash, vendor terms, payroll support, debt covenant status, or management decisions."],
+    ["System may bridge gaps", "A parent system can centralize cash, debt, purchasing, revenue cycle, insurance, payroll, capital, and intercompany support."]
+  ];
+
+  return `
+    <div class="operating-context-grid">
+      <article class="operating-context-card">
+        <span>Facility HCRIS View</span>
+        <strong>${escapeHtml(costReport ? formatOptionalPercent(costReport.derived?.operatingMargin) : "Not loaded")}</strong>
+        <small>${escapeHtml(costReport ? `${formatCurrencyOrNA(costReport.netIncomeFromServiceToPatients, 0)} patient-service result on ${formatCurrencyOrNA(costReport.netPatientRevenue, 0)} net patient revenue` : "Attach HCRIS to calculate facility operating margin")}</small>
+      </article>
+      <article class="operating-context-card">
+        <span>Operating Gap</span>
+        <strong>${escapeHtml(formatCurrencyOrNA(operatingGap, 0))}</strong>
+        <small>${escapeHtml(costReport ? `${formatCurrencyOrNA(costReport.netPatientRevenue, 0)} revenue minus ${formatCurrencyOrNA(costReport.totalOperatingExpense, 0)} expense` : "N/A")}</small>
+      </article>
+      <article class="operating-context-card">
+        <span>Other Income Bridge</span>
+        <strong>${escapeHtml(formatCurrencyOrNA(costReport?.totalOtherIncome, 0))}</strong>
+        <small>${escapeHtml(Number.isFinite(totalResultAfterOtherIncome) ? `${formatCurrencyOrNA(totalResultAfterOtherIncome, 0)} after patient-service result plus other income` : "Other income not loaded")}</small>
+      </article>
+      <article class="operating-context-card">
+        <span>System Context</span>
+        <strong>${escapeHtml(systemName)}</strong>
+        <small>${escapeHtml(primaryFact ? `${formatCurrencyOrNA(primaryFact.revenue, 0)} system revenue evidence / ${formatOptionalPercent(primaryFact.margin)} system margin signal` : `${formatIntegerOrNA(systemSources.length)} financial source links mapped`)}</small>
+      </article>
+    </div>
+    <div class="operating-context-split">
+      <article class="operating-context-note">
+        <h4>Why It Can Still Operate</h4>
+        ${supportReasons.map((reason) => `<div class="finding">${escapeHtml(reason)}</div>`).join("")}
+      </article>
+      <article class="operating-context-note">
+        <h4>Cost Report Is Not The Whole Financial Statement</h4>
+        ${limitationCards.map(([title, copy]) => `
+          <div class="finding">
+            <strong>${escapeHtml(title)}</strong>
+            <p>${escapeHtml(copy)}</p>
+          </div>
+        `).join("")}
+      </article>
+    </div>
+    <div class="operating-context-footer">
+      <span class="tag">price != payment</span>
+      <span class="tag">payment != cost</span>
+      <span class="tag">cost != margin</span>
+      <span class="tag">facility != system</span>
+      <span class="tag">HCRIS != audited GAAP</span>
+    </div>
+  `;
+}
+
+function buildOperatingContinuityReasons(hospital, costReport, primarySystemFact, systemSources) {
+  const reasons = [];
+  if (!costReport) {
+    return [
+      "No HCRIS row is attached yet, so the app cannot separate patient-service margin, other income, liquidity, assets, liabilities, and utilization for this facility.",
+      "Attach HCRIS first, then compare facility economics to system financial statements, bond disclosures, payer mix, workforce demand, and service-line role."
+    ];
+  }
+  if (costReport.derived?.operatingMargin < 0) {
+    reasons.push(`${hospital.facilityName} shows a negative HCRIS patient-service margin, but that is an annual facility cost-report signal, not proof that the hospital lacks cash today.`);
+  } else {
+    reasons.push(`${hospital.facilityName} does not show a negative HCRIS operating margin in the attached cost report, but system context still matters for cash, debt, and capital decisions.`);
+  }
+  if (Number.isFinite(costReport.totalOtherIncome) && costReport.totalOtherIncome > 0) {
+    reasons.push(`Other income of ${formatCurrencyOrNA(costReport.totalOtherIncome, 0)} can soften patient-service losses, even when it does not fully erase them.`);
+  }
+  if (hospital.systemAffiliation?.systemName || systemSources.length || primarySystemFact) {
+    reasons.push(`${hospital.systemAffiliation?.systemName || "The mapped health system"} may centralize cash, debt, purchasing, payroll, revenue cycle, insurance, and capital planning above the individual hospital.`);
+  }
+  if (primarySystemFact) {
+    reasons.push(`Mapped system evidence shows ${formatCurrencyOrNA(primarySystemFact.revenue, 0)} in revenue evidence and ${formatOptionalPercent(primarySystemFact.margin)} system margin signal, which should be compared against the facility HCRIS result before making a distress claim.`);
+  }
+  if (Number.isFinite(costReport.derived?.occupancyRate)) {
+    reasons.push(`Occupancy of ${formatOptionalPercent(costReport.derived.occupancyRate)} means the facility still has active utilization; margin pressure and operating volume are related but not the same question.`);
+  }
+  if (hospital.emergencyServices === "Yes") {
+    reasons.push("ER access and regional service obligations can make continued operation strategically important even when a facility-level margin looks weak.");
+  }
+  if (Number.isFinite(costReport.derived?.currentRatio)) {
+    reasons.push(`The HCRIS current ratio is ${formatNumberOrNA(costReport.derived.currentRatio, 2)}; liquidity should be validated with audited statements and bond disclosures before concluding whether operations are sustainable.`);
+  }
+  return reasons;
 }
 
 function renderBinderBenchmarkRows(hospital, scorecard, costReport, paymentRows, priceRows) {

@@ -2043,6 +2043,68 @@ h3 {
   text-decoration: none;
 }
 
+.operating-context {
+  display: grid;
+  gap: 16px;
+}
+
+.operating-context-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.operating-context-card,
+.operating-context-note {
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(17, 45, 39, 0.06);
+  padding: 16px;
+  min-width: 0;
+}
+
+.operating-context-card span {
+  color: var(--muted);
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.operating-context-card strong {
+  color: var(--ink);
+  display: block;
+  font-size: 22px;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.operating-context-card small {
+  color: var(--muted);
+  display: block;
+  line-height: 1.4;
+  margin-top: 8px;
+  overflow-wrap: anywhere;
+}
+
+.operating-context-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px;
+}
+
+.operating-context-note h4 {
+  margin: 0 0 12px;
+}
+
+.operating-context-footer {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .benchmark-scorecard {
   display: grid;
   gap: 12px;
@@ -2349,6 +2411,8 @@ h3 {
     .binder-id-grid,
     .binder-stack,
     .cost-report-grid,
+    .operating-context-grid,
+    .operating-context-split,
     .benchmark-domain-grid,
     .benchmark-evidence-strip,
     .benchmark-row,
@@ -2385,6 +2449,8 @@ h3 {
   .binder-id-grid,
   .binder-stack,
   .cost-report-grid,
+  .operating-context-grid,
+  .operating-context-split,
   .benchmark-domain-grid,
   .benchmark-evidence-strip,
   .benchmark-row,
