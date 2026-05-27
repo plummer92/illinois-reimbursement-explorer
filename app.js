@@ -72,6 +72,7 @@ const els = {
     leaderboard: document.querySelector("#leaderboardPanel"),
     binder: document.querySelector("#binderPanel"),
     payment: document.querySelector("#paymentPanel"),
+    pressure: document.querySelector("#pressurePanel"),
     methodology: document.querySelector("#methodologyPanel"),
     workforce: document.querySelector("#workforcePanel"),
     sources: document.querySelector("#sourcesPanel"),
@@ -172,6 +173,12 @@ Object.assign(els, {
   paymentDrilldown: document.querySelector("#paymentDrilldown"),
   paymentPeerRows: document.querySelector("#paymentPeerRows"),
   paymentDictionaryRows: document.querySelector("#paymentDictionaryRows"),
+  pressureMetricCards: document.querySelector("#pressureMetricCards"),
+  pressureFindingCards: document.querySelector("#pressureFindingCards"),
+  pressureHospitalRows: document.querySelector("#pressureHospitalRows"),
+  pressureDrilldown: document.querySelector("#pressureDrilldown"),
+  pressureScenarioCards: document.querySelector("#pressureScenarioCards"),
+  pressureEvidenceRows: document.querySelector("#pressureEvidenceRows"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
   coverageRows: document.querySelector("#coverageRows"),
   methodologyNotes: document.querySelector("#methodologyNotes"),
@@ -257,6 +264,7 @@ function render() {
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
   renderMethodology();
   renderWorkforceDemand();
 }
@@ -1273,6 +1281,38 @@ function renderHospitalPaymentExplorer() {
   els.paymentDictionaryRows.innerHTML = renderPaymentDictionaryRows();
 }
 
+function renderFinancialPressure() {
+  const hospitals = getFilteredHospitals();
+  const scored = hospitals
+    .map((hospital) => buildHospitalPressureProfile(hospital))
+    .sort((a, b) => b.score - a.score || a.hospital.facilityName.localeCompare(b.hospital.facilityName));
+  const selected = scored.find((profile) => profile.hospital.facilityId === state.selectedHospitalId) || scored[0] || null;
+  if (selected) state.selectedHospitalId = selected.hospital.facilityId;
+
+  const withCost = scored.filter((profile) => profile.costReport);
+  const negativeMargin = withCost.filter((profile) => profile.flags.some((flag) => flag.key === "negative_operating_margin"));
+  const lowLiquidity = withCost.filter((profile) => profile.flags.some((flag) => flag.key === "low_current_ratio"));
+  const highPublicPayment = scored.filter((profile) => profile.flags.some((flag) => flag.key === "public_payment_exposure"));
+  const ruralAccess = scored.filter((profile) => profile.flags.some((flag) => flag.key === "rural_access"));
+  const scenarioReady = scored.filter((profile) => profile.hfsPayment || profile.priceRows.length || profile.costReport);
+
+  els.pressureMetricCards.innerHTML = renderWorkforceMetricCards([
+    ["Hospitals screened", scored.length],
+    ["Cost reports attached", withCost.length],
+    ["Negative operating margin", negativeMargin.length],
+    ["Low liquidity signal", lowLiquidity.length],
+    ["Public payment signal", highPublicPayment.length],
+    ["Rural/access signal", ruralAccess.length],
+    ["Scenario-ready hospitals", scenarioReady.length],
+    ["Selected score", selected ? `${selected.score}/100` : "N/A"]
+  ]);
+  els.pressureFindingCards.innerHTML = renderPressureFindings(scored, selected);
+  els.pressureHospitalRows.innerHTML = renderPressureHospitalRows(scored);
+  els.pressureDrilldown.innerHTML = renderPressureDrilldown(selected);
+  els.pressureScenarioCards.innerHTML = renderPressureScenarioCards(selected);
+  els.pressureEvidenceRows.innerHTML = renderPressureEvidenceRows(selected);
+}
+
 function renderMethodology() {
   const coverage = buildCoverageSummary();
   els.coverageMetricCards.innerHTML = renderCoverageMetricCards(coverage);
@@ -1420,9 +1460,10 @@ function renderWorkforceDemand() {
 }
 
 function getCareerRecords() {
-  return Array.isArray(state.facilityCareers)
+  const records = Array.isArray(state.facilityCareers)
     ? state.facilityCareers
-    : state.facilityCareers.records || [];
+    : state.facilityCareers?.records || [];
+  return records.filter(Boolean);
 }
 
 function renderWorkforceMetricCards(cards) {
@@ -3792,9 +3833,7 @@ function renderHospitalAuditQuestions(hospital) {
 }
 
 function getFacilityCareerRecord(facility) {
-  const records = Array.isArray(state.facilityCareers)
-    ? state.facilityCareers
-    : state.facilityCareers.records || [];
+  const records = getCareerRecords();
   const facilityId = String(facility.facilityId || facility.code || "").trim();
   const facilityName = String(facility.facilityName || facility.facility || "").toUpperCase().trim();
   return records.find((record) => {
@@ -4026,6 +4065,169 @@ function getPaymentValues(hospitals, field) {
 function getPaymentPeers(selected, hospitals) {
   if (!selected) return [];
   return hospitals.filter((hospital) => hospital.hospitalType === selected.hospitalType && hospital.facilityId !== selected.facilityId);
+}
+
+function buildHospitalPressureProfile(hospital) {
+  const costReport = getCostReportForHospital(hospital);
+  const paymentRows = getProviderPaymentRowsForHospital(hospital);
+  const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const career = getFacilityCareerRecord(hospital);
+  const flags = [];
+  let score = 0;
+
+  const add = (condition, points, key, label, detail) => {
+    if (!condition) return;
+    score += points;
+    flags.push({ key, points, label, detail });
+  };
+
+  add(costReport && costReport.derived?.operatingMargin < 0, 18, "negative_operating_margin", "Negative operating margin", `${formatOptionalPercent(costReport?.derived?.operatingMargin)} HCRIS operating margin`);
+  add(costReport && costReport.derived?.currentRatio < 1.2, 12, "low_current_ratio", "Low current ratio", `${formatNumberOrNA(costReport?.derived?.currentRatio, 2)} current ratio`);
+  add(costReport && costReport.derived?.liabilitiesToAssets > 0.65, 10, "high_liability_load", "Higher liabilities/assets", `${formatOptionalPercent(costReport?.derived?.liabilitiesToAssets)} liabilities to assets`);
+  add(costReport && costReport.derived?.occupancyRate < 0.4, 8, "low_occupancy", "Low occupancy signal", `${formatOptionalPercent(costReport?.derived?.occupancyRate)} HCRIS occupancy`);
+  add(costReport && costReport.netIncome < 0, 8, "negative_net_income", "Negative net income", `${formatCurrencyOrNA(costReport?.netIncome, 0)} net income`);
+  add(sum(paymentRows.map((row) => row.totalPaid)) >= 10_000_000, 8, "public_payment_exposure", "Large Medicaid payment flow", `${formatCurrencyOrNA(sum(paymentRows.map((row) => row.totalPaid)), 0)} HFS paid rows`);
+  add(hospital.hospitalType === "Critical Access Hospitals" || hospital.countyContext?.ruralUrbanClassification === "Rural", 8, "rural_access", "Rural/access context", `${hospital.hospitalType || "Hospital"} / ${hospital.countyContext?.ruralUrbanClassification || "county unknown"}`);
+  add(Number.isFinite(hospital.overallRating) && hospital.overallRating <= 2, 8, "low_cms_rating", "Low CMS quality rating", `${starLabel(hospital.overallRating)} overall`);
+  add(Number(hospital.readmissionWorse) > 0 || Number(hospital.mortalityWorse) > 0 || Number(hospital.safetyWorse) > 0, 6, "quality_payment_risk", "Quality/payment risk", "Worse-than-benchmark quality measure signals");
+  add(career && Number.isFinite(career.jobOpeningCount) && career.jobOpeningCount >= 20, 5, "workforce_demand", "Workforce demand signal", `${formatIntegerOrNA(career?.jobOpeningCount)} observed job openings`);
+  add(!costReport, 4, "missing_cost_report", "Cost report not attached", "Financial pressure cannot be fully screened without HCRIS economics");
+  add(!hospital.hfsPayment, 3, "missing_hfs_rates", "HFS rate parameters missing", "Hospital scenario modeling needs rate-sheet fields");
+
+  const clampedScore = Math.min(100, Math.round(score));
+  return {
+    hospital,
+    score: clampedScore,
+    level: pressureLevelForScore(clampedScore),
+    flags,
+    costReport,
+    paymentRows,
+    priceRows,
+    career,
+    hfsPayment: hospital.hfsPayment
+  };
+}
+
+function pressureLevelForScore(score) {
+  if (score >= 55) return "High Signal";
+  if (score >= 35) return "Elevated Signal";
+  if (score >= 18) return "Watch";
+  return "Lower Signal";
+}
+
+function renderPressureFindings(scored, selected) {
+  if (!scored.length) return '<div class="finding">No hospitals match the current search.</div>';
+  const high = scored.filter((profile) => profile.score >= 55);
+  const withCost = scored.filter((profile) => profile.costReport);
+  const negativeMargin = withCost.filter((profile) => profile.flags.some((flag) => flag.key === "negative_operating_margin"));
+  const ruralHigh = high.filter((profile) => profile.flags.some((flag) => flag.key === "rural_access"));
+  const selectedText = selected
+    ? `${selected.hospital.facilityName} is selected with a ${selected.level.toLowerCase()} score of ${selected.score}/100 and ${selected.flags.length} triggered public-data indicators.`
+    : "Select a hospital to view pressure drivers and service-line scenarios.";
+  const findings = [
+    `${scored.length} hospitals are screened using public pressure indicators from HCRIS, HFS payments, HFS rates, CMS quality, county context, and workforce observations.`,
+    `${withCost.length} hospitals have HCRIS cost-report economics attached; ${negativeMargin.length} of those show negative operating margin in the current public cost-report layer.`,
+    `${high.length} hospitals currently fall into the high-signal pressure tier, and ${ruralHigh.length} of those also carry rural or Critical Access context.`,
+    selectedText,
+    "The score is a triage tool. It should guide which hospitals to investigate first, not label any hospital as financially distressed."
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderPressureHospitalRows(scored) {
+  if (!scored.length) return '<p class="status">No hospitals match the current filters.</p>';
+  return scored.slice(0, 35).map((profile) => `
+    <article class="table-row compact" data-pressure-hospital-row="${escapeHtml(profile.hospital.facilityId)}">
+      <div>
+        <strong>${escapeHtml(profile.hospital.facilityName)}</strong>
+        <small>${escapeHtml(profile.hospital.city)} / ${escapeHtml(profile.hospital.county)} / ${escapeHtml(profile.level)} / ${profile.flags.slice(0, 3).map((flag) => escapeHtml(flag.label)).join(", ")}</small>
+      </div>
+      <div class="numeric">${profile.score}/100 / margin ${formatOptionalPercent(profile.costReport?.derived?.operatingMargin)} / paid ${formatCurrencyOrNA(sum(profile.paymentRows.map((row) => row.totalPaid)), 0)}</div>
+    </article>
+  `).join("");
+}
+
+function renderPressureDrilldown(profile) {
+  if (!profile) return '<p class="status">Select a hospital to view financial pressure signals.</p>';
+  const hospital = profile.hospital;
+  const cost = profile.costReport;
+  const paid = sum(profile.paymentRows.map((row) => row.totalPaid));
+  const fields = profile.hfsPayment?.paymentFields || {};
+  const flagList = profile.flags.length
+    ? profile.flags.map((flag) => `<span>${escapeHtml(flag.label)} (+${flag.points})</span>`).join("")
+    : "<span>No major pressure flags triggered from current public data.</span>";
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(hospital.facilityName)}</h3>
+        <p>${escapeHtml(hospital.city)}, IL / ${escapeHtml(hospital.county)} County / ${escapeHtml(hospital.hospitalType || "Hospital")}</p>
+      </div>
+      <span class="tag">${escapeHtml(profile.level)} ${profile.score}/100</span>
+    </div>
+    <section class="profile-section">
+      <h4>Pressure Drivers</h4>
+      <div class="risk-factor-list">${flagList}</div>
+    </section>
+    <section class="profile-section">
+      <h4>Cost Report + Payment Context</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Net patient revenue", formatCurrencyOrNA(cost?.netPatientRevenue, 0))}
+        ${renderProfileMetric("Operating expense", formatCurrencyOrNA(cost?.totalOperatingExpense, 0))}
+        ${renderProfileMetric("Operating margin", formatOptionalPercent(cost?.derived?.operatingMargin))}
+        ${renderProfileMetric("Net income", formatCurrencyOrNA(cost?.netIncome, 0))}
+        ${renderProfileMetric("Occupancy", formatOptionalPercent(cost?.derived?.occupancyRate))}
+        ${renderProfileMetric("Current ratio", formatNumberOrNA(cost?.derived?.currentRatio, 2))}
+        ${renderProfileMetric("Liabilities/assets", formatOptionalPercent(cost?.derived?.liabilitiesToAssets))}
+        ${renderProfileMetric("HFS paid rows", formatCurrencyOrNA(paid, 0))}
+        ${renderProfileMetric("IP acute DRG rate", formatCurrencyOrNA(fields.ipCos20AcuteDrgRate))}
+        ${renderProfileMetric("OP acute EAPG base", formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate))}
+        ${renderProfileMetric("CMS overall rating", starLabel(hospital.overallRating))}
+        ${renderProfileMetric("Observed job openings", formatIntegerOrNA(profile.career?.jobOpeningCount))}
+      </div>
+      <p class="profile-note">These are public indicators. They do not prove cash position, debt covenant stress, service-line profitability, or management decisions.</p>
+    </section>
+  `;
+}
+
+function renderPressureScenarioCards(profile) {
+  if (!profile) return '<p class="status">Select a hospital to view scenario prompts.</p>';
+  const fields = profile.hfsPayment?.paymentFields || {};
+  const scenarios = [
+    ["ED to inpatient admission", `Start with IP acute DRG ${formatCurrencyOrNA(fields.ipCos20AcuteDrgRate)} and test diagnosis, MS/APR-DRG, LOS, transfer, POA/HAC, readmission, and outlier exposure.`, "Needs DRG grouper/rule file, diagnosis/procedure assumptions, LOS/discharge status, and payer contract logic."],
+    ["Observation or outpatient ED", `Use OP acute EAPG base ${formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate)} as a Medicaid outpatient parameter, then compare to price transparency examples where available.`, "Needs CPT/HCPCS, revenue codes, EAPG/APC logic, observation rules, and payer-specific negotiated rates."],
+    ["Behavioral health admission", `Psych per diem is ${formatCurrencyOrNA(fields.ipCos21PsychPerDiemRate)} where applicable.`, "Needs psychiatric service category, length of stay, medical necessity rules, authorization, and discharge planning context."],
+    ["Rehab stay", `Rehab per diem is ${formatCurrencyOrNA(fields.ipCos22RehabPerDiemRate)} where applicable.`, "Needs rehab eligibility, admission criteria, length of stay, therapy intensity, transfer status, and payer authorization."],
+    ["High-cost drug or device case", `Drug/device add-on eligibility is ${fields.eligibleHighCostDrugDeviceAddOn || "N/A"} with OP base ${formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate)}.`, "Needs J-code/NDC/device code, acquisition cost, add-on policy, site of care, and prior authorization."],
+    ["Financial stress test", `Pair operating margin ${formatOptionalPercent(profile.costReport?.derived?.operatingMargin)} with occupancy ${formatOptionalPercent(profile.costReport?.derived?.occupancyRate)} and HFS paid rows ${formatCurrencyOrNA(sum(profile.paymentRows.map((row) => row.totalPaid)), 0)}.`, "Needs payer mix, private contracts, cash/debt detail, staffing cost, volume trends, and system subsidy context."]
+  ];
+  return scenarios.map(([name, logic, evidence]) => `
+    <article class="scenario-card">
+      <strong>${escapeHtml(name)}</strong>
+      <p>${escapeHtml(logic)}</p>
+      <small>${escapeHtml(evidence)}</small>
+    </article>
+  `).join("");
+}
+
+function renderPressureEvidenceRows(profile) {
+  if (!profile) return '<p class="status">Select a hospital to view evidence gaps.</p>';
+  const rows = [
+    ["HCRIS cost report", Boolean(profile.costReport), "Revenue, expense, occupancy, margin, assets, liabilities, and cost-to-charge context."],
+    ["HFS hospital rate sheet", Boolean(profile.hfsPayment), "DRG, per-diem, EAPG, wage-index, CCR, and add-on parameters."],
+    ["HFS provider payments", profile.paymentRows.length > 0, "Aggregate Medicaid public payment flow by provider row."],
+    ["Price transparency examples", profile.priceRows.length > 0, "Gross charge, cash price, negotiated-rate examples, and source files."],
+    ["Workforce signal", Boolean(profile.career), "Careers page and observed role-demand context."],
+    ["Claim scenario rules", false, "DRG/APR-DRG/EAPG/APC grouping, LOS, transfer, readmission, authorization, and managed-care policy."]
+  ];
+  return rows.map(([label, loaded, detail]) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${loaded ? "Loaded" : "Next"} / ${escapeHtml(label)}</strong>
+        <small>${escapeHtml(detail)}</small>
+      </div>
+      <div class="numeric">${loaded ? "Ready" : "Needed"}</div>
+    </article>
+  `).join("");
 }
 
 function renderHospitalRoadmapCards() {
@@ -5927,6 +6129,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderChainAnalytics();
   renderHospitalIntelligence();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -5942,6 +6145,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalIntelligence();
+  renderFinancialPressure();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -5957,6 +6161,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalIntelligence();
+  renderFinancialPressure();
 });
 
 els.riskLevelSelect.addEventListener("change", (event) => {
@@ -5964,6 +6169,7 @@ els.riskLevelSelect.addEventListener("change", (event) => {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.ownershipSelect.addEventListener("change", (event) => {
@@ -5971,6 +6177,7 @@ els.ownershipSelect.addEventListener("change", (event) => {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.staffingRatingSelect.addEventListener("change", (event) => {
@@ -5978,6 +6185,7 @@ els.staffingRatingSelect.addEventListener("change", (event) => {
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 function selectRiskFacility(id) {
@@ -6051,6 +6259,7 @@ els.hospitalRiskRows.addEventListener("click", (event) => {
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.hospitalRateValueRows.addEventListener("click", (event) => {
@@ -6062,6 +6271,7 @@ els.hospitalRateValueRows.addEventListener("click", (event) => {
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.paymentHospitalRows.addEventListener("click", (event) => {
@@ -6072,6 +6282,18 @@ els.paymentHospitalRows.addEventListener("click", (event) => {
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
+});
+
+els.pressureHospitalRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-pressure-hospital-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.pressureHospitalRow;
+  renderHospitalIntelligence();
+  renderHospitalLeaderboard();
+  renderFacilityBinderPage();
+  renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.leaderboardRows.addEventListener("click", (event) => {
@@ -6082,6 +6304,7 @@ els.leaderboardRows.addEventListener("click", (event) => {
   renderHospitalLeaderboard();
   renderFacilityBinderPage();
   renderHospitalPaymentExplorer();
+  renderFinancialPressure();
 });
 
 els.hospitalDrilldown.addEventListener("click", (event) => {
@@ -6116,5 +6339,6 @@ els.tabs.forEach((tab) => {
 });
 
 loadData().catch((error) => {
+  console.error(error);
   els.cards.innerHTML = `<p>Could not load dashboard data: ${escapeHtml(error.message)}</p>`;
 });

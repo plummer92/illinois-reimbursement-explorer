@@ -233,6 +233,8 @@ The current hospital reimbursement layer links to the HFS rate sheet PDFs and sh
 
 The Hospital Payment Explorer tab turns these parsed fields into a facility-level comparison workflow. It lets users compare a selected hospital against statewide and hospital-type peer averages, review core inpatient/outpatient payment parameters, and read a plain-English data dictionary for DRG, EAPG, CCR, wage index, outlier, and add-on fields.
 
+The Financial Pressure tab combines HCRIS cost-report economics, public HFS payment flow, HFS hospital rate parameters, CMS quality context, rural/access indicators, workforce observations, and price transparency readiness into a hospital pressure triage workflow. It scores public indicators, shows the selected hospital's reimbursement and cost-report context, and frames service-line scenarios that still require claim logic, payer mix, managed-care rules, and validation. The score is an exploratory signal, not proof of financial distress, cash position, or service-line profitability.
+
 ## Data Coverage + Methodology
 
 The Methodology tab summarizes live dataset coverage, interpretation limits, known data gaps, and recommended next layers. It is designed to make the project defensible in portfolio and interview settings by separating loaded evidence from pending research layers.
