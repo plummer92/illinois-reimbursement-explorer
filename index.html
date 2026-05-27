@@ -74,6 +74,7 @@
             <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
             <button class="tab" data-tab="pressure">Financial Pressure</button>
             <button class="tab" data-tab="systemFinance">System Financials</button>
+            <button class="tab" data-tab="hshsDeepDive">HSHS Deep Dive</button>
             <button class="tab" data-tab="methodology">Methodology</button>
             <button class="tab" data-tab="workforce">Workforce Demand</button>
             <button class="tab" data-tab="sources">Sources</button>
@@ -912,6 +913,44 @@
             <section class="summary-section">
               <h3>Capacity Evidence Extraction Queue</h3>
               <div id="systemFinanceExtractionRows" class="data-table wide"></div>
+            </section>
+          </section>
+
+          <section id="hshsDeepDivePanel" class="panel" aria-labelledby="hshsDeepDive">
+            <div class="panel-head">
+              <div>
+                <p class="eyebrow">HSHS focused audit</p>
+                <h2>Hospital Sisters Health System Deep Dive</h2>
+              </div>
+            </div>
+            <div class="callout muted-callout">
+              This page keeps HSHS system evidence, Illinois facility HCRIS rows, public payment/price evidence, and missing proof items separated. It is designed to answer whether a weak facility signal is also a weak system signal, or whether system capacity, access role, mission, liquidity, debt, or payer mix still need validation.
+            </div>
+            <section class="summary-section">
+              <h3>HSHS Audit Snapshot</h3>
+              <div id="hshsMetricCards" class="executive-metrics"></div>
+            </section>
+            <div class="hshs-deep-dive-grid">
+              <section>
+                <h3>What Public Data Says Now</h3>
+                <div id="hshsNarrativeCards" class="finding-list compact-findings"></div>
+              </section>
+              <section>
+                <h3>Can It Still Operate?</h3>
+                <div id="hshsContinuityCards" class="operating-context"></div>
+              </section>
+            </div>
+            <section class="summary-section">
+              <h3>Illinois HSHS Hospitals</h3>
+              <div id="hshsHospitalRows" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Proof Queue</h3>
+              <div id="hshsProofQueue" class="data-table wide"></div>
+            </section>
+            <section class="summary-section">
+              <h3>Source Trail</h3>
+              <div id="hshsSourceRows" class="data-table wide"></div>
             </section>
           </section>
 

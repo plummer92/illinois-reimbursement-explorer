@@ -1745,6 +1745,47 @@ h3 {
   min-width: 1220px;
 }
 
+.hshs-deep-dive-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.table-row.hshs-hospital-row {
+  grid-template-columns: minmax(300px, 1.2fr) repeat(3, minmax(95px, 0.36fr)) minmax(190px, 0.72fr) minmax(250px, 1fr) minmax(340px, 1.25fr);
+  min-width: 1320px;
+  cursor: pointer;
+}
+
+.table-row.hshs-hospital-row:hover {
+  border-color: #99d8ca;
+  background: #f7fbf8;
+}
+
+.table-row.hshs-proof-row {
+  grid-template-columns: minmax(260px, 1fr) minmax(120px, 0.35fr) minmax(290px, 1.1fr) minmax(330px, 1.2fr);
+  min-width: 1000px;
+}
+
+.table-row.hshs-source-row {
+  grid-template-columns: minmax(260px, 1.1fr) minmax(105px, 0.35fr) minmax(300px, 1.1fr);
+  min-width: 760px;
+}
+
+.hshs-proof-row a,
+.hshs-source-row a {
+  color: var(--accent);
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  margin-top: 4px;
+  text-decoration: none;
+}
+
+.hshs-continuity-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .system-extraction-row a {
   color: var(--accent);
   display: inline-block;
@@ -1794,6 +1835,9 @@ h3 {
 .system-finance-row div,
 .facility-system-row div,
 .system-extraction-row div,
+.hshs-hospital-row div,
+.hshs-proof-row div,
+.hshs-source-row div,
 .enforcement-row div,
 .penalty-event-row div,
 .deficiency-row div {
@@ -2518,6 +2562,8 @@ h3 {
     .operating-context-split,
     .system-finance-header,
     .system-finance-split,
+    .hshs-deep-dive-grid,
+    .hshs-continuity-grid,
     .benchmark-domain-grid,
     .benchmark-evidence-strip,
     .benchmark-row,
@@ -2588,6 +2634,9 @@ h3 {
   .table-row.system-finance-row,
   .table-row.facility-system-row,
   .table-row.system-extraction-row,
+  .table-row.hshs-hospital-row,
+  .table-row.hshs-proof-row,
+  .table-row.hshs-source-row,
   .table-row.enforcement-row,
   .table-row.penalty-event-row,
   .table-row.deficiency-row,
@@ -2615,6 +2664,9 @@ h3 {
   .table-row.system-finance-row,
   .table-row.facility-system-row,
   .table-row.system-extraction-row,
+  .table-row.hshs-hospital-row,
+  .table-row.hshs-proof-row,
+  .table-row.hshs-source-row,
   .table-row.enforcement-row,
   .table-row.penalty-event-row,
   .table-row.deficiency-row,
@@ -2913,7 +2965,42 @@ body {
 }
 
 @media (max-width: 920px) {
+  .shell {
+    padding: 12px;
+  }
+
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 100%;
+  }
+
   .sidebar {
+    min-height: auto;
     position: static;
+  }
+
+  .content {
+    width: 100%;
+  }
+
+  .executive-metrics,
+  .summary-grid,
+  .finding-list,
+  .hshs-deep-dive-grid,
+  .hshs-continuity-grid,
+  .operating-context-grid,
+  .risk-dashboard-grid,
+  .policy-grid,
+  .strategy-grid,
+  .money-flow-grid,
+  .landscape-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .table-row.hshs-hospital-row,
+  .table-row.hshs-proof-row,
+  .table-row.hshs-source-row {
+    grid-template-columns: 1fr;
+    min-width: 0;
   }
 }

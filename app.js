@@ -79,6 +79,7 @@ const els = {
     payment: document.querySelector("#paymentPanel"),
     pressure: document.querySelector("#pressurePanel"),
     systemFinance: document.querySelector("#systemFinancePanel"),
+    hshsDeepDive: document.querySelector("#hshsDeepDivePanel"),
     methodology: document.querySelector("#methodologyPanel"),
     workforce: document.querySelector("#workforcePanel"),
     sources: document.querySelector("#sourcesPanel"),
@@ -198,6 +199,12 @@ Object.assign(els, {
   systemFinanceHospitalRows: document.querySelector("#systemFinanceHospitalRows"),
   systemFinanceEvidenceGaps: document.querySelector("#systemFinanceEvidenceGaps"),
   systemFinanceExtractionRows: document.querySelector("#systemFinanceExtractionRows"),
+  hshsMetricCards: document.querySelector("#hshsMetricCards"),
+  hshsNarrativeCards: document.querySelector("#hshsNarrativeCards"),
+  hshsContinuityCards: document.querySelector("#hshsContinuityCards"),
+  hshsHospitalRows: document.querySelector("#hshsHospitalRows"),
+  hshsProofQueue: document.querySelector("#hshsProofQueue"),
+  hshsSourceRows: document.querySelector("#hshsSourceRows"),
   coverageMetricCards: document.querySelector("#coverageMetricCards"),
   coverageRows: document.querySelector("#coverageRows"),
   methodologyNotes: document.querySelector("#methodologyNotes"),
@@ -297,6 +304,7 @@ function render() {
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
   renderMethodology();
   renderWorkforceDemand();
 }
@@ -1768,6 +1776,228 @@ function renderSystemFinanceDeepDive() {
   els.systemFinanceHospitalRows.innerHTML = renderSystemFinanceHospitalRows(selected);
   els.systemFinanceEvidenceGaps.innerHTML = renderSystemFinanceEvidenceGaps(selected);
   els.systemFinanceExtractionRows.innerHTML = renderSystemFinanceExtractionRows(selected);
+}
+
+function getHshsSystemSummary() {
+  return buildSystemFinanceSummaries().find((summary) => summary.system.systemId === "hshs") || null;
+}
+
+function renderHshsDeepDive() {
+  const summary = getHshsSystemSummary();
+  if (!summary) {
+    els.hshsMetricCards.innerHTML = "";
+    els.hshsNarrativeCards.innerHTML = '<div class="finding">HSHS is not mapped in the health-system registry yet.</div>';
+    els.hshsContinuityCards.innerHTML = "";
+    els.hshsHospitalRows.innerHTML = "";
+    els.hshsProofQueue.innerHTML = "";
+    els.hshsSourceRows.innerHTML = "";
+    return;
+  }
+
+  const hospitals = summary.hospitals;
+  const costReports = hospitals.map((hospital) => getCostReportForHospital(hospital)).filter(Boolean);
+  const negativeReports = costReports.filter((report) => report.derived?.operatingMargin < 0);
+  const hfsPaymentHospitals = hospitals.filter((hospital) => hospital.hfsPayment || getProviderPaymentRowsForHospital(hospital).length);
+  const priceHospitals = hospitals.filter((hospital) => getPriceTransparencyRecords().some((record) => String(record.facilityId) === String(hospital.facilityId)));
+  const workforceHospitals = hospitals.filter((hospital) => getFacilityCareerRecord(hospital)?.careerPageUrl);
+  const footprintFact = summary.facts.find((fact) => fact.sourceTitle === "HSHS About Us System Profile");
+  const form990Fact = summary.facts.find((fact) => /Form 990/i.test(fact.sourceTitle || ""));
+  const auditMapped = summary.sources.some((source) => /audit|financial_statement/i.test(`${source.sourceType || ""} ${source.title || ""}`));
+  const bondMapped = summary.sources.some((source) => /bond|investor|rating/i.test(`${source.sourceType || ""} ${source.title || ""}`));
+
+  els.hshsMetricCards.innerHTML = renderWorkforceMetricCards([
+    ["Mapped IL hospitals", hospitals.length],
+    ["HCRIS rows", costReports.length],
+    ["Negative facility margin", negativeReports.length],
+    ["Form 990 net income", formatCurrencyOrNA(form990Fact?.metrics?.netIncome, 0)],
+    ["System revenue signal", formatCurrencyOrNA(summary.revenue, 0)],
+    ["System profile", `${formatIntegerOrNA(footprintFact?.metrics?.licensedHospitals)} hospitals`],
+    ["Public payment linked", hfsPaymentHospitals.length],
+    ["Price rows attached", priceHospitals.length]
+  ]);
+
+  els.hshsNarrativeCards.innerHTML = renderHshsNarrativeCards(summary, { costReports, negativeReports, auditMapped, bondMapped });
+  els.hshsContinuityCards.innerHTML = renderHshsContinuityCards(summary, { costReports, negativeReports, workforceHospitals });
+  els.hshsHospitalRows.innerHTML = renderHshsHospitalRows(summary);
+  els.hshsProofQueue.innerHTML = renderHshsProofQueue(summary);
+  els.hshsSourceRows.innerHTML = renderHshsSourceRows(summary);
+}
+
+function renderHshsNarrativeCards(summary, context) {
+  const form990Fact = summary.facts.find((fact) => /Form 990/i.test(fact.sourceTitle || ""));
+  const footprintFact = summary.facts.find((fact) => fact.sourceTitle === "HSHS About Us System Profile");
+  const communityFact = summary.facts.find((fact) => /Community Benefit/i.test(fact.sourceTitle || ""));
+  const cards = [
+    [
+      "System signal",
+      `The loaded HSHS Form 990 shows ${formatCurrencyOrNA(form990Fact?.metrics?.totalRevenue, 0)} of revenue, ${formatCurrencyOrNA(form990Fact?.metrics?.totalExpenses, 0)} of expenses, and ${formatCurrencyOrNA(form990Fact?.metrics?.netIncome, 0)} net income for ${form990Fact?.period || "the loaded period"}.`
+    ],
+    [
+      "Facility signal",
+      `${formatIntegerOrNA(context.costReports.length)} mapped Illinois HSHS hospitals have HCRIS economics loaded; ${formatIntegerOrNA(context.negativeReports.length)} show negative HCRIS operating margin in the current extract.`
+    ],
+    [
+      "Scale signal",
+      `The official HSHS profile gives system footprint context: ${formatIntegerOrNA(footprintFact?.metrics?.licensedHospitals)} hospitals, ${formatIntegerOrNA(footprintFact?.metrics?.careLocations)} care locations, and ${formatIntegerOrNA(footprintFact?.metrics?.totalColleagues)} colleagues.`
+    ],
+    [
+      "Mission signal",
+      communityFact
+        ? `The HSHS annual report is mapped for mission/community-benefit context, but the loaded figures are program examples, not total community benefit or audited liquidity.`
+        : "Community benefit detail is not extracted yet."
+    ],
+    [
+      "Evidence warning",
+      `${context.auditMapped ? "An audit/annual source is mapped" : "A consolidated audited statement is still needed"} and ${context.bondMapped ? "bond/investor context is mapped" : "bondholder/rating documents are still needed"} before claiming true system liquidity, debt capacity, or facility subsidy ability.`
+    ]
+  ];
+  return cards.map(([title, text]) => `
+    <div class="finding">
+      <strong>${escapeHtml(title)}</strong>
+      <span>${escapeHtml(text)}</span>
+    </div>
+  `).join("");
+}
+
+function renderHshsContinuityCards(summary, context) {
+  const operatingIncome = summary.primaryFact?.metrics?.operatingIncome;
+  const cashAndInvestments = getBestSystemMetric(summary.facts, ["cashAndInvestments", "unrestrictedCashAndInvestments", "cash"]);
+  const debt = getBestSystemMetric(summary.facts, ["longTermDebt", "bondsPayable", "totalLongTermDebt"]);
+  const cards = [
+    ["Facility HCRIS can be negative", `${formatIntegerOrNA(context.negativeReports.length)} negative rows`, "Cost reports are facility economics, not the whole system statement."],
+    ["System Form 990 is loaded", formatCurrencyOrNA(summary.netIncome, 0), "Tax-filing evidence shows direction, but not full audited GAAP liquidity."],
+    ["Audited operating income", formatCurrencyOrNA(operatingIncome, 0), "Needed before treating system margin as audit-grade."],
+    ["Cash / investments", formatCurrencyOrNA(cashAndInvestments, 0), "Needed to assess ability to subsidize weak facilities."],
+    ["Debt context", formatCurrencyOrNA(debt, 0), "Need bond disclosures, ratings, covenants, and days cash."],
+    ["Access role", `${formatIntegerOrNA(context.costReports.length)} IL HCRIS rows`, "ER, rural, CAH, and service-line role can explain support despite weak margin."],
+    ["Workforce signal", `${formatIntegerOrNA(context.workforceHospitals.length)} linked`, "Careers demand can support operating context, not vacancy proof."]
+  ];
+  return `
+    <div class="operating-context-grid hshs-continuity-grid">
+      ${cards.map(([label, value, detail]) => `
+        <article class="operating-context-card">
+          <span>${escapeHtml(label)}</span>
+          <strong>${escapeHtml(value)}</strong>
+          <small>${escapeHtml(detail)}</small>
+        </article>
+      `).join("")}
+    </div>
+  `;
+}
+
+function renderHshsHospitalRows(summary) {
+  if (!summary.hospitals.length) return '<p class="status">No Illinois HSHS hospitals are mapped yet.</p>';
+  return `
+    <article class="table-row hshs-hospital-row header">
+      <div>Hospital</div>
+      <div class="numeric">HCRIS margin</div>
+      <div class="numeric">Occupancy</div>
+      <div class="numeric">Current ratio</div>
+      <div>Quality / access</div>
+      <div>Payment / price / workforce</div>
+      <div>Why it matters</div>
+    </article>
+    ${summary.hospitals.map((hospital) => {
+      const costReport = getCostReportForHospital(hospital);
+      const providerRows = getProviderPaymentRowsForHospital(hospital);
+      const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+      const career = getFacilityCareerRecord(hospital);
+      const role = [
+        `${hospital.overallRating || "N/A"} stars`,
+        hospital.emergencyServices === "Yes" ? "ER" : "No ER",
+        hospital.hospitalType === "Critical Access Hospitals" ? "CAH" : hospital.hospitalType
+      ].filter(Boolean).join(" / ");
+      const evidenceTags = [
+        hospital.hfsPayment ? "HFS rate parsed" : "HFS rate missing",
+        providerRows.length ? `${formatIntegerOrNA(providerRows.length)} HFS payment rows` : "payment rows missing",
+        priceRows.length ? `${formatIntegerOrNA(priceRows.length)} price rows` : "price rows missing",
+        career?.careerPageUrl ? "careers linked" : "workforce missing"
+      ];
+      return `
+        <article class="table-row hshs-hospital-row" data-hshs-hospital-row="${escapeHtml(hospital.facilityId)}">
+          <div>
+            <strong>${escapeHtml(hospital.facilityName)}</strong>
+            <small>${escapeHtml(hospital.city || "")} / ${escapeHtml(hospital.county || "Unknown county")} / CMS ${escapeHtml(hospital.facilityId || "N/A")}</small>
+          </div>
+          <div class="numeric">${formatOptionalPercent(costReport?.derived?.operatingMargin)}</div>
+          <div class="numeric">${formatOptionalPercent(costReport?.derived?.occupancyRate)}</div>
+          <div class="numeric">${formatNumberOrNA(costReport?.derived?.currentRatio, 2)}</div>
+          <div>${escapeHtml(role)}</div>
+          <div>${evidenceTags.map((tag) => `<span class="tag">${escapeHtml(tag)}</span>`).join(" ")}</div>
+          <div><small>${escapeHtml(buildHshsHospitalInterpretation(hospital, costReport, summary))}</small></div>
+        </article>
+      `;
+    }).join("")}
+  `;
+}
+
+function buildHshsHospitalInterpretation(hospital, costReport, summary) {
+  const parts = [];
+  if (costReport?.derived?.operatingMargin < 0) {
+    parts.push("facility HCRIS looks weak");
+  } else if (Number.isFinite(costReport?.derived?.operatingMargin)) {
+    parts.push("facility HCRIS is not negative in this extract");
+  } else {
+    parts.push("facility cost report is missing");
+  }
+  if (summary.netIncome < 0) {
+    parts.push("loaded HSHS Form 990 is also negative");
+  }
+  if (hospital.emergencyServices === "Yes") {
+    parts.push("ER access makes service role important");
+  }
+  if (hospital.hospitalType === "Critical Access Hospitals") {
+    parts.push("CAH rules need separate reimbursement logic");
+  }
+  return `${parts.join("; ")}. Validate with audited statements, liquidity, debt, payer mix, and facility-specific support before making a distress claim.`;
+}
+
+function renderHshsProofQueue(summary) {
+  const queue = buildSystemFinanceExtractionQueue(summary);
+  return `
+    <article class="table-row hshs-proof-row header">
+      <div>Evidence Need</div>
+      <div>Status</div>
+      <div>What To Pull</div>
+      <div>Audit Use</div>
+    </article>
+    ${queue.map((row) => `
+      <article class="table-row hshs-proof-row">
+        <div>
+          <strong>${escapeHtml(row.need)}</strong>
+          <small>${escapeHtml(row.proves)}</small>
+        </div>
+        <div><span class="status-dot status-${escapeHtml(row.statusKey)}">${escapeHtml(row.status)}</span></div>
+        <div>
+          ${row.fields.map((field) => `<span class="tag">${escapeHtml(field)}</span>`).join(" ")}
+          ${row.sourceUrl ? `<a href="${escapeHtml(row.sourceUrl)}" target="_blank" rel="noreferrer">Open current source</a>` : ""}
+        </div>
+        <div><small>${escapeHtml(row.why)}</small></div>
+      </article>
+    `).join("")}
+  `;
+}
+
+function renderHshsSourceRows(summary) {
+  if (!summary.sources.length) return '<p class="status">No HSHS source links mapped yet.</p>';
+  return `
+    <article class="table-row hshs-source-row header">
+      <div>Source</div>
+      <div>Status</div>
+      <div>Use</div>
+    </article>
+    ${summary.sources.map((source) => `
+      <article class="table-row hshs-source-row">
+        <div>
+          <strong>${escapeHtml(source.title || source.sourceType || "Source")}</strong>
+          <small>${escapeHtml(source.publisher || "Unknown publisher")} / ${escapeHtml(source.latestPeriod || "Unknown period")}</small>
+          <a href="${escapeHtml(source.url)}" target="_blank" rel="noreferrer">Open source</a>
+        </div>
+        <div><span class="status-dot status-${source.status === "extracted" ? "loaded" : "partial"}">${escapeHtml(source.status || "mapped")}</span></div>
+        <div><small>${escapeHtml(source.evidenceUse || source.limitations || "System financial source context.")}</small></div>
+      </article>
+    `).join("")}
+  `;
 }
 
 function buildSystemFinanceSummaries() {
@@ -7621,6 +7851,7 @@ els.searchInput.addEventListener("input", (event) => {
   renderHospitalIntelligence();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderHshsDeepDive();
 });
 
 els.categorySelect.addEventListener("change", (event) => {
@@ -7637,6 +7868,7 @@ els.categorySelect.addEventListener("change", (event) => {
   renderChainAnalytics();
   renderHospitalIntelligence();
   renderFinancialPressure();
+  renderHshsDeepDive();
 });
 
 els.tierSelect.addEventListener("change", (event) => {
@@ -7653,6 +7885,7 @@ els.tierSelect.addEventListener("change", (event) => {
   renderChainAnalytics();
   renderHospitalIntelligence();
   renderFinancialPressure();
+  renderHshsDeepDive();
 });
 
 els.riskLevelSelect.addEventListener("change", (event) => {
@@ -7661,6 +7894,7 @@ els.riskLevelSelect.addEventListener("change", (event) => {
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderHshsDeepDive();
 });
 
 els.ownershipSelect.addEventListener("change", (event) => {
@@ -7669,6 +7903,7 @@ els.ownershipSelect.addEventListener("change", (event) => {
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
+  renderHshsDeepDive();
 });
 
 els.staffingRatingSelect.addEventListener("change", (event) => {
@@ -7753,6 +7988,7 @@ els.hospitalRiskRows.addEventListener("click", (event) => {
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
 });
 
 els.hospitalRateValueRows.addEventListener("click", (event) => {
@@ -7767,6 +8003,7 @@ els.hospitalRateValueRows.addEventListener("click", (event) => {
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
 });
 
 els.paymentHospitalRows.addEventListener("click", (event) => {
@@ -7780,6 +8017,7 @@ els.paymentHospitalRows.addEventListener("click", (event) => {
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
 });
 
 els.pressureHospitalRows.addEventListener("click", (event) => {
@@ -7793,6 +8031,7 @@ els.pressureHospitalRows.addEventListener("click", (event) => {
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
 });
 
 els.leaderboardRows.addEventListener("click", (event) => {
@@ -7819,6 +8058,7 @@ els.binderPeerRows.addEventListener("click", (event) => {
   renderHospitalPaymentExplorer();
   renderFinancialPressure();
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
   els.binderPeerRows.scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
@@ -7827,7 +8067,22 @@ els.systemFinanceRows.addEventListener("click", (event) => {
   if (!row) return;
   state.selectedSystemId = row.dataset.systemFinanceRow;
   renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
   els.systemFinanceDetail.scrollIntoView({ behavior: "smooth", block: "start" });
+});
+
+els.hshsHospitalRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-hshs-hospital-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.hshsHospitalRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
+  renderHospitalIntelligence();
+  renderHospitalLeaderboard();
+  renderFacilityBinderPage();
+  renderHospitalPaymentExplorer();
+  renderFinancialPressure();
+  renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
 });
 
 els.hospitalDrilldown.addEventListener("click", (event) => {
