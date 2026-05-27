@@ -2127,6 +2127,11 @@ h3 {
   white-space: nowrap;
 }
 
+.binder-price-basket-row .numeric,
+.binder-payer-spread-row .numeric {
+  white-space: normal;
+}
+
 .watchlist-section {
   margin-top: 18px;
 }
@@ -2444,6 +2449,12 @@ body {
   padding: 20px;
 }
 
+.workspace {
+  grid-template-columns: 300px minmax(0, 1fr);
+  max-width: min(1880px, calc(100vw - 28px));
+  gap: 16px;
+}
+
 .sidebar,
 .content {
   box-shadow: var(--shadow-soft);
@@ -2520,7 +2531,7 @@ body {
 }
 
 .panel {
-  padding: 24px;
+  padding: 24px 28px 30px;
 }
 
 .panel-head {
@@ -2553,6 +2564,37 @@ body {
 .evidence-card,
 .finding {
   background: linear-gradient(180deg, #fafffd, var(--soft));
+}
+
+.executive-metrics {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+}
+
+.summary-section {
+  margin-bottom: 18px;
+}
+
+.risk-dashboard-grid,
+.money-flow-grid,
+.policy-grid,
+.quality-grid {
+  grid-template-columns: repeat(2, minmax(420px, 1fr));
+}
+
+.risk-dashboard-grid > section,
+.money-flow-grid > section,
+.policy-grid > section,
+.quality-grid > section,
+.summary-section {
+  min-width: 0;
+}
+
+.data-table.wide {
+  max-width: 100%;
+}
+
+.drilldown-card {
+  min-height: 260px;
 }
 
 .metric-card span,
