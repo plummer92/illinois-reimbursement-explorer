@@ -1065,12 +1065,15 @@ function renderSystemFinancialMetricTags(metrics = {}) {
     ["netAssets", "Net assets", formatCurrencyOrNA(metrics.netAssets, 0)],
     ["totalAssets", "Assets", formatCurrencyOrNA(metrics.totalAssets, 0)],
     ["totalLiabilities", "Liabilities", formatCurrencyOrNA(metrics.totalLiabilities, 0)],
+    ["patientServiceRevenue", "Patient revenue", formatCurrencyOrNA(metrics.patientServiceRevenue, 0)],
     ["operatingIncome", "Op income", formatCurrencyOrNA(metrics.operatingIncome, 0)],
     ["operatingMargin", "Op margin", formatOptionalPercent(metrics.operatingMargin)],
     ["cash", "Cash", formatCurrencyOrNA(metrics.cash, 0)],
     ["cashAndInvestments", "Cash + investments", formatCurrencyOrNA(metrics.cashAndInvestments, 0)],
+    ["assetsLimitedOrRestricted", "Limited assets", formatCurrencyOrNA(metrics.assetsLimitedOrRestricted, 0)],
     ["daysCashOnHand", "Days cash", formatNumberOrNA(metrics.daysCashOnHand, 1)],
     ["longTermDebt", "Debt", formatCurrencyOrNA(metrics.longTermDebt, 0)],
+    ["totalDebtAndFinanceLeases", "Debt + leases", formatCurrencyOrNA(metrics.totalDebtAndFinanceLeases, 0)],
     ["annualDebtServiceCoverage", "DSC", `${formatNumberOrNA(metrics.annualDebtServiceCoverage, 1)}x`],
     ["licensedBeds", "Beds", formatIntegerOrNA(metrics.licensedBeds)],
     ["staffedBeds", "Staffed beds", formatIntegerOrNA(metrics.staffedBeds)],
@@ -1809,11 +1812,11 @@ function renderHshsDeepDive() {
     ["Mapped IL hospitals", hospitals.length],
     ["HCRIS rows", costReports.length],
     ["Negative facility margin", negativeReports.length],
+    ["Audited op income", formatCurrencyOrNA(summary.primaryFact?.metrics?.operatingIncome, 0)],
+    ["Audited revenue", formatCurrencyOrNA(summary.revenue, 0)],
+    ["Debt + leases", formatCurrencyOrNA(summary.primaryFact?.metrics?.totalDebtAndFinanceLeases, 0)],
     ["Form 990 net income", formatCurrencyOrNA(form990Fact?.metrics?.netIncome, 0)],
-    ["System revenue signal", formatCurrencyOrNA(summary.revenue, 0)],
-    ["System profile", `${formatIntegerOrNA(footprintFact?.metrics?.licensedHospitals)} hospitals`],
-    ["Public payment linked", hfsPaymentHospitals.length],
-    ["Price rows attached", priceHospitals.length]
+    ["FY2025 audit source", summary.sources.some((source) => source.title === "HSHS FY2025 Single Audit Source Page") ? "Mapped" : "Needed"]
   ]);
 
   els.hshsNarrativeCards.innerHTML = renderHshsNarrativeCards(summary, { costReports, negativeReports, auditMapped, bondMapped });
@@ -1831,6 +1834,12 @@ function renderHshsNarrativeCards(summary, context) {
     [
       "System signal",
       `The loaded HSHS Form 990 shows ${formatCurrencyOrNA(form990Fact?.metrics?.totalRevenue, 0)} of revenue, ${formatCurrencyOrNA(form990Fact?.metrics?.totalExpenses, 0)} of expenses, and ${formatCurrencyOrNA(form990Fact?.metrics?.netIncome, 0)} net income for ${form990Fact?.period || "the loaded period"}.`
+    ],
+    [
+      "Audited capacity signal",
+      summary.primaryFact?.basis === "Audited consolidated financial statement extract"
+        ? `The FY2024 audited consolidated statement now shows ${formatCurrencyOrNA(summary.primaryFact.metrics.totalRevenue, 0)} revenue, ${formatCurrencyOrNA(summary.primaryFact.metrics.totalExpenses, 0)} expenses, and ${formatCurrencyOrNA(summary.primaryFact.metrics.operatingIncome, 0)} operating income.`
+        : "The audited consolidated statement still needs numeric extraction before system capacity can be judged."
     ],
     [
       "Facility signal",
@@ -1861,13 +1870,15 @@ function renderHshsNarrativeCards(summary, context) {
 
 function renderHshsContinuityCards(summary, context) {
   const operatingIncome = summary.primaryFact?.metrics?.operatingIncome;
-  const cashAndInvestments = getBestSystemMetric(summary.facts, ["cashAndInvestments", "unrestrictedCashAndInvestments", "cash"]);
+  const cash = getBestSystemMetric(summary.facts, ["cash"]);
+  const limitedAssets = getBestSystemMetric(summary.facts, ["cashAndInvestments", "unrestrictedCashAndInvestments", "assetsLimitedOrRestricted"]);
   const debt = getBestSystemMetric(summary.facts, ["longTermDebt", "bondsPayable", "totalLongTermDebt"]);
   const cards = [
     ["Facility HCRIS can be negative", `${formatIntegerOrNA(context.negativeReports.length)} negative rows`, "Cost reports are facility economics, not the whole system statement."],
     ["System Form 990 is loaded", formatCurrencyOrNA(summary.netIncome, 0), "Tax-filing evidence shows direction, but not full audited GAAP liquidity."],
     ["Audited operating income", formatCurrencyOrNA(operatingIncome, 0), "Needed before treating system margin as audit-grade."],
-    ["Cash / investments", formatCurrencyOrNA(cashAndInvestments, 0), "Needed to assess ability to subsidize weak facilities."],
+    ["Cash", formatCurrencyOrNA(cash, 0), "Audited cash and cash equivalents; not the full liquidity story."],
+    ["Limited/restricted assets", formatCurrencyOrNA(limitedAssets, 0), "May include assets whose use is limited or restricted; validate liquidity before treating as spendable cash."],
     ["Debt context", formatCurrencyOrNA(debt, 0), "Need bond disclosures, ratings, covenants, and days cash."],
     ["Access role", `${formatIntegerOrNA(context.costReports.length)} IL HCRIS rows`, "ER, rural, CAH, and service-line role can explain support despite weak margin."],
     ["Workforce signal", `${formatIntegerOrNA(context.workforceHospitals.length)} linked`, "Careers demand can support operating context, not vacancy proof."]
@@ -2315,7 +2326,7 @@ function buildSystemFinanceEvidenceGaps(summary) {
   const sources = summary.sources || [];
   const metrics = Object.assign({}, ...facts.map((fact) => fact.metrics || {}));
   const hasAudit = sources.some((source) => /audit|financial_statement/i.test(`${source.sourceType || ""} ${source.title || ""}`));
-  const hasBond = sources.some((source) => /bond|investor|rating/i.test(`${source.sourceType || ""} ${source.title || ""}`));
+  const hasBond = sources.some((source) => /bond|investor|rating/i.test(`${source.sourceType || ""} ${source.title || ""}`) && source.status !== "source_needed");
   const hasDebt = ["notesPayable", "totalLongTermDebt", "longTermDebt", "bondsPayable", "totalLiabilities"].some((key) => metrics[key] !== undefined);
   const hasCash = ["cashAndInvestments", "cashOnHand", "daysCashOnHand", "cash"].some((key) => metrics[key] !== undefined);
   const hasCommunityBenefit = ["communityBenefit", "charityCare", "costOfCharityCare", "communityProgramAnnualSupport", "foundationContribution"].some((key) => metrics[key] !== undefined);
@@ -2342,12 +2353,13 @@ function buildSystemFinanceExtractionQueue(summary) {
     const source = sourceFor(sourceMatcher);
     const fact = factWith(metricKeys);
     const hasAllFields = metricKeys.some((key) => metrics[key] !== undefined && metrics[key] !== null);
+    const sourceIsOnlyNeeded = source?.status === "source_needed";
     const status = hasAllFields
       ? "extracted"
-      : source
+      : source && !sourceIsOnlyNeeded
         ? "source mapped"
         : "source needed";
-    const statusKey = hasAllFields ? "loaded" : source ? "partial" : "next";
+    const statusKey = hasAllFields ? "loaded" : source && !sourceIsOnlyNeeded ? "partial" : "next";
     return {
       need,
       proves,
@@ -2376,7 +2388,7 @@ function buildSystemFinanceExtractionQueue(summary) {
       fields: ["debt", "debt service", "ratings", "covenants"],
       why: "A hospital can keep operating with losses if the obligated group has liquidity, debt access, or strategic support.",
       sourceMatcher: (text) => /bond|investor|rating/i.test(text),
-      metricKeys: ["longTermDebt", "bondsPayable", "debtServiceCoverage", "fitchLongTermRating", "moodyLongTermRating", "spLongTermRating"]
+      metricKeys: ["bondsPayable", "debtServiceCoverage", "annualDebtServiceCoverage", "maximumAnnualDebtServiceCoverage", "fitchLongTermRating", "moodyLongTermRating", "spLongTermRating"]
     }),
     makeRow({
       need: "Cash and liquidity",
