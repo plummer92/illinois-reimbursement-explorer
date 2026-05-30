@@ -2846,7 +2846,7 @@ function renderPayRangeRows(payRanges) {
       <div>
         <strong>${escapeHtml(row.facilityName)}</strong>
         <small>${escapeHtml(row.roleTitle)} / ${escapeHtml(row.category)} / ${escapeHtml(row.platform)}</small>
-        ${row.benefitsText ? `<small>${escapeHtml(row.benefitsText.slice(0, 160))}</small>` : ""}
+        <small>${escapeHtml([row.observedDate ? `Observed ${row.observedDate}` : "", row.benefitsText ? "benefits text captured" : ""].filter(Boolean).join(" / ") || "Public posting")}</small>
       </div>
       <div class="numeric">${formatPayRange(row)}</div>
       <div>${row.url ? `<a href="${escapeHtml(row.url)}" target="_blank" rel="noreferrer">Posting</a>` : "No link"}</div>

@@ -14,6 +14,7 @@ import argparse
 import json
 import re
 import time
+from http.client import IncompleteRead, InvalidURL
 from dataclasses import dataclass
 from datetime import date
 from html.parser import HTMLParser
@@ -36,13 +37,13 @@ PAY_RANGE_RE = re.compile(
     re.I,
 )
 SINGLE_PAY_RE = re.compile(
-    r"(?:starting|starts|from|minimum|min\.?|up to|salary|pay|wage)\s*(?:at|range)?\s*"
+    r"(?:starting\s+(?:pay|salary|wage|rate)|starts\s+at|minimum\s+(?:pay|salary|wage|rate)|min\.?\s+(?:pay|salary|wage|rate)|salary|pay|wage|hourly\s+rate|base\s+pay|compensation)\s*(?:at|range|is|:)?\s*"
     r"\$?\s*([0-9]{2,6}(?:,[0-9]{3})?(?:\.[0-9]{1,2})?)"
     r"\s*(?:per\s+)?(?:/|\s+)?"
     r"(hour|hr|year|yr|annual|annually|salary)?",
     re.I,
 )
-BENEFIT_RE = re.compile(r"\b(benefits?|medical|dental|vision|retirement|401k|tuition|pto|paid time off)\b", re.I)
+BENEFIT_RE = re.compile(r"\b(medical insurance|health insurance|dental|vision|retirement|401k|tuition|pto|paid time off|life insurance)\b", re.I)
 
 
 @dataclass
@@ -85,11 +86,17 @@ class TextParser(HTMLParser):
         self.heading_parts: list[str] = []
         self.text_parts: list[str] = []
         self._tag_stack: list[str] = []
+        self._ignored_depth = 0
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        self._tag_stack.append(tag.lower())
+        tag = tag.lower()
+        self._tag_stack.append(tag)
+        if tag in {"script", "style", "noscript", "svg"}:
+            self._ignored_depth += 1
 
     def handle_data(self, data: str) -> None:
+        if self._ignored_depth:
+            return
         text = clean_text(data)
         if not text:
             return
@@ -102,6 +109,8 @@ class TextParser(HTMLParser):
 
     def handle_endtag(self, tag: str) -> None:
         tag = tag.lower()
+        if tag in {"script", "style", "noscript", "svg"} and self._ignored_depth:
+            self._ignored_depth -= 1
         for index in range(len(self._tag_stack) - 1, -1, -1):
             if self._tag_stack[index] == tag:
                 del self._tag_stack[index:]
@@ -137,6 +146,8 @@ def parse_links(html: str, base_url: str) -> list[Link]:
     seen: set[str] = set()
     for link in parser.links:
         href = urljoin(base_url, link.href)
+        if re.search(r"\s", href):
+            continue
         if href in seen:
             continue
         seen.add(href)
@@ -193,7 +204,41 @@ def normalize_period(value: str | None, low: float) -> str:
     return ""
 
 
+def normalize_city(value: object) -> str:
+    return re.sub(r"[^A-Z0-9 ]", " ", str(value or "").upper()).strip()
+
+
+def extract_posting_location(title: str, text: str) -> tuple[str, str]:
+    haystack = f"{title} {text[:600]}"
+    match = re.search(r"\bin\s+([A-Z][A-Za-z .'-]+),\s*(Illinois|IL|Indiana|IN|Missouri|MO|California|CA|Wisconsin|WI|Iowa|IA)\b", haystack)
+    if match:
+        return clean_text(match.group(1)), clean_text(match.group(2))
+    match = re.search(r"\b([A-Z][A-Za-z .'-]+),\s*(Illinois|IL)\b", haystack)
+    if match:
+        return clean_text(match.group(1)), clean_text(match.group(2))
+    return "", ""
+
+
+def is_location_compatible(record: dict[str, Any], posting_city: str, posting_state: str) -> bool:
+    if posting_state and posting_state.upper() not in {"IL", "ILLINOIS"}:
+        return False
+    facility_city = normalize_city(record.get("city"))
+    if posting_city and facility_city and normalize_city(posting_city) != facility_city:
+        return False
+    return True
+
+
 def extract_pay(text: str) -> dict[str, Any] | None:
+    text = re.sub(
+        r"\$\s*([0-9]{2,3})\s*[Kk]\s*(?:-|to)\s*\$?\s*([0-9]{2,3})\s*[Kk]",
+        lambda match: f"${int(match.group(1)) * 1000} - ${int(match.group(2)) * 1000}",
+        text,
+    )
+    text = re.sub(
+        r"\$\s*([0-9]{2,3})\s*[Kk]\b",
+        lambda match: f"${int(match.group(1)) * 1000}",
+        text,
+    )
     match = PAY_RANGE_RE.search(text)
     if match:
         pay_min = parse_money(match.group(1))
@@ -211,11 +256,14 @@ def extract_pay(text: str) -> dict[str, Any] | None:
     match = SINGLE_PAY_RE.search(text)
     if match and "$" in match.group(0):
         value = parse_money(match.group(1))
+        period = normalize_period(match.group(2), value)
+        if not period:
+            return None
         return {
             "payMin": value,
             "payMax": None,
             "midpoint": value,
-            "period": normalize_period(match.group(2), value),
+            "period": period,
             "payText": clean_text(match.group(0)),
         }
     return None
@@ -248,16 +296,30 @@ def categorize_role(title: str) -> str:
     return "Other"
 
 
+def is_likely_role_title(title: str) -> bool:
+    text = clean_text(title)
+    if not text or len(text) < 4 or len(text) > 140:
+        return False
+    if re.fullmatch(r"(why .*|about .*|benefits?|home|search jobs?|job search|join our team|careers?)", text, re.I):
+        return False
+    return bool(re.search(r"nurse|rn|lpn|cna|pharmac|therap|tech|physician|provider|assistant|manager|director|coordinator|specialist|analyst|billing|coding|revenue|registr|clerk|lab|imaging|respiratory|security|social|case|surg|medical|patient|materials|environmental|housekeep|food|diet", text, re.I))
+
+
 def extract_posting(record: dict[str, Any], posting_url: str, link_text: str, timeout: int) -> dict[str, Any] | None:
     try:
         html = fetch_text(posting_url, timeout)
-    except (HTTPError, URLError, TimeoutError, OSError):
+    except (HTTPError, URLError, TimeoutError, OSError, ValueError, InvalidURL, IncompleteRead):
         return None
     role_title, text = html_to_text(html)
     pay = extract_pay(text)
     if not pay:
         return None
     title = clean_text(role_title or link_text or "Unknown role")
+    if not is_likely_role_title(title):
+        return None
+    posting_city, posting_state = extract_posting_location(title, text)
+    if not is_location_compatible(record, posting_city, posting_state):
+        return None
     return {
         "facilityId": record.get("facilityId") or "",
         "facilityName": record.get("facilityName") or record.get("reportCardName") or "",
@@ -266,6 +328,8 @@ def extract_posting(record: dict[str, Any], posting_url: str, link_text: str, ti
         "platform": record.get("platform") or "",
         "roleTitle": title,
         "category": categorize_role(title),
+        "postingCity": posting_city,
+        "postingState": posting_state,
         "postingUrl": posting_url,
         "careerPageUrl": record.get("careerPageUrl") or "",
         "observedDate": date.today().isoformat(),
@@ -286,7 +350,7 @@ def import_pay_ranges(records: list[dict[str, Any]], facility_limit: int | None,
             continue
         try:
             careers_html = fetch_text(str(careers_url), timeout)
-        except (HTTPError, URLError, TimeoutError, OSError) as error:
+        except (HTTPError, URLError, TimeoutError, OSError, IncompleteRead) as error:
             print(f"{index}. {record.get('facilityName')}: careers fetch failed ({error})")
             continue
         links = find_posting_links(str(careers_url), careers_html, posting_limit)
