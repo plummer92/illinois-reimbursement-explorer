@@ -1,0 +1,82 @@
+{
+  "description": "Public Knoxville-area emergency medicine physician compensation benchmarks. These are market pay signals, not payroll records or guaranteed offers.",
+  "lastUpdated": "2026-05-30",
+  "market": "Knoxville, Tennessee",
+  "occupation": "Emergency medicine physician / ER physician",
+  "summary": {
+    "estimatedHourlyRangeLow": 166,
+    "estimatedHourlyRangeHigh": 273,
+    "estimatedAnnualRangeLow": 344412,
+    "estimatedAnnualRangeHigh": 382477,
+    "interpretation": "Public sources suggest Knoxville-area emergency medicine physician compensation commonly appears in the mid-$300k annual range or roughly $166-$273 per hour depending on source methodology, employment model, and whether the figure is salary, posting-derived hourly pay, 1099 income, or peer-reported total compensation."
+  },
+  "records": [
+    {
+      "sourceName": "Salary.com",
+      "sourceType": "salary benchmark",
+      "geography": "Knoxville, TN",
+      "roleTitle": "Physician - Emergency Room",
+      "observedDate": "2026-05-01",
+      "annualAverage": 344412,
+      "annualP25": 323895,
+      "annualP75": 380369,
+      "hourlyAverage": 166,
+      "hourlyP25": 156,
+      "hourlyP75": 183,
+      "sampleSize": null,
+      "sourceUrl": "https://www.salary.com/research/salary/benchmark/er-doctor-salary/knoxville-tn",
+      "confidence": "medium",
+      "notes": "Benchmark model using employer job postings and third-party data sources; useful as a salary benchmark, not facility payroll."
+    },
+    {
+      "sourceName": "Indeed",
+      "sourceType": "job-posting salary estimate",
+      "geography": "Knoxville, TN",
+      "roleTitle": "Emergency Medicine Physician",
+      "observedDate": "2026-04-15",
+      "annualAverage": null,
+      "annualP25": null,
+      "annualP75": null,
+      "hourlyAverage": 273,
+      "hourlyLow": 234,
+      "hourlyHigh": 317,
+      "sampleSize": 5,
+      "sourceUrl": "https://www.indeed.com/career/emergency-medicine-physician/salaries/Knoxville--TN",
+      "confidence": "medium-low",
+      "notes": "Small sample from job postings over the prior 36 months; may overweight locum, travel, contractor, or high-acuity postings."
+    },
+    {
+      "sourceName": "Marit Health",
+      "sourceType": "peer-reported physician compensation",
+      "geography": "Tennessee",
+      "roleTitle": "Emergency Medicine Physician",
+      "observedDate": "2025-11-01",
+      "annualAverage": 382477,
+      "annualAcademicAverage": 379422,
+      "annualNonAcademicAverage": 386353,
+      "hourlyAverage": null,
+      "sampleSize": 10,
+      "sourceUrl": "https://www.marithealth.com/o/-/emergency-medicine-physician/salary/tn",
+      "confidence": "medium-low",
+      "notes": "Peer-reported Tennessee compensation; broader than Knoxville and subject to self-reporting and employment-model mix."
+    },
+    {
+      "sourceName": "Glassdoor",
+      "sourceType": "employee-submitted salary estimate",
+      "geography": "Knoxville, TN",
+      "roleTitle": "Emergency Medicine Physician",
+      "observedDate": "2026-05-01",
+      "annualHigh": 405043,
+      "hourlyHigh": 195,
+      "sampleSize": 3,
+      "sourceUrl": "https://www.glassdoor.com/Salaries/knoxville-tn-emergency-medicine-physician-salary-SRCH_IL.0,12_IM455_KO13,41.htm",
+      "confidence": "low",
+      "notes": "Very small sample; included only as a directional cross-check."
+    }
+  ],
+  "limitations": [
+    "Physician pay varies materially by W-2 versus 1099 status, benefits, malpractice coverage, productivity, shift mix, acuity, nocturnist coverage, academic/community setting, and contract group.",
+    "Public market benchmarks do not reveal what any specific Knoxville hospital, TeamHealth group, staffing company, or physician actually pays or earns.",
+    "Actual physician compensation may include stipends, RVU/productivity pay, night/weekend differentials, medical director pay, sign-on bonuses, retention bonuses, retirement, health benefits, and malpractice coverage."
+  ]
+}

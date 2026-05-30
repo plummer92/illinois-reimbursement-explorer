@@ -19,6 +19,7 @@ const state = {
   priceTransparencyRecords: [],
   facilityCareers: [],
   facilityPayRanges: [],
+  knoxvilleEmergencyMedicinePay: null,
   countyContext: [],
   countySummaries: [],
   nursingHomeEnforcementSummary: [],
@@ -230,6 +231,8 @@ Object.assign(els, {
   careersMetricCards: document.querySelector("#careersMetricCards"),
   careerLandscape: document.querySelector("#careerLandscape"),
   compensationMetricCards: document.querySelector("#compensationMetricCards"),
+  knoxvilleEmPayCards: document.querySelector("#knoxvilleEmPayCards"),
+  knoxvilleEmPayRows: document.querySelector("#knoxvilleEmPayRows"),
   wageSignalRows: document.querySelector("#wageSignalRows"),
   paySourceRows: document.querySelector("#paySourceRows"),
   payRangeRows: document.querySelector("#payRangeRows"),
@@ -263,6 +266,7 @@ async function loadData() {
   state.priceTransparencyRecords = await fetchOptionalJson("data/price-transparency-records.json");
   state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
   state.facilityPayRanges = await fetchOptionalJson("data/facility-pay-ranges.json");
+  state.knoxvilleEmergencyMedicinePay = await fetchOptionalJson("data/knoxville-emergency-medicine-pay.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
   state.nursingHomeEnforcementSummary = await fetchOptionalJson("data/cms-nursing-home-enforcement-summary.json");
@@ -2590,6 +2594,8 @@ function renderWorkforceDemand() {
   ]);
   els.careerLandscape.innerHTML = renderCareerMarketLandscape(records);
   els.compensationMetricCards.innerHTML = renderCompensationMetricCards(records, wageSignals, payRanges);
+  els.knoxvilleEmPayCards.innerHTML = renderKnoxvilleEmergencyMedicinePayCards();
+  els.knoxvilleEmPayRows.innerHTML = renderKnoxvilleEmergencyMedicinePayRows();
   els.wageSignalRows.innerHTML = renderWageSignalRows(wageSignals);
   els.paySourceRows.innerHTML = renderPaySourceRows();
   els.payRangeRows.innerHTML = renderPayRangeRows(payRanges);
@@ -2778,6 +2784,89 @@ function renderCompensationMetricCards(records, wageSignals, payRanges) {
     ["Careers observations", formatIntegerOrNA(records.length)],
     ["Form 990 comp sources", formatIntegerOrNA(form990Sources.length)]
   ]);
+}
+
+function getKnoxvilleEmergencyMedicinePayRecords() {
+  const payload = state.knoxvilleEmergencyMedicinePay;
+  return Array.isArray(payload) ? payload : payload?.records || [];
+}
+
+function renderKnoxvilleEmergencyMedicinePayCards() {
+  const payload = state.knoxvilleEmergencyMedicinePay || {};
+  const summary = payload.summary || {};
+  const records = getKnoxvilleEmergencyMedicinePayRecords();
+  if (!records.length) {
+    return renderWorkforceMetricCards([
+      ["Knoxville EM pay sources", "Not loaded"],
+      ["Estimated annual range", "N/A"],
+      ["Estimated hourly range", "N/A"],
+      ["Evidence posture", "Benchmark only"]
+    ]);
+  }
+
+  const sourceNames = [...new Set(records.map((record) => record.sourceName).filter(Boolean))];
+  return renderWorkforceMetricCards([
+    ["Knoxville EM pay sources", formatIntegerOrNA(sourceNames.length)],
+    ["Estimated annual range", `${formatCurrencyOrNA(summary.estimatedAnnualRangeLow, 0)} - ${formatCurrencyOrNA(summary.estimatedAnnualRangeHigh, 0)}`],
+    ["Estimated hourly range", `${formatCurrencyOrNA(summary.estimatedHourlyRangeLow, 0)} - ${formatCurrencyOrNA(summary.estimatedHourlyRangeHigh, 0)}`],
+    ["Evidence posture", "Market benchmark"]
+  ]);
+}
+
+function renderKnoxvilleEmergencyMedicinePayRows() {
+  const payload = state.knoxvilleEmergencyMedicinePay || {};
+  const records = getKnoxvilleEmergencyMedicinePayRecords();
+  if (!records.length) {
+    return '<p class="status">No Knoxville emergency medicine physician pay benchmark data is loaded yet.</p>';
+  }
+
+  const rows = records.map((record) => {
+    const annualRange = [
+      Number.isFinite(record.annualP25) ? `P25 ${formatCurrencyOrNA(record.annualP25, 0)}` : "",
+      Number.isFinite(record.annualAverage) ? `Avg ${formatCurrencyOrNA(record.annualAverage, 0)}` : "",
+      Number.isFinite(record.annualP75) ? `P75 ${formatCurrencyOrNA(record.annualP75, 0)}` : "",
+      Number.isFinite(record.annualHigh) ? `High ${formatCurrencyOrNA(record.annualHigh, 0)}` : ""
+    ].filter(Boolean).join(" / ") || "N/A";
+    const hourlyRange = [
+      Number.isFinite(record.hourlyLow) ? `Low ${formatCurrencyOrNA(record.hourlyLow, 0)}` : "",
+      Number.isFinite(record.hourlyP25) ? `P25 ${formatCurrencyOrNA(record.hourlyP25, 0)}` : "",
+      Number.isFinite(record.hourlyAverage) ? `Avg ${formatCurrencyOrNA(record.hourlyAverage, 0)}` : "",
+      Number.isFinite(record.hourlyP75) ? `P75 ${formatCurrencyOrNA(record.hourlyP75, 0)}` : "",
+      Number.isFinite(record.hourlyHigh) ? `High ${formatCurrencyOrNA(record.hourlyHigh, 0)}` : ""
+    ].filter(Boolean).join(" / ") || "N/A";
+    const sample = Number.isFinite(record.sampleSize) ? `${formatIntegerOrNA(record.sampleSize)} samples` : "Sample not stated";
+    return `
+      <article class="table-row methodology-row">
+        <div>
+          <strong>${escapeHtml(record.sourceName)}: ${escapeHtml(record.roleTitle)}</strong>
+          <small>${escapeHtml(record.geography)} / ${escapeHtml(record.sourceType)} / observed ${escapeHtml(record.observedDate || "N/A")}</small>
+          <small>${escapeHtml(record.notes || "")}</small>
+        </div>
+        <div>
+          <strong>Annual</strong>
+          <small>${escapeHtml(annualRange)}</small>
+        </div>
+        <div>
+          <strong>Hourly</strong>
+          <small>${escapeHtml(hourlyRange)}</small>
+        </div>
+        <div>
+          <span class="tag">${escapeHtml(record.confidence || "unknown confidence")}</span>
+          <small>${escapeHtml(sample)}</small>
+          ${record.sourceUrl ? `<small><a href="${escapeHtml(record.sourceUrl)}" target="_blank" rel="noreferrer">Source</a></small>` : ""}
+        </div>
+      </article>
+    `;
+  }).join("");
+
+  const limits = (payload.limitations || []).map((item) => `<div class="finding">${escapeHtml(item)}</div>`).join("");
+  return `
+    <div class="callout">
+      ${escapeHtml(payload.summary?.interpretation || "Public benchmarks describe emergency medicine physician market pay, not facility payroll.")}
+    </div>
+    ${rows}
+    <div class="finding-list compact-findings">${limits}</div>
+  `;
 }
 
 function renderWageSignalRows(wageSignals) {
