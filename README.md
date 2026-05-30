@@ -118,6 +118,14 @@ python scripts/import_job_posting_pay_ranges.py --careers data/facility-careers.
 
 Use a small `--facility-limit` for pilots because many health systems use JavaScript-heavy or vendor-hosted applicant-tracking systems. The importer keeps only postings where public static HTML exposes a compensation amount or range. Each record stores facility, role title, category, pay minimum, pay maximum, period, benefits text when detected, posting URL, observation date, and confidence notes.
 
+Refresh the full careers-plus-pay pipeline with:
+
+```powershell
+python scripts/refresh_pay_range_data.py --facility-limit 40 --posting-limit 25
+```
+
+This reruns the careers discovery layer, then reruns posted-pay extraction against the refreshed careers file. It is designed for scheduled refreshes. A recurring job can run this command, inspect whether `data/facility-careers.json` or `data/facility-pay-ranges.json` changed, then commit and push updated data when new defensible pay ranges appear.
+
 ## Local Use
 
 Run a local static server from this folder, then open the dashboard:
