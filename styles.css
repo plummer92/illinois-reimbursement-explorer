@@ -1679,6 +1679,19 @@ h3 {
   min-width: 860px;
 }
 
+.table-row.wage-signal-row {
+  grid-template-columns: minmax(240px, 1.1fr) minmax(140px, 0.55fr) minmax(180px, 0.7fr);
+  min-width: 700px;
+}
+
+.wage-signal-row .numeric {
+  white-space: normal;
+}
+
+.wage-signal-row .numeric small {
+  display: block;
+}
+
 .table-row.capital-geography-row {
   grid-template-columns: minmax(240px, 1.3fr) repeat(3, minmax(92px, 0.45fr));
   min-width: 620px;
@@ -2622,6 +2635,7 @@ h3 {
   .table-row.county-risk-row,
   .table-row.methodology-row,
   .table-row.careers-row,
+  .table-row.wage-signal-row,
   .table-row.price-status-row,
   .table-row.price-quality-row,
   .table-row.price-source-row,
@@ -2652,6 +2666,7 @@ h3 {
   .table-row.county-row,
   .table-row.county-risk-row,
   .table-row.careers-row,
+  .table-row.wage-signal-row,
   .table-row.price-status-row,
   .table-row.price-quality-row,
   .table-row.price-source-row,

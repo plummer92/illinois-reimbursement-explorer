@@ -65,6 +65,7 @@ The next expansion queue is tracked in `data/source-registry.json`:
 8. Inpatient DRG/LOS rule files.
 9. HAC/POA/readmission/quality penalty data.
 10. Facility careers pages and public job-opening counts as workforce-demand signals.
+11. Public compensation signals: posted pay ranges, HCRIS aggregate payroll, Form 990 compensation, public salary databases, and wage benchmarks.
 
 ## Workforce Demand Signals
 
@@ -96,6 +97,18 @@ The Workforce Demand tab also includes a **Query Careers Data** button. In the s
 Click a facility in the Workforce Demand table to open the role drilldown. When the public careers page exposes role titles in static HTML, the app groups captured roles into categories such as Nursing, Pharmacy, EVS, Business/Admin, Therapy/Rehab, Imaging, Lab, Respiratory, Food/Nutrition, Security, Provider, and Other.
 
 The Workforce Demand tab also rolls captured jobs into a market landscape: roles by category, most open roles by facility, open roles by county, and hiring platforms found. Use the **View Roles** button on a row for in-app drilldown; use Homepage, Careers, or individual role links only when you want to open the external site.
+
+## Compensation And Pay Signals
+
+Some healthcare pay information is public in Illinois, but it lives in several different layers and each layer answers a different question.
+
+- Illinois job posting pay transparency can expose role-level pay scales and benefits for covered public postings.
+- CMS HCRIS hospital cost reports expose aggregate facility payroll signals such as salaries, FTE, total costs, and implied salary per FTE.
+- IRS Form 990 Part VII and Schedule J can expose nonprofit executive, key employee, top compensated employee, and sometimes physician compensation.
+- Illinois Comptroller salary data can expose public/state employee salary records when the employer is covered.
+- IDES and BLS OEWS data can provide market wage benchmarks by occupation and geography.
+
+The Workforce Demand tab now includes a compensation signal layer. It summarizes HCRIS salary/FTE and salary-share-of-costs, lists public pay data sources, and is ready to display posted pay ranges when the careers crawler captures compensation text from job postings. These are exploratory labor-market and facility-economics indicators. They are not proof of what any individual nurse, pharmacist, physician, or staff member is paid.
 
 ## Local Use
 

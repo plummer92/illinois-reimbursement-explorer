@@ -228,6 +228,11 @@ Object.assign(els, {
   careersStatus: document.querySelector("#careersStatus"),
   careersMetricCards: document.querySelector("#careersMetricCards"),
   careerLandscape: document.querySelector("#careerLandscape"),
+  compensationMetricCards: document.querySelector("#compensationMetricCards"),
+  wageSignalRows: document.querySelector("#wageSignalRows"),
+  paySourceRows: document.querySelector("#paySourceRows"),
+  payRangeRows: document.querySelector("#payRangeRows"),
+  compensationDrilldown: document.querySelector("#compensationDrilldown"),
   careersRows: document.querySelector("#careersRows"),
   careerDrilldown: document.querySelector("#careerDrilldown")
 });
@@ -2572,6 +2577,8 @@ function renderWorkforceDemand() {
   const linked = records.filter((record) => record.careerPageUrl);
   const totalOpenings = sum(counted.map((record) => record.jobOpeningCount));
   const observedDates = [...new Set(records.map((record) => record.observedDate).filter(Boolean))].sort();
+  const wageSignals = buildHcrisWageSignals();
+  const payRanges = buildPostedPayRangeRecords(records);
 
   els.careersMetricCards.innerHTML = renderWorkforceMetricCards([
     ["Facilities tracked", records.length],
@@ -2580,9 +2587,14 @@ function renderWorkforceDemand() {
     ["Latest observation", observedDates.at(-1) || "Not queried"]
   ]);
   els.careerLandscape.innerHTML = renderCareerMarketLandscape(records);
+  els.compensationMetricCards.innerHTML = renderCompensationMetricCards(records, wageSignals, payRanges);
+  els.wageSignalRows.innerHTML = renderWageSignalRows(wageSignals);
+  els.paySourceRows.innerHTML = renderPaySourceRows();
+  els.payRangeRows.innerHTML = renderPayRangeRows(payRanges);
   els.careersRows.innerHTML = renderCareerRows(records);
   const selected = records.find((record) => getCareerFacilityId(record) === state.selectedCareerFacilityId) || records[0] || null;
   state.selectedCareerFacilityId = selected ? getCareerFacilityId(selected) : null;
+  els.compensationDrilldown.innerHTML = renderCompensationDrilldown(selected, wageSignals);
   els.careerDrilldown.innerHTML = renderCareerDrilldown(selected);
 }
 
@@ -2600,6 +2612,240 @@ function renderWorkforceMetricCards(cards) {
       <small>${escapeHtml(label)}</small>
     </article>
   `).join("");
+}
+
+function buildHcrisWageSignals() {
+  const hospitalsById = new Map(getAllHospitalsWithContext().map((hospital) => [String(hospital.facilityId || ""), hospital]));
+  return getCostReportRecords()
+    .map((report) => {
+      const fte = Number(report.fteEmployeesOnPayroll);
+      const totalSalaries = Number(report.totalSalariesFromWorksheetA);
+      const totalCosts = Number(report.totalCosts);
+      const salaryPerFte = Number.isFinite(fte) && fte > 0 && Number.isFinite(totalSalaries)
+        ? totalSalaries / fte
+        : null;
+      const estimatedHourly = Number.isFinite(salaryPerFte)
+        ? salaryPerFte / 2080
+        : null;
+      const salaryShare = Number.isFinite(totalSalaries) && Number.isFinite(totalCosts) && totalCosts > 0
+        ? totalSalaries / totalCosts
+        : report.derived?.salaryShareOfTotalCosts;
+      const hospital = hospitalsById.get(String(report.facilityId || report.providerCcn || ""));
+      return {
+        report,
+        hospital,
+        facilityId: report.facilityId || report.providerCcn || hospital?.facilityId || "",
+        facilityName: hospital?.facilityName || report.facilityName || "Unknown hospital",
+        city: hospital?.city || "",
+        county: hospital?.county || report.county || "",
+        systemName: hospital?.systemName || hospital?.healthSystem || "",
+        ruralUrban: report.ruralUrban || hospital?.ruralUrban || "",
+        fte,
+        totalSalaries,
+        totalCosts,
+        salaryPerFte,
+        estimatedHourly,
+        salaryShare,
+        operatingMargin: report.derived?.operatingMargin,
+        sourceYear: report.sourceYear
+      };
+    })
+    .filter((signal) => Number.isFinite(signal.salaryPerFte) || Number.isFinite(signal.salaryShare))
+    .sort((a, b) => (b.salaryPerFte || 0) - (a.salaryPerFte || 0));
+}
+
+function buildPostedPayRangeRecords(records) {
+  return records.flatMap((record) => {
+    const roles = Array.isArray(record.roles) ? record.roles : [];
+    return roles.map((role) => {
+      const pay = getRolePayRange(role);
+      if (!pay) return null;
+      return {
+        facilityName: record.facilityName || record.reportCardName || "Unknown facility",
+        city: record.city || "",
+        county: record.county || "",
+        platform: record.platform || "Unknown platform",
+        roleTitle: role.title || "Unknown role",
+        category: role.category || "Other",
+        url: role.url || record.careerPageUrl || "",
+        ...pay
+      };
+    }).filter(Boolean);
+  });
+}
+
+function getRolePayRange(role) {
+  const numericMin = firstFiniteNumber(role.payMin, role.salaryMin, role.hourlyMin, role.minPay, role.minimumPay);
+  const numericMax = firstFiniteNumber(role.payMax, role.salaryMax, role.hourlyMax, role.maxPay, role.maximumPay);
+  if (Number.isFinite(numericMin) || Number.isFinite(numericMax)) {
+    const period = role.payPeriod || role.period || (numericMin > 250 ? "annual" : "hourly");
+    return {
+      payMin: Number.isFinite(numericMin) ? numericMin : null,
+      payMax: Number.isFinite(numericMax) ? numericMax : null,
+      midpoint: Number.isFinite(numericMin) && Number.isFinite(numericMax) ? (numericMin + numericMax) / 2 : null,
+      period,
+      payText: role.payText || role.compensation || ""
+    };
+  }
+
+  const sourceText = [role.payText, role.compensation, role.salary, role.title].filter(Boolean).join(" ");
+  if (!sourceText.includes("$")) return null;
+  const match = sourceText.match(/\$\s*([0-9]{2,6}(?:,[0-9]{3})?(?:\.[0-9]{1,2})?)\s*(?:-|to|–)\s*\$?\s*([0-9]{2,6}(?:,[0-9]{3})?(?:\.[0-9]{1,2})?)\s*(?:\/?\s*(hour|hr|year|yr|annual|annually))?/i);
+  if (!match) return null;
+  const payMin = Number(match[1].replace(/,/g, ""));
+  const payMax = Number(match[2].replace(/,/g, ""));
+  if (!Number.isFinite(payMin) || !Number.isFinite(payMax)) return null;
+  const period = normalizePayPeriod(match[3]) || (payMin > 250 ? "annual" : "hourly");
+  return {
+    payMin,
+    payMax,
+    midpoint: (payMin + payMax) / 2,
+    period,
+    payText: match[0]
+  };
+}
+
+function firstFiniteNumber(...values) {
+  for (const value of values) {
+    const number = Number(value);
+    if (Number.isFinite(number)) return number;
+  }
+  return null;
+}
+
+function normalizePayPeriod(value) {
+  const text = String(value || "").toLowerCase();
+  if (["hour", "hr"].includes(text)) return "hourly";
+  if (["year", "yr", "annual", "annually"].includes(text)) return "annual";
+  return "";
+}
+
+function renderCompensationMetricCards(records, wageSignals, payRanges) {
+  const perFteRows = wageSignals.filter((signal) => Number.isFinite(signal.salaryPerFte));
+  const avgSalaryPerFte = average(perFteRows.map((signal) => signal.salaryPerFte));
+  const avgHourly = average(perFteRows.map((signal) => signal.estimatedHourly));
+  const form990Sources = getSystemFinancialSources().filter((source) => source.sourceType === "form_990");
+  return renderWorkforceMetricCards([
+    ["HCRIS payroll rows", formatIntegerOrNA(perFteRows.length)],
+    ["Avg salary per FTE", formatCurrencyOrNA(avgSalaryPerFte, 0)],
+    ["Implied hourly signal", formatCurrencyOrNA(avgHourly, 2)],
+    ["Posted pay ranges captured", formatIntegerOrNA(payRanges.length)],
+    ["Careers observations", formatIntegerOrNA(records.length)],
+    ["Form 990 comp sources", formatIntegerOrNA(form990Sources.length)]
+  ]);
+}
+
+function renderWageSignalRows(wageSignals) {
+  if (!wageSignals.length) {
+    return '<p class="status">No HCRIS payroll rows are loaded yet. Import HCRIS cost reports to estimate aggregate salary-per-FTE signals.</p>';
+  }
+
+  return wageSignals.slice(0, 25).map((signal) => `
+    <article class="table-row wage-signal-row">
+      <div>
+        <strong>${escapeHtml(signal.facilityName)}</strong>
+        <small>${escapeHtml([signal.city, signal.county, signal.systemName].filter(Boolean).join(" / ") || "Illinois hospital")}</small>
+      </div>
+      <div class="numeric">
+        <strong>${formatCurrencyOrNA(signal.salaryPerFte, 0)}</strong>
+        <small>Salary per FTE</small>
+        <small>${formatCurrencyOrNA(signal.estimatedHourly, 2)} implied hourly</small>
+      </div>
+      <div class="numeric">
+        <strong>${formatOptionalPercent(signal.salaryShare)}</strong>
+        <small>Salary share of costs</small>
+        <small>${formatNumberOrNA(signal.fte, 1)} FTE / ${formatCurrencyOrNA(signal.totalSalaries, 0)} salaries</small>
+      </div>
+    </article>
+  `).join("") + `
+    <div class="callout muted-callout">
+      HCRIS salary-per-FTE is an aggregate facility payroll signal from Medicare cost reports. It is not a posted wage, role-specific pay scale, benefits value, contract labor rate, or physician compensation estimate.
+    </div>
+  `;
+}
+
+function renderPaySourceRows() {
+  const costReportCount = getCostReportRecords().length;
+  const form990Count = getSystemFinancialSources().filter((source) => source.sourceType === "form_990").length;
+  const sources = [
+    ["Illinois job posting pay transparency", "Role-level pay scale and benefits on covered job postings", "Public, posting-level", "Next importer"],
+    ["CMS HCRIS hospital cost reports", "Facility aggregate salaries, FTE, cost, utilization, and margin context", `${formatIntegerOrNA(costReportCount)} rows loaded`, "Loaded"],
+    ["IRS Form 990 Part VII / Schedule J", "Nonprofit executives, key employees, top compensated employees, and some highly compensated physicians", `${formatIntegerOrNA(form990Count)} sources mapped`, "Partial"],
+    ["Illinois Comptroller salary database", "Public/state employee salary records when facility or employer is covered", "Public employer layer", "Next layer"],
+    ["IDES / BLS OEWS wages", "Market wage benchmarks by occupation and area", "Benchmark layer", "Next layer"],
+    ["MGMA, SullivanCotter, Merritt Hawkins", "Physician/provider compensation benchmarks", "Mostly proprietary", "Reference only"]
+  ];
+
+  return sources.map(([source, signal, coverage, status]) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(source)}</strong>
+        <small>${escapeHtml(signal)}</small>
+      </div>
+      <div>${escapeHtml(coverage)}</div>
+      <div><span class="tag">${escapeHtml(status)}</span></div>
+    </article>
+  `).join("");
+}
+
+function renderPayRangeRows(payRanges) {
+  if (!payRanges.length) {
+    return `
+      <p class="status">No role-level posted pay ranges have been captured yet. Illinois pay transparency creates a promising public data layer for covered job postings, but the current careers crawl only extracts static role titles and counts when pages expose them.</p>
+      <div class="callout muted-callout">Next build: add a posting-detail crawler that stores pay minimum, pay maximum, period, benefits text, role category, posting age, and source URL for each public hospital or nursing-facility job posting.</div>
+    `;
+  }
+
+  return payRanges.slice(0, 50).map((row) => `
+    <article class="table-row compact">
+      <div>
+        <strong>${escapeHtml(row.facilityName)}</strong>
+        <small>${escapeHtml(row.roleTitle)} / ${escapeHtml(row.category)} / ${escapeHtml(row.platform)}</small>
+      </div>
+      <div class="numeric">${formatPayRange(row)}</div>
+      <div>${row.url ? `<a href="${escapeHtml(row.url)}" target="_blank" rel="noreferrer">Posting</a>` : "No link"}</div>
+    </article>
+  `).join("");
+}
+
+function renderCompensationDrilldown(record, wageSignals) {
+  const matchedSignal = record
+    ? wageSignals.find((signal) => String(signal.facilityId) === String(record.facilityId || record.reportCardEntityId))
+      || wageSignals.find((signal) => normalizeFacilityText(signal.facilityName) === normalizeFacilityText(record.facilityName || record.reportCardName))
+    : null;
+  const payRanges = record ? buildPostedPayRangeRecords([record]) : [];
+  const rows = [
+    ["Career page", record?.careerPageUrl ? "Linked" : "Not linked"],
+    ["Observed openings", Number.isFinite(record?.jobOpeningCount) ? formatIntegerOrNA(record.jobOpeningCount) : "Not counted"],
+    ["Posted pay ranges", formatIntegerOrNA(payRanges.length)],
+    ["HCRIS salary/FTE", matchedSignal ? formatCurrencyOrNA(matchedSignal.salaryPerFte, 0) : "Not matched"],
+    ["Implied hourly signal", matchedSignal ? formatCurrencyOrNA(matchedSignal.estimatedHourly, 2) : "Not matched"],
+    ["Salary share of costs", matchedSignal ? formatOptionalPercent(matchedSignal.salaryShare) : "Not matched"]
+  ];
+
+  return `
+    <div class="profile-header">
+      <div>
+        <h3>${escapeHtml(record?.facilityName || record?.reportCardName || matchedSignal?.facilityName || "Select a facility")}</h3>
+        <p>${escapeHtml(record ? [record.city, record.county, record.platform].filter(Boolean).join(" / ") : "Use careers observations to connect facility hiring and pay signals.")}</p>
+      </div>
+      <span class="risk-pill risk-moderate">Pay signal</span>
+    </div>
+    <div class="profile-grid">
+      ${rows.map(([label, value]) => renderProfileMetric(label, value)).join("")}
+    </div>
+    <section class="profile-section">
+      <h4>Interpretation</h4>
+      <p class="profile-note">Posted pay ranges can describe current recruitment offers where public postings expose compensation. HCRIS payroll is broader and annual, so it is useful for facility-level labor-cost context but cannot show what a nurse, pharmacist, colleague, or physician is personally paid.</p>
+      <p class="profile-note">Physician and executive pay may appear in nonprofit Form 990 filings or public salary records, but most private employer payroll and individual staff compensation are not public information.</p>
+    </section>
+  `;
+}
+
+function formatPayRange(row) {
+  const min = Number.isFinite(row.payMin) ? formatCurrencyOrNA(row.payMin, row.payMin > 250 ? 0 : 2) : "N/A";
+  const max = Number.isFinite(row.payMax) ? formatCurrencyOrNA(row.payMax, row.payMax > 250 ? 0 : 2) : "N/A";
+  return `${min} - ${max}${row.period ? ` ${row.period}` : ""}`;
 }
 
 function renderCoverageRows(layers) {
@@ -2622,6 +2868,7 @@ function renderMethodologyNotes() {
     "Capital rate is used as a proxy for capital funding pressure. It is not proof of deferred maintenance, modernization need, or ownership investment decisions.",
     "CMS quality, staffing, survey, and penalty fields are screening signals. They support prioritization, not causal conclusions.",
     "County social data provides context for disparity analysis, but county poverty, income, rurality, and age structure do not prove facility-level behavior.",
+    "Workforce compensation signals come from different public layers: posted pay ranges, HCRIS aggregate payroll, Form 990 compensation disclosures, public salary databases, and market wage benchmarks. These should not be blended into person-level pay claims.",
     "Hospital Intelligence now extracts structured HFS hospital payment parameters from public PDFs. These values are rate-sheet inputs, not claim-specific reimbursement guarantees."
   ];
   return notes.map((note) => `<div class="finding">${escapeHtml(note)}</div>`).join("");
@@ -2631,6 +2878,7 @@ function renderDataGapRows() {
   const gaps = [
     ["Pharmacy vendor / consultant pharmacist", "Not in CMS/HFS standard files", "Requires facility disclosures, contracts, inspection reports, or NPI/vendor matching."],
     ["True financial condition", "Not in current dashboard", "Requires cost reports, audited financials, ownership filings, bond disclosures, leases, or court records."],
+    ["Role-level pay scales", "Future-ready", "Illinois pay transparency makes covered job-posting pay ranges public, but postings must be crawled and linked separately from HCRIS aggregate payroll."],
     ["Hospital Medicaid reimbursement values", "Structured rate-sheet fields loaded", "HFS hospital PDF fields are parsed, but full payment estimates still require DRG/APC logic, claim context, payer rules, and validation."],
     ["Hospital negotiated prices", "Pending", "Add selected hospital machine-readable files and normalize payer, plan, CPT/HCPCS, DRG, cash price, and negotiated rate."],
     ["Facility ownership/control complexity", "Partially covered", "CMS chain name may not capture management agreements, real-estate ownership, leases, or private equity structures."],
@@ -2651,6 +2899,7 @@ function renderNextLayerCards() {
   const layers = [
     "Hospital payment model: validate HFS PDF extraction and translate rate-sheet parameters into scenario-based DRG, per-diem, and outpatient examples.",
     "Hospital Price Transparency parser: start with 5-10 Illinois hospitals and normalize shoppable services, CPT/HCPCS, DRGs, cash prices, and payer negotiated rates.",
+    "Workforce compensation importer: crawl public postings for pay minimum, pay maximum, benefits text, role category, posting age, and source URL under Illinois pay transparency.",
     "Cost report and ownership intelligence: add cost reports, ownership changes, related-party/lease indicators, and operator-level finance signals.",
     "Longitudinal trend module: compare CMS quality, staffing, penalties, rates, and county context across multiple releases.",
     "Facility compare workflow: allow side-by-side comparison of nursing homes, chains, hospitals, counties, and data gaps."
@@ -2764,15 +3013,19 @@ function renderCareerDrilldown(record) {
     `).join("")
     : '<p class="status">No role titles were extractable from the public static careers page. The careers page may require JavaScript or platform-specific API handling.</p>';
   const roleRows = roles.length
-    ? roles.slice(0, 50).map((role) => `
-      <article class="role-row">
-        <div>
-          <strong>${escapeHtml(role.title)}</strong>
-          <small>${escapeHtml(role.category)}${role.location ? ` / ${escapeHtml(role.location)}` : ""}</small>
-        </div>
-        ${role.url ? `<a href="${escapeHtml(role.url)}" target="_blank" rel="noreferrer">Open</a>` : "<span></span>"}
-      </article>
-    `).join("")
+    ? roles.slice(0, 50).map((role) => {
+      const pay = getRolePayRange(role);
+      return `
+        <article class="role-row">
+          <div>
+            <strong>${escapeHtml(role.title)}</strong>
+            <small>${escapeHtml(role.category)}${role.location ? ` / ${escapeHtml(role.location)}` : ""}</small>
+            ${pay ? `<small>${escapeHtml(formatPayRange(pay))}</small>` : ""}
+          </div>
+          ${role.url ? `<a href="${escapeHtml(role.url)}" target="_blank" rel="noreferrer">Open</a>` : "<span></span>"}
+        </article>
+      `;
+    }).join("")
     : "";
 
   return `
@@ -3202,7 +3455,8 @@ function extractRolesFromHtml(html, baseUrl) {
         title,
         category: categorizeRoleTitle(title),
         location: extractNearbyLocation(element),
-        url: extractRoleUrl(element, baseUrl)
+        url: extractRoleUrl(element, baseUrl),
+        payText: extractPayTextFromElement(element)
       });
     });
   });
@@ -3243,6 +3497,13 @@ function extractNearbyLocation(element) {
   const container = element.closest("li, article, tr, div") || element.parentElement;
   const text = container ? container.textContent.replace(/\s+/g, " ") : "";
   const match = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)?),\s*(IL|Illinois)\b/);
+  return match ? match[0] : "";
+}
+
+function extractPayTextFromElement(element) {
+  const container = element.closest("li, article, tr, div") || element.parentElement;
+  const text = container ? container.textContent.replace(/\s+/g, " ") : element.textContent;
+  const match = String(text || "").match(/\$\s*[0-9]{2,6}(?:,[0-9]{3})?(?:\.[0-9]{1,2})?\s*(?:-|to|–)\s*\$?\s*[0-9]{2,6}(?:,[0-9]{3})?(?:\.[0-9]{1,2})?\s*(?:\/?\s*(?:hour|hr|year|yr|annual|annually))?/i);
   return match ? match[0] : "";
 }
 
