@@ -1,0 +1,7 @@
+{
+  "description": "Public job-posting pay ranges for Illinois healthcare facilities. These are recruitment posting signals, not proof of actual wages, payroll, staffing levels, or physician compensation.",
+  "lastUpdated": "2026-05-30",
+  "source": "Facility careers pages and public job postings",
+  "sourceUrl": "data\\facility-careers.json",
+  "records": []
+}

@@ -18,6 +18,7 @@ const state = {
   priceTransparencySources: [],
   priceTransparencyRecords: [],
   facilityCareers: [],
+  facilityPayRanges: [],
   countyContext: [],
   countySummaries: [],
   nursingHomeEnforcementSummary: [],
@@ -261,6 +262,7 @@ async function loadData() {
   state.priceTransparencySources = await fetchOptionalJson("data/price-transparency-sources.json");
   state.priceTransparencyRecords = await fetchOptionalJson("data/price-transparency-records.json");
   state.facilityCareers = await fetchOptionalJson("data/facility-careers.json");
+  state.facilityPayRanges = await fetchOptionalJson("data/facility-pay-ranges.json");
   state.countyContext = await fetchOptionalJson("data/county-context-illinois.json");
   state.countySummaries = await fetchOptionalJson("data/county-facility-summary.json");
   state.nursingHomeEnforcementSummary = await fetchOptionalJson("data/cms-nursing-home-enforcement-summary.json");
@@ -2578,7 +2580,7 @@ function renderWorkforceDemand() {
   const totalOpenings = sum(counted.map((record) => record.jobOpeningCount));
   const observedDates = [...new Set(records.map((record) => record.observedDate).filter(Boolean))].sort();
   const wageSignals = buildHcrisWageSignals();
-  const payRanges = buildPostedPayRangeRecords(records);
+  const payRanges = getCombinedPayRangeRecords(records);
 
   els.careersMetricCards.innerHTML = renderWorkforceMetricCards([
     ["Facilities tracked", records.length],
@@ -2602,6 +2604,13 @@ function getCareerRecords() {
   const records = Array.isArray(state.facilityCareers)
     ? state.facilityCareers
     : state.facilityCareers?.records || [];
+  return records.filter(Boolean);
+}
+
+function getFacilityPayRangeRecords() {
+  const records = Array.isArray(state.facilityPayRanges)
+    ? state.facilityPayRanges
+    : state.facilityPayRanges?.records || [];
   return records.filter(Boolean);
 }
 
@@ -2671,6 +2680,42 @@ function buildPostedPayRangeRecords(records) {
         ...pay
       };
     }).filter(Boolean);
+  });
+}
+
+function getCombinedPayRangeRecords(careerRecords) {
+  const imported = getFacilityPayRangeRecords().map((record) => ({
+    facilityId: record.facilityId || record.providerCcn || "",
+    facilityName: record.facilityName || record.systemName || "Unknown facility",
+    city: record.city || "",
+    county: record.county || "",
+    platform: record.platform || "Imported posting",
+    roleTitle: record.roleTitle || record.title || "Unknown role",
+    category: record.category || categorizeRoleTitle(record.roleTitle || record.title || ""),
+    url: record.postingUrl || record.url || record.sourceUrl || "",
+    payMin: Number.isFinite(Number(record.payMin)) ? Number(record.payMin) : null,
+    payMax: Number.isFinite(Number(record.payMax)) ? Number(record.payMax) : null,
+    midpoint: Number.isFinite(Number(record.midpoint)) ? Number(record.midpoint) : null,
+    period: record.period || record.payPeriod || "",
+    payText: record.payText || record.compensationText || "",
+    benefitsText: record.benefitsText || "",
+    observedDate: record.observedDate || "",
+    source: record.source || "facility-pay-ranges.json"
+  }));
+  const live = buildPostedPayRangeRecords(careerRecords);
+  const seen = new Set();
+  return [...imported, ...live].filter((row) => {
+    const key = [
+      normalizeFacilityText(row.facilityName),
+      normalizeFacilityText(row.roleTitle),
+      row.url,
+      row.payMin,
+      row.payMax,
+      row.period
+    ].join("|");
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
   });
 }
 
@@ -2801,6 +2846,7 @@ function renderPayRangeRows(payRanges) {
       <div>
         <strong>${escapeHtml(row.facilityName)}</strong>
         <small>${escapeHtml(row.roleTitle)} / ${escapeHtml(row.category)} / ${escapeHtml(row.platform)}</small>
+        ${row.benefitsText ? `<small>${escapeHtml(row.benefitsText.slice(0, 160))}</small>` : ""}
       </div>
       <div class="numeric">${formatPayRange(row)}</div>
       <div>${row.url ? `<a href="${escapeHtml(row.url)}" target="_blank" rel="noreferrer">Posting</a>` : "No link"}</div>
@@ -2813,7 +2859,7 @@ function renderCompensationDrilldown(record, wageSignals) {
     ? wageSignals.find((signal) => String(signal.facilityId) === String(record.facilityId || record.reportCardEntityId))
       || wageSignals.find((signal) => normalizeFacilityText(signal.facilityName) === normalizeFacilityText(record.facilityName || record.reportCardName))
     : null;
-  const payRanges = record ? buildPostedPayRangeRecords([record]) : [];
+  const payRanges = record ? getPayRangesForCareerRecord(record) : [];
   const rows = [
     ["Career page", record?.careerPageUrl ? "Linked" : "Not linked"],
     ["Observed openings", Number.isFinite(record?.jobOpeningCount) ? formatIntegerOrNA(record.jobOpeningCount) : "Not counted"],
@@ -2840,6 +2886,33 @@ function renderCompensationDrilldown(record, wageSignals) {
       <p class="profile-note">Physician and executive pay may appear in nonprofit Form 990 filings or public salary records, but most private employer payroll and individual staff compensation are not public information.</p>
     </section>
   `;
+}
+
+function getPayRangesForCareerRecord(record) {
+  const facilityId = String(record.facilityId || record.reportCardEntityId || "");
+  const facilityName = normalizeFacilityText(record.facilityName || record.reportCardName);
+  const imported = getFacilityPayRangeRecords()
+    .filter((row) => {
+      const rowId = String(row.facilityId || row.providerCcn || "");
+      const rowName = normalizeFacilityText(row.facilityName || row.systemName);
+      return (facilityId && rowId && rowId === facilityId) || (facilityName && rowName && rowName === facilityName);
+    })
+    .map((row) => ({
+      facilityName: row.facilityName || record.facilityName || record.reportCardName || "Unknown facility",
+      city: row.city || record.city || "",
+      county: row.county || record.county || "",
+      platform: row.platform || record.platform || "Imported posting",
+      roleTitle: row.roleTitle || row.title || "Unknown role",
+      category: row.category || categorizeRoleTitle(row.roleTitle || row.title || ""),
+      url: row.postingUrl || row.url || row.sourceUrl || "",
+      payMin: Number.isFinite(Number(row.payMin)) ? Number(row.payMin) : null,
+      payMax: Number.isFinite(Number(row.payMax)) ? Number(row.payMax) : null,
+      midpoint: Number.isFinite(Number(row.midpoint)) ? Number(row.midpoint) : null,
+      period: row.period || row.payPeriod || "",
+      payText: row.payText || row.compensationText || "",
+      benefitsText: row.benefitsText || ""
+    }));
+  return [...imported, ...buildPostedPayRangeRecords([record])];
 }
 
 function formatPayRange(row) {

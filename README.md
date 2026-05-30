@@ -110,6 +110,14 @@ Some healthcare pay information is public in Illinois, but it lives in several d
 
 The Workforce Demand tab now includes a compensation signal layer. It summarizes HCRIS salary/FTE and salary-share-of-costs, lists public pay data sources, and is ready to display posted pay ranges when the careers crawler captures compensation text from job postings. These are exploratory labor-market and facility-economics indicators. They are not proof of what any individual nurse, pharmacist, physician, or staff member is paid.
 
+The persistent posted-pay layer is `data/facility-pay-ranges.json`. Generate it from cached careers observations with:
+
+```powershell
+python scripts/import_job_posting_pay_ranges.py --careers data/facility-careers.json --output data/facility-pay-ranges.json --facility-limit 10
+```
+
+Use a small `--facility-limit` for pilots because many health systems use JavaScript-heavy or vendor-hosted applicant-tracking systems. The importer keeps only postings where public static HTML exposes a compensation amount or range. Each record stores facility, role title, category, pay minimum, pay maximum, period, benefits text when detected, posting URL, observation date, and confidence notes.
+
 ## Local Use
 
 Run a local static server from this folder, then open the dashboard:
