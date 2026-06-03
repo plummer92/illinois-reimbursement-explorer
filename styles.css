@@ -1727,6 +1727,17 @@ h3 {
   cursor: pointer;
 }
 
+.table-row.safety-net-row {
+  grid-template-columns: minmax(300px, 1.35fr) 90px repeat(5, minmax(105px, 0.45fr));
+  min-width: 1120px;
+  cursor: pointer;
+}
+
+.table-row.safety-net-row:hover {
+  border-color: #99d8ca;
+  background: #f7fbf8;
+}
+
 .table-row.system-financial-row {
   grid-template-columns: minmax(260px, 1.2fr) minmax(130px, 0.5fr) minmax(130px, 0.5fr) minmax(100px, 0.35fr) minmax(320px, 1.4fr) 80px;
   min-width: 1120px;
@@ -2641,9 +2652,10 @@ h3 {
   .table-row.price-source-row,
   .table-row.price-basket-row,
   .table-row.binder-price-basket-row,
-  .table-row.binder-payer-spread-row,
-  .table-row.binder-peer-row,
-  .table-row.system-financial-row,
+    .table-row.binder-payer-spread-row,
+    .table-row.binder-peer-row,
+    .table-row.safety-net-row,
+    .table-row.system-financial-row,
   .table-row.system-financial-fact-row,
   .table-row.system-finance-row,
   .table-row.facility-system-row,
@@ -2672,9 +2684,10 @@ h3 {
   .table-row.price-source-row,
   .table-row.price-basket-row,
   .table-row.binder-price-basket-row,
-  .table-row.binder-payer-spread-row,
-  .table-row.binder-peer-row,
-  .table-row.system-financial-row,
+    .table-row.binder-payer-spread-row,
+    .table-row.binder-peer-row,
+    .table-row.safety-net-row,
+    .table-row.system-financial-row,
   .table-row.system-financial-fact-row,
   .table-row.system-finance-row,
   .table-row.facility-system-row,

@@ -189,8 +189,11 @@ Object.assign(els, {
   paymentPeerRows: document.querySelector("#paymentPeerRows"),
   paymentDictionaryRows: document.querySelector("#paymentDictionaryRows"),
   pressureMetricCards: document.querySelector("#pressureMetricCards"),
+  safetyNetMetricCards: document.querySelector("#safetyNetMetricCards"),
+  safetyNetFindingCards: document.querySelector("#safetyNetFindingCards"),
   pressureFindingCards: document.querySelector("#pressureFindingCards"),
   pressureHospitalRows: document.querySelector("#pressureHospitalRows"),
+  safetyNetHospitalRows: document.querySelector("#safetyNetHospitalRows"),
   pressureDrilldown: document.querySelector("#pressureDrilldown"),
   pressureOperatingContext: document.querySelector("#pressureOperatingContext"),
   pressureScenarioCards: document.querySelector("#pressureScenarioCards"),
@@ -1739,6 +1742,11 @@ function renderFinancialPressure() {
   const highPublicPayment = scored.filter((profile) => profile.flags.some((flag) => flag.key === "public_payment_exposure"));
   const ruralAccess = scored.filter((profile) => profile.flags.some((flag) => flag.key === "rural_access"));
   const scenarioReady = scored.filter((profile) => profile.hfsPayment || profile.priceRows.length || profile.costReport);
+  const safetyNetProfiles = scored
+    .map((profile) => buildSafetyNetPressureProfile(profile))
+    .filter((profile) => profile.costReport)
+    .sort((a, b) => b.safetyNetScore - a.safetyNetScore || a.hospital.facilityName.localeCompare(b.hospital.facilityName));
+  const selectedSafetyNet = selected ? buildSafetyNetPressureProfile(selected) : null;
 
   els.pressureMetricCards.innerHTML = renderWorkforceMetricCards([
     ["Hospitals screened", scored.length],
@@ -1750,8 +1758,11 @@ function renderFinancialPressure() {
     ["Scenario-ready hospitals", scenarioReady.length],
     ["Selected score", selected ? `${selected.score}/100` : "N/A"]
   ]);
+  els.safetyNetMetricCards.innerHTML = renderSafetyNetMetricCards(safetyNetProfiles, selectedSafetyNet);
+  els.safetyNetFindingCards.innerHTML = renderSafetyNetFindings(safetyNetProfiles, selectedSafetyNet);
   els.pressureFindingCards.innerHTML = renderPressureFindings(scored, selected);
   els.pressureHospitalRows.innerHTML = renderPressureHospitalRows(scored);
+  els.safetyNetHospitalRows.innerHTML = renderSafetyNetHospitalRows(safetyNetProfiles);
   els.pressureDrilldown.innerHTML = renderPressureDrilldown(selected);
   els.pressureOperatingContext.innerHTML = renderOperatingContinuityPanel(selected?.hospital, selected?.costReport);
   els.pressureScenarioCards.innerHTML = renderPressureScenarioCards(selected);
@@ -6118,6 +6129,156 @@ function pressureLevelForScore(score) {
   return "Lower Signal";
 }
 
+function buildSafetyNetPressureProfile(profile) {
+  const cost = profile?.costReport || null;
+  const hospital = profile?.hospital || {};
+  const totalDays = firstFiniteNumber(cost?.totalDays, cost?.hospitalAdultPedsDays);
+  const medicareDays = firstFiniteNumber(cost?.medicareDays);
+  const medicaidDays = firstFiniteNumber(cost?.medicaidDays);
+  const publicPayerDays = sum([medicareDays, medicaidDays]);
+  const publicPayerShare = Number.isFinite(totalDays) && totalDays > 0 ? publicPayerDays / totalDays : null;
+  const medicaidShare = Number.isFinite(totalDays) && totalDays > 0 && Number.isFinite(medicaidDays) ? medicaidDays / totalDays : null;
+  const medicareShare = Number.isFinite(totalDays) && totalDays > 0 && Number.isFinite(medicareDays) ? medicareDays / totalDays : null;
+  const operatingMargin = cost?.derived?.operatingMargin;
+  const salaryShare = cost?.derived?.salaryShareOfTotalCosts;
+  const uncompensatedCare = firstFiniteNumber(cost?.costOfUncompensatedCare, cost?.totalUnreimbursedAndUncompensatedCare, cost?.costOfCharityCare);
+  const netPatientRevenue = firstFiniteNumber(cost?.netPatientRevenue);
+  const uncompensatedShare = Number.isFinite(uncompensatedCare) && Number.isFinite(netPatientRevenue) && netPatientRevenue > 0
+    ? uncompensatedCare / netPatientRevenue
+    : null;
+  const medicaidNetToCharge = cost?.derived?.medicaidNetToChargeRatio;
+  const currentRatio = cost?.derived?.currentRatio;
+  const occupancy = cost?.derived?.occupancyRate;
+  const totalDischarges = firstFiniteNumber(cost?.totalDischarges);
+  const paidRows = sum((profile?.paymentRows || []).map((row) => row.totalPaid));
+  const triggers = [];
+  let score = 0;
+
+  const add = (condition, points, label, detail) => {
+    if (!condition) return;
+    score += points;
+    triggers.push({ points, label, detail });
+  };
+
+  add(publicPayerShare !== null && publicPayerShare >= 0.7, 20, "High Medicare/Medicaid day share", `${formatOptionalPercent(publicPayerShare)} of reported inpatient days`);
+  add(medicaidShare !== null && medicaidShare >= 0.15, 14, "Meaningful Medicaid utilization", `${formatOptionalPercent(medicaidShare)} Medicaid day share`);
+  add(Number.isFinite(operatingMargin) && operatingMargin < 0.02, 18, "Thin or negative operating margin", `${formatOptionalPercent(operatingMargin)} operating margin`);
+  add(Number.isFinite(salaryShare) && salaryShare >= 0.45, 10, "Labor cost pressure", `${formatOptionalPercent(salaryShare)} salary share of total costs`);
+  add(uncompensatedShare !== null && uncompensatedShare >= 0.04, 10, "Uncompensated/community care burden", `${formatOptionalPercent(uncompensatedShare)} of net patient revenue proxy`);
+  add(Number.isFinite(medicaidNetToCharge) && medicaidNetToCharge < 0.12, 8, "Low Medicaid net-to-charge signal", `${formatOptionalPercent(medicaidNetToCharge)} Medicaid net-to-charge`);
+  add(Number.isFinite(currentRatio) && currentRatio < 1.2, 8, "Limited short-term cushion", `${formatNumberOrNA(currentRatio, 2)} current ratio`);
+  add(Number.isFinite(occupancy) && occupancy < 0.45, 6, "Volume/occupancy pressure", `${formatOptionalPercent(occupancy)} occupancy`);
+  add(profile?.career && Number(profile.career.jobOpeningCount) >= 20, 5, "Recruitment pressure", `${formatIntegerOrNA(profile?.career?.jobOpeningCount)} observed job openings`);
+  add(paidRows >= 10_000_000, 5, "Large public payment flow", `${formatCurrencyOrNA(paidRows, 0)} HFS provider-payment rows`);
+
+  return {
+    hospital,
+    costReport: cost,
+    baseProfile: profile,
+    safetyNetScore: Math.min(100, Math.round(score)),
+    safetyNetLevel: safetyNetLevelForScore(score),
+    triggers,
+    publicPayerShare,
+    medicaidShare,
+    medicareShare,
+    operatingMargin,
+    salaryShare,
+    uncompensatedCare,
+    uncompensatedShare,
+    medicaidNetToCharge,
+    currentRatio,
+    occupancy,
+    totalDischarges,
+    paidRows
+  };
+}
+
+function safetyNetLevelForScore(score) {
+  if (score >= 65) return "High Safety-Net Pressure";
+  if (score >= 42) return "Elevated Safety-Net Pressure";
+  if (score >= 22) return "Watch";
+  return "Lower Signal";
+}
+
+function renderSafetyNetMetricCards(profiles, selected) {
+  const high = profiles.filter((profile) => profile.safetyNetScore >= 65);
+  const thinMargins = profiles.filter((profile) => Number.isFinite(profile.operatingMargin) && profile.operatingMargin < 0.02);
+  const highPublicMix = profiles.filter((profile) => Number.isFinite(profile.publicPayerShare) && profile.publicPayerShare >= 0.7);
+  const avgPublicMix = average(profiles.map((profile) => profile.publicPayerShare).filter(Number.isFinite));
+  return renderWorkforceMetricCards([
+    ["Hospitals with HCRIS economics", formatIntegerOrNA(profiles.length)],
+    ["High safety-net pressure", formatIntegerOrNA(high.length)],
+    ["Margin below 2%", formatIntegerOrNA(thinMargins.length)],
+    ["70%+ public payer days", formatIntegerOrNA(highPublicMix.length)],
+    ["Avg public payer day share", profiles.length ? formatOptionalPercent(avgPublicMix) : "N/A"],
+    ["Selected safety-net score", selected?.costReport ? `${selected.safetyNetScore}/100` : "No HCRIS row"]
+  ]);
+}
+
+function renderSafetyNetFindings(profiles, selected) {
+  if (!profiles.length) return '<div class="finding">No HCRIS cost-report rows are available for the current hospital filters.</div>';
+  const top = profiles[0];
+  const thinMargins = profiles.filter((profile) => Number.isFinite(profile.operatingMargin) && profile.operatingMargin < 0.02);
+  const highPublicMix = profiles.filter((profile) => Number.isFinite(profile.publicPayerShare) && profile.publicPayerShare >= 0.7);
+  const selectedText = selected?.costReport
+    ? `${selected.hospital.facilityName} has a ${selected.safetyNetLevel.toLowerCase()} score of ${selected.safetyNetScore}/100, with public payer day share of ${formatOptionalPercent(selected.publicPayerShare)} and operating margin of ${formatOptionalPercent(selected.operatingMargin)}.`
+    : "The selected hospital does not have an attached HCRIS row, so payer-mix and margin pressure cannot be scored yet.";
+  const findings = [
+    `${top.hospital.facilityName} currently has the highest safety-net operating pressure score in this view at ${top.safetyNetScore}/100.`,
+    `${thinMargins.length} hospitals have operating margins below 2% in the attached cost-report layer, matching the budgeting problem described in the discussion prompt.`,
+    `${highPublicMix.length} hospitals show 70% or more Medicare/Medicaid day share, which may limit commercial cross-subsidy capacity.`,
+    selectedText,
+    "These are associations and public-data pressure signals. They do not prove insolvency, layoffs, poor leadership, or avoidable care."
+  ];
+  return findings.map((finding) => `<div class="finding">${escapeHtml(finding)}</div>`).join("");
+}
+
+function renderSafetyNetHospitalRows(profiles) {
+  if (!profiles.length) return '<p class="status">No safety-net operating pressure rows are available under the current filters.</p>';
+  return profiles.slice(0, 30).map((profile) => `
+    <article class="table-row safety-net-row" data-pressure-hospital-row="${escapeHtml(profile.hospital.facilityId)}">
+      <div>
+        <strong>${escapeHtml(profile.hospital.facilityName)}</strong>
+        <small>${escapeHtml(profile.hospital.city)} / ${escapeHtml(profile.hospital.county)} / ${escapeHtml(profile.safetyNetLevel)}</small>
+        <small>${profile.triggers.slice(0, 3).map((trigger) => escapeHtml(trigger.label)).join(" / ") || "No major safety-net triggers"}</small>
+      </div>
+      <div class="numeric">${profile.safetyNetScore}/100</div>
+      <div class="numeric">${formatOptionalPercent(profile.publicPayerShare)} public days</div>
+      <div class="numeric">${formatOptionalPercent(profile.medicaidShare)} Medicaid</div>
+      <div class="numeric">${formatOptionalPercent(profile.operatingMargin)} margin</div>
+      <div class="numeric">${formatOptionalPercent(profile.salaryShare)} salary cost</div>
+      <div class="numeric">${formatCurrencyOrNA(profile.uncompensatedCare, 0)} uncomp.</div>
+    </article>
+  `).join("");
+}
+
+function renderSafetyNetSelectedPanel(profile) {
+  if (!profile?.costReport) {
+    return '<p class="profile-note">No HCRIS cost-report row is attached for this hospital, so the safety-net payer-mix and margin screen is not available yet.</p>';
+  }
+  const triggerList = profile.triggers.length
+    ? profile.triggers.map((trigger) => `<span>${escapeHtml(trigger.label)} (+${trigger.points})</span>`).join("")
+    : "<span>No major safety-net triggers in current public data</span>";
+  return `
+    <div class="profile-grid">
+      ${renderProfileMetric("Safety-net score", `${profile.safetyNetScore}/100`)}
+      ${renderProfileMetric("Safety-net tier", profile.safetyNetLevel)}
+      ${renderProfileMetric("Medicare days", formatOptionalPercent(profile.medicareShare))}
+      ${renderProfileMetric("Medicaid days", formatOptionalPercent(profile.medicaidShare))}
+      ${renderProfileMetric("Public payer days", formatOptionalPercent(profile.publicPayerShare))}
+      ${renderProfileMetric("Operating margin", formatOptionalPercent(profile.operatingMargin))}
+      ${renderProfileMetric("Salary share of costs", formatOptionalPercent(profile.salaryShare))}
+      ${renderProfileMetric("Uncompensated care", formatCurrencyOrNA(profile.uncompensatedCare, 0))}
+      ${renderProfileMetric("Medicaid net-to-charge", formatOptionalPercent(profile.medicaidNetToCharge))}
+      ${renderProfileMetric("Current ratio", formatNumberOrNA(profile.currentRatio, 2))}
+      ${renderProfileMetric("Occupancy", formatOptionalPercent(profile.occupancy))}
+      ${renderProfileMetric("Total discharges", formatIntegerOrNA(profile.totalDischarges))}
+    </div>
+    <div class="risk-factor-list">${triggerList}</div>
+    <p class="profile-note">Interpretation: a high public-payer mix with a margin below 2% may make salary increases, equipment replacement, supply inflation, and discharge-support investments harder to absorb without system subsidy, operational redesign, or policy support.</p>
+  `;
+}
+
 function renderPressureFindings(scored, selected) {
   if (!scored.length) return '<div class="finding">No hospitals match the current search.</div>';
   const high = scored.filter((profile) => profile.score >= 55);
@@ -6154,6 +6315,7 @@ function renderPressureDrilldown(profile) {
   if (!profile) return '<p class="status">Select a hospital to view financial pressure signals.</p>';
   const hospital = profile.hospital;
   const cost = profile.costReport;
+  const safetyNet = buildSafetyNetPressureProfile(profile);
   const paid = sum(profile.paymentRows.map((row) => row.totalPaid));
   const fields = profile.hfsPayment?.paymentFields || {};
   const flagList = profile.flags.length
@@ -6189,6 +6351,10 @@ function renderPressureDrilldown(profile) {
       </div>
       <p class="profile-note">These are public indicators. They do not prove cash position, debt covenant stress, service-line profitability, or management decisions.</p>
     </section>
+    <section class="profile-section">
+      <h4>Safety-Net Operating Pressure</h4>
+      ${renderSafetyNetSelectedPanel(safetyNet)}
+    </section>
   `;
 }
 
@@ -6201,7 +6367,11 @@ function renderPressureScenarioCards(profile) {
     ["Behavioral health admission", `Psych per diem is ${formatCurrencyOrNA(fields.ipCos21PsychPerDiemRate)} where applicable.`, "Needs psychiatric service category, length of stay, medical necessity rules, authorization, and discharge planning context."],
     ["Rehab stay", `Rehab per diem is ${formatCurrencyOrNA(fields.ipCos22RehabPerDiemRate)} where applicable.`, "Needs rehab eligibility, admission criteria, length of stay, therapy intensity, transfer status, and payer authorization."],
     ["High-cost drug or device case", `Drug/device add-on eligibility is ${fields.eligibleHighCostDrugDeviceAddOn || "N/A"} with OP base ${formatCurrencyOrNA(fields.opCos24AcuteEapgConversionFactorBaseRate)}.`, "Needs J-code/NDC/device code, acquisition cost, add-on policy, site of care, and prior authorization."],
-    ["Financial stress test", `Pair operating margin ${formatOptionalPercent(profile.costReport?.derived?.operatingMargin)} with occupancy ${formatOptionalPercent(profile.costReport?.derived?.occupancyRate)} and HFS paid rows ${formatCurrencyOrNA(sum(profile.paymentRows.map((row) => row.totalPaid)), 0)}.`, "Needs payer mix, private contracts, cash/debt detail, staffing cost, volume trends, and system subsidy context."]
+    ["Financial stress test", `Pair operating margin ${formatOptionalPercent(profile.costReport?.derived?.operatingMargin)} with occupancy ${formatOptionalPercent(profile.costReport?.derived?.occupancyRate)} and HFS paid rows ${formatCurrencyOrNA(sum(profile.paymentRows.map((row) => row.totalPaid)), 0)}.`, "Needs payer mix, private contracts, cash/debt detail, staffing cost, volume trends, and system subsidy context."],
+    ["Length of stay + readmission redesign", "Model whether discharge pharmacy, medication delivery, outpatient follow-up, and community agency partnerships could reduce avoidable days or returns.", "Needs baseline LOS/readmission measures, discharge barriers, medication access, readmission reasons, and realistic peer benchmarks."],
+    ["Safety-net community support", "Estimate the cost of targeted supports such as first-fill medications, pharmacy follow-up calls, transportation, shelter beds, and care navigation.", "Needs program cost, patient eligibility criteria, avoided days, avoided readmissions, grant/community benefit accounting, and payer rules."],
+    ["Staffing and vacancy review", `Compare observed job openings ${formatIntegerOrNA(profile.career?.jobOpeningCount)} with salary share ${formatOptionalPercent(profile.costReport?.derived?.salaryShareOfTotalCosts)} before assuming cuts are feasible.`, "Needs vacancy rates, premium labor, overtime, turnover, quality minimums, contract labor, and safe staffing requirements."],
+    ["Supply and outsourcing review", "Test whether outsourced services, standardized supplies, or purchasing contracts lower cost without harming access, quality, or continuity.", "Needs contract terms, service-level requirements, benefits/fringe cost, quality metrics, and transition risk."]
   ];
   return scenarios.map(([name, logic, evidence]) => `
     <article class="scenario-card">
@@ -8456,6 +8626,20 @@ els.paymentHospitalRows.addEventListener("click", (event) => {
 });
 
 els.pressureHospitalRows.addEventListener("click", (event) => {
+  const row = event.target.closest("[data-pressure-hospital-row]");
+  if (!row) return;
+  state.selectedHospitalId = row.dataset.pressureHospitalRow;
+  syncSelectedSystemFromHospitalId(state.selectedHospitalId);
+  renderHospitalIntelligence();
+  renderHospitalLeaderboard();
+  renderFacilityBinderPage();
+  renderHospitalPaymentExplorer();
+  renderFinancialPressure();
+  renderSystemFinanceDeepDive();
+  renderHshsDeepDive();
+});
+
+els.safetyNetHospitalRows.addEventListener("click", (event) => {
   const row = event.target.closest("[data-pressure-hospital-row]");
   if (!row) return;
   state.selectedHospitalId = row.dataset.pressureHospitalRow;
