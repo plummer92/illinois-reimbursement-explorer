@@ -3,6 +3,7 @@ const state = {
   qualityRecords: [],
   providerPayments: [],
   hfsProviderPaymentStatus: "",
+  hfsProviderCrosswalk: [],
   hfsAutoQueryAttempts: {},
   hfsEnrollmentContext: [],
   hospitalRecords: [],
@@ -101,6 +102,7 @@ const els = {
   highestCapitalRows: document.querySelector("#highestCapitalRows"),
   capitalWatchlistRows: document.querySelector("#capitalWatchlistRows"),
   qualityFindingList: document.querySelector("#qualityFindingList"),
+  qualityTrendReadiness: document.querySelector("#qualityTrendReadiness"),
   overallRatingRows: document.querySelector("#overallRatingRows"),
   staffingRatingRows: document.querySelector("#staffingRatingRows"),
   lowCapitalLowStaffingRows: document.querySelector("#lowCapitalLowStaffingRows"),
@@ -146,6 +148,7 @@ Object.assign(els, {
   caseStudyNarrative: document.querySelector("#caseStudyNarrative"),
   caseStudyInsightCards: document.querySelector("#caseStudyInsightCards"),
   caseStudyEvidenceRows: document.querySelector("#caseStudyEvidenceRows"),
+  caseStudyCrosswalkRows: document.querySelector("#caseStudyCrosswalkRows"),
   caseStudyValueCards: document.querySelector("#caseStudyValueCards"),
   caseStudyNextSteps: document.querySelector("#caseStudyNextSteps"),
   caseStudyPortfolioBlurb: document.querySelector("#caseStudyPortfolioBlurb"),
@@ -256,6 +259,8 @@ async function loadData() {
   const starterRecords = await recordsResponse.json();
   const nursingRates = await fetchOptionalJson("data/nursing-facility-rates.json");
   state.providerPayments = await fetchOptionalJson("data/hfs-provider-payments.json");
+  state.hfsProviderCrosswalk = await fetchOptionalJson("data/hfs-provider-manual-crosswalk.json");
+  state.providerPayments = applyHfsProviderCrosswalk(state.providerPayments, state.hfsProviderCrosswalk);
   state.hfsEnrollmentContext = await fetchOptionalJson("data/hfs-program-enrollment-context.json");
   state.qualityRecords = await fetchOptionalJson("data/quality-matched-rates.json");
   state.hospitalRecords = await fetchOptionalJson("data/cms-hospital-general-illinois.json");
@@ -292,6 +297,45 @@ async function fetchOptionalJson(url) {
   } catch {
     return [];
   }
+}
+
+function applyHfsProviderCrosswalk(payments, crosswalk) {
+  const records = Array.isArray(payments) ? payments : payments?.records;
+  if (!Array.isArray(records) || !Array.isArray(crosswalk) || !crosswalk.length) return payments;
+  const byProviderId = new Map(crosswalk.filter((row) => row.providerId).map((row) => [String(row.providerId), row]));
+  const byProviderName = new Map(crosswalk.filter((row) => row.providerName).map((row) => [normalizeFacilityText(row.providerName), row]));
+
+  const mapped = records.map((payment) => {
+    if (payment.matchedFacilityId) return payment;
+    const manual = byProviderId.get(String(payment.providerId || "")) || byProviderName.get(normalizeFacilityText(payment.providerName));
+    if (!manual) return payment;
+    return {
+      ...payment,
+      matchedFacilityId: manual.cmsFacilityId,
+      matchedFacilityName: manual.cmsFacilityName,
+      matchScore: Math.max(Number(payment.matchScore) || 0, Number(manual.confidenceScore) || 85),
+      matchReasons: [...new Set([...(payment.matchReasons || []), "manual crosswalk", manual.reason || "validated alias"])],
+      matchMethod: "manual-crosswalk",
+      matchConfidence: manual.confidence || "manual_review"
+    };
+  });
+  return Array.isArray(payments) ? mapped : { ...payments, records: mapped };
+}
+
+function getCrosswalkQaSummary() {
+  const payments = getProviderPaymentRecords();
+  const hospitalPayments = payments.filter((payment) => /hospital/i.test(`${payment.providerType || ""} ${payment.providerName || ""}`));
+  const matched = hospitalPayments.filter((payment) => payment.matchedFacilityId);
+  const manual = matched.filter((payment) => payment.matchMethod === "manual-crosswalk");
+  const ambiguous = hospitalPayments.filter((payment) => !payment.matchedFacilityId && Number(payment.matchScore) >= 25);
+  return {
+    hospitalPayments: hospitalPayments.length,
+    matched: matched.length,
+    manual: manual.length,
+    ambiguous: ambiguous.length,
+    crosswalkRows: Array.isArray(state.hfsProviderCrosswalk) ? state.hfsProviderCrosswalk.length : 0,
+    manualPayments: manual
+  };
 }
 
 function render() {
@@ -350,6 +394,7 @@ function renderCaseStudy() {
   const sourceCount = state.sources.length + (state.sourceRegistry?.length || 0);
   const totalSpread = chicago && downstate ? chicago.average - downstate.average : null;
   const capitalSpread = chicagoCapital && downstateCapital ? chicagoCapital.averageCapital - downstateCapital.averageCapital : null;
+  const crosswalkQa = getCrosswalkQaSummary();
   renderFlagshipCase();
 
   els.caseStudyNarrative.innerHTML = [
@@ -364,6 +409,7 @@ function renderCaseStudy() {
     ["Capital-rate spread", Number.isFinite(capitalSpread) ? formatCurrencyOrNA(capitalSpread) : "N/A", "Chicago Metro average above Downstate / Smaller Market."],
     ["Elevated/high-risk facilities", formatIntegerOrNA(elevatedRisk.length), "Composite screening score based on reimbursement, staffing, quality, geography, and social-risk context."],
     ["Parsed hospital payments", formatIntegerOrNA(matchedHospitalPayments.length), "HFS hospital rate-sheet records matched to CMS hospitals."],
+    ["Manual payment crosswalks", formatIntegerOrNA(crosswalkQa.manual), "High-confidence HFS payment aliases rescued after manual validation."],
     ["Public payment rows", formatIntegerOrNA(providerPayments.length), "HFS provider-level payment-flow records loaded for money-flow context."],
     ["Evidence layers", formatIntegerOrNA(sourceCount), "Public source and expansion registry entries tracked in the project."]
   ];
@@ -395,6 +441,7 @@ function renderCaseStudy() {
       <div><span class="tag">Public</span></div>
     </article>
   `).join("");
+  els.caseStudyCrosswalkRows.innerHTML = renderCrosswalkQaRows();
 
   els.caseStudyValueCards.innerHTML = renderCaseStudyCards([
     ["Healthcare economics", "Connects reimbursement theory to actual public payment, rate, cost, and quality signals."],
@@ -427,6 +474,33 @@ function renderCaseStudyCards(cards) {
       <span>${escapeHtml(body)}</span>
     </div>
   `).join("");
+}
+
+function renderCrosswalkQaRows() {
+  const qa = getCrosswalkQaSummary();
+  const matchRate = qa.hospitalPayments ? qa.matched / qa.hospitalPayments : null;
+  const rows = [
+    ["Hospital-like HFS payment rows", formatIntegerOrNA(qa.hospitalPayments), "Provider-payment records with hospital terms in provider type or name."],
+    ["Matched payment rows", formatIntegerOrNA(qa.matched), `${formatOptionalPercent(matchRate)} matched to CMS hospital records after manual crosswalk application.`],
+    ["Manual crosswalk rows loaded", formatIntegerOrNA(qa.crosswalkRows), `${formatIntegerOrNA(qa.manual)} payment rows were rescued by high-confidence manual aliases.`],
+    ["Still ambiguous", formatIntegerOrNA(qa.ambiguous), "Kept unmatched when aliases were dialysis, specialty, children-only, or otherwise unsafe to merge."]
+  ];
+  return `
+    <article class="table-row methodology-row header">
+      <div>QA signal</div>
+      <div>Count</div>
+      <div>Status</div>
+      <div>Use / limit</div>
+    </article>
+    ${rows.map(([label, value, detail]) => `
+      <article class="table-row methodology-row">
+        <div><strong>${escapeHtml(label)}</strong></div>
+        <div class="numeric">${escapeHtml(value)}</div>
+        <div><span class="tag">Crosswalk QA</span></div>
+        <div><small>${escapeHtml(detail)}</small></div>
+      </article>
+    `).join("")}
+  `;
 }
 
 function getFlagshipHospital() {
@@ -469,6 +543,8 @@ function renderFlagshipCase() {
   const pressure = buildHospitalPressureProfile(hospital);
   const fields = hospital.hfsPayment?.paymentFields || {};
   const paymentTotal = paymentRows.reduce((total, row) => total + (Number(row.totalPaid) || 0), 0);
+  const publicPayerDays = sum([costReport?.medicareDays, costReport?.medicaidDays]);
+  const publicPayerShare = Number.isFinite(costReport?.totalDays) && costReport.totalDays > 0 ? publicPayerDays / costReport.totalDays : null;
 
   els.flagshipCase.innerHTML = `
     <article class="flagship-card">
@@ -483,6 +559,7 @@ function renderFlagshipCase() {
         ${renderProfileMetric("Acute DRG rate", formatCurrencyOrNA(fields.ipCos20AcuteDrgRate))}
         ${renderProfileMetric("Provider payments", paymentTotal ? formatCurrencyOrNA(paymentTotal, 0) : "N/A")}
         ${renderProfileMetric("Price rows", formatIntegerOrNA(priceRows.length))}
+        ${renderProfileMetric("Public payer days", formatOptionalPercent(publicPayerShare))}
         ${renderProfileMetric("Pressure score", pressure ? `${pressure.score}/100` : "N/A")}
       </div>
       <div class="tour-actions">
@@ -1596,6 +1673,7 @@ function renderQualityCorrelation() {
   const highRateLowQuality = getHighRateLowQuality(records);
 
   els.qualityFindingList.innerHTML = renderQualityFindings(records, lowCapitalLowStaffing, highRateLowQuality);
+  els.qualityTrendReadiness.innerHTML = renderQualityTrendReadiness(records);
   els.overallRatingRows.innerHTML = renderRatingRows(
     summarizeByRating(records, (record) => record.quality?.overallStarRating, (record) => record.publishedAmount),
     "Overall Stars",
@@ -1652,13 +1730,13 @@ function renderExecutiveSummary() {
     ["Reimbursement policy", "Rate differences by geography and component may support targeted policy review rather than one-size-fits-all reimbursement assumptions."],
     ["Quality improvement", "Outlier lists can help prioritize facilities for validation, outreach, quality support, or operational review."]
   ]);
-  els.recommendedActions.innerHTML = renderStrategyItems([
-    ["Validate unmatched facilities", "Review CMS/HFS name matching and add manual crosswalks for facilities that fuzzy matching missed."],
-    ["Add rurality and income data", "Layer county, ZIP, RUCA, broadband, poverty, and median income data onto each facility."],
-    ["Trend quality and staffing", "Compare reimbursement against CMS staffing and quality measures across multiple Care Compare releases."],
-    ["Flag infrastructure risk", "Use bottom-quintile capital reimbursement as a starting screen for potential underinvestment risk."],
-    ["Support capital planning", "Use findings to inform targeted capital planning, grant strategy, policy review, or facility outreach."],
-    ["Document limitations", "Keep match confidence, missing-data rates, and non-causal language visible in the portfolio version."]
+  els.recommendedActions.innerHTML = renderRoadmapItems([
+    ["P1", "Validate unmatched facilities", "Create a manual CMS/HFS crosswalk for likely missed matches.", "Cleaner facility counts, fewer false gaps, stronger credibility."],
+    ["P1", "Build the Taylorville proof path", "Package Taylorville as the guided example across intelligence, binder, pressure, and sources.", "Gives reviewers one memorable story to follow end-to-end."],
+    ["P2", "Add rurality and income context", "Layer ZIP/county rurality, income, poverty, broadband, age, and payer-mix context onto each facility.", "Turns reimbursement variation into access and equity analysis."],
+    ["P2", "Trend quality and staffing", "Compare reimbursement against multiple CMS Care Compare releases instead of one snapshot.", "Separates persistent risk patterns from noisy one-period signals."],
+    ["P3", "Flag infrastructure risk", "Promote bottom-quintile capital reimbursement plus weak staffing into a visible modernization watchlist.", "Supports capital planning, grant strategy, and facility outreach."],
+    ["Always", "Keep evidence limits visible", "Preserve match confidence, missing-data rates, source links, and non-causal language in every story path.", "Keeps the app analytical instead of overclaiming."]
   ]);
 }
 
@@ -6728,11 +6806,10 @@ function renderChainFacilityRows(chain) {
 }
 
 function getRiskFacilities() {
-  const countyByName = new Map(state.countySummaries.map((county) => [normalizeCountyName(county.county), county]));
   return state.qualityRecords
     .filter((record) => Number.isFinite(record.publishedAmount))
     .map((record) => {
-      const county = countyByName.get(normalizeCountyName(record.quality?.county));
+      const county = getRecordCountyContext(record);
       return {
         ...record,
         countyContext: county || null,
@@ -6876,6 +6953,7 @@ function markerRadius(score) {
 function renderFacilityDrilldown(facility) {
   if (!facility) return '<p class="status">Select a facility marker or row to view details.</p>';
   const quality = facility.quality || {};
+  const county = facility.countyContext || getRecordCountyContext(facility);
   const enforcementDetail = getFacilityEnforcementDetail(facility);
   const enforcementSummary = getFacilityEnforcementSummary(facility);
   const capitalShare = Number.isFinite(facility.components?.capitalRate) && Number.isFinite(facility.publishedAmount) && facility.publishedAmount > 0
@@ -6907,6 +6985,19 @@ function renderFacilityDrilldown(facility) {
         ${renderProfileMetric("Provider type", quality.providerType)}
         ${renderProfileMetric("First approved", quality.dateFirstApproved)}
       </div>
+    </section>
+
+    <section class="profile-section">
+      <h4>County Access Context</h4>
+      <div class="profile-grid">
+        ${renderProfileMetric("Rurality", county?.ruralUrbanClassification || "N/A")}
+        ${renderProfileMetric("Median household income", formatCurrencyOrNA(county?.medianHouseholdIncome, 0))}
+        ${renderProfileMetric("Poverty proxy", formatOptionalPercent(county?.povertyRate))}
+        ${renderProfileMetric("Age 65+", formatOptionalPercent(county?.age65PlusPercent))}
+        ${renderProfileMetric("Uninsured rate", formatOptionalPercent(county?.uninsuredRate))}
+        ${renderProfileMetric("Primary care rate", Number.isFinite(county?.primaryCarePhysiciansRate) ? `${formatNumberOrNA(county.primaryCarePhysiciansRate, 1)} / 100k` : "N/A")}
+      </div>
+      <p class="profile-note">Broadband and facility-specific payer mix are not loaded for nursing facilities yet. Hospital payer-mix context is available where HCRIS Medicare and Medicaid days are attached.</p>
     </section>
 
     <section class="profile-section">
@@ -7500,30 +7591,39 @@ function renderCapitalWatchlistRows(records) {
     return '<p class="status">No watchlist facilities match the current filters.</p>';
   }
 
-  const rows = records.map((record) => `
-    <article class="table-row watchlist">
-      <div>
-        <strong>${escapeHtml(record.facility)}</strong>
-        <small>${escapeHtml(record.category)}</small>
-      </div>
-      <div>${escapeHtml(record.city)}</div>
-      <div>${escapeHtml(record.geography?.tier || "Unclassified")}</div>
-      <div class="numeric">${currency.format(record.components.capitalRate)}</div>
-      <div class="numeric">${currency.format(record.components.supportRate)}</div>
-      <div class="numeric">${currency.format(record.components.nursingRate)}</div>
-      <div class="numeric">${currency.format(record.publishedAmount)}</div>
-    </article>
-  `).join("");
+  const rows = records.map((record) => {
+    const county = getRecordCountyContext(record);
+    const staffing = record.quality?.staffingStarRating;
+    const infrastructureSignal = [
+      Number.isFinite(staffing) && staffing <= 2 ? "weak staffing" : null,
+      county?.ruralUrbanClassification === "Rural" ? "rural" : null,
+      Number.isFinite(county?.povertyRate) && county.povertyRate >= percentile(state.countySummaries.map((item) => item.povertyRate), 0.75) ? "higher poverty" : null
+    ].filter(Boolean).join(", ") || "capital-only screen";
+    return `
+      <article class="table-row watchlist">
+        <div>
+          <strong>${escapeHtml(record.facility)}</strong>
+          <small>${escapeHtml(record.city)} / ${escapeHtml(record.quality?.county || "Unknown county")}</small>
+        </div>
+        <div>${escapeHtml(record.geography?.tier || "Unclassified")}</div>
+        <div><small>${escapeHtml(renderCountyContextLine(county))}</small></div>
+        <div class="numeric">${currency.format(record.components.capitalRate)}</div>
+        <div class="numeric">${Number.isFinite(staffing) ? `Staffing ${staffing}` : "Staffing N/A"}</div>
+        <div class="numeric">${currency.format(record.publishedAmount)}</div>
+        <div><span class="tag">${escapeHtml(infrastructureSignal)}</span></div>
+      </article>
+    `;
+  }).join("");
 
   return `
     <article class="table-row watchlist header">
       <div>Facility</div>
-      <div>City</div>
       <div>Geography</div>
+      <div>County context</div>
       <div class="numeric">Capital</div>
-      <div class="numeric">Support</div>
-      <div class="numeric">Nursing</div>
+      <div class="numeric">Staffing</div>
       <div class="numeric">Total</div>
+      <div>Signal</div>
     </article>
     ${rows}
   `;
@@ -7662,6 +7762,61 @@ function renderQualityFacilityRows(records, ratingType) {
   }).join("");
 }
 
+function getRecordCountyContext(record) {
+  const qualityMatch = state.qualityRecords.find((item) => (
+    (record?.code && item.code === record.code)
+    || (
+      normalizeFacilityText(item.facility) === normalizeFacilityText(record?.facility)
+      && normalizeFacilityText(item.city) === normalizeFacilityText(record?.city)
+    )
+  ));
+  const countyName = record?.quality?.county || qualityMatch?.quality?.county || record?.county || record?.geography?.county || "";
+  const allCountyRows = [...(state.countySummaries || []), ...(state.countyContext || [])];
+  return allCountyRows.find((county) => normalizeCountyName(county.county) === normalizeCountyName(countyName)) || null;
+}
+
+function renderCountyContextLine(county) {
+  if (!county) return "County context not loaded";
+  return [
+    county.ruralUrbanClassification || "Rurality N/A",
+    Number.isFinite(county.medianHouseholdIncome) ? `Income ${formatCurrencyOrNA(county.medianHouseholdIncome, 0)}` : "Income N/A",
+    Number.isFinite(county.povertyRate) ? `Poverty ${formatOptionalPercent(county.povertyRate)}` : "Poverty N/A",
+    Number.isFinite(county.age65PlusPercent) ? `Age 65+ ${formatOptionalPercent(county.age65PlusPercent)}` : "Age 65+ N/A",
+    Number.isFinite(county.uninsuredRate) ? `Uninsured ${formatOptionalPercent(county.uninsuredRate)}` : "Uninsured N/A"
+  ].join(" / ");
+}
+
+function renderQualityTrendReadiness(records) {
+  const effectiveDates = [...new Set(records.map((record) => record.effectiveDate).filter(Boolean))].sort();
+  const cmsSourceDates = [...new Set(records.map((record) => record.quality?.sourceDate || record.quality?.processingDate).filter(Boolean))].sort();
+  const staffingRated = records.filter((record) => Number.isFinite(record.quality?.staffingStarRating)).length;
+  const overallRated = records.filter((record) => Number.isFinite(record.quality?.overallStarRating)).length;
+  const trendReady = effectiveDates.length > 1 && cmsSourceDates.length > 1;
+  const rows = [
+    ["Loaded HFS rate periods", effectiveDates.length ? effectiveDates.join(", ") : "Unknown", "Rate trend", effectiveDates.length > 1 ? "Multiple rate periods are loaded." : "Rate trend needs more HFS releases."],
+    ["Loaded CMS quality snapshots", cmsSourceDates.length ? cmsSourceDates.join(", ") : "Current file only", "Quality trend", cmsSourceDates.length > 1 ? "Multiple quality snapshots are loaded." : "Quality and staffing trend still needs prior CMS Care Compare releases."],
+    ["Staffing ratings available", `${formatIntegerOrNA(staffingRated)} of ${formatIntegerOrNA(records.length)}`, "Measure coverage", "Coverage supports baseline analysis; trend requires repeated snapshots."],
+    ["Overall ratings available", `${formatIntegerOrNA(overallRated)} of ${formatIntegerOrNA(records.length)}`, "Measure coverage", "Coverage supports baseline analysis; trend requires repeated snapshots."],
+    ["Trend interpretation", trendReady ? "Multi-period rate + quality trend possible" : "Baseline quality snapshot only", "Evidence limit", trendReady ? "Compare matched rate, staffing, and quality changes across periods." : "Do not claim staffing/quality trend until prior CMS releases are loaded and matched."]
+  ];
+  return `
+    <article class="table-row methodology-row header">
+      <div>Trend input</div>
+      <div>Loaded value</div>
+      <div>Status</div>
+      <div>Use / limit</div>
+    </article>
+    ${rows.map(([label, value, status, detail]) => `
+      <article class="table-row methodology-row">
+        <div><strong>${escapeHtml(label)}</strong></div>
+        <div>${escapeHtml(value)}</div>
+        <div><span class="tag">${escapeHtml(status)}</span></div>
+        <div><small>${escapeHtml(detail)}</small></div>
+      </article>
+    `).join("")}
+  `;
+}
+
 function renderQualityFindings(records, lowCapitalLowStaffing, highRateLowQuality) {
   if (!records.length) {
     return '<div class="finding">No matched HFS/CMS quality records match the current filters.</div>';
@@ -7748,6 +7903,19 @@ function renderStrategyItems(items) {
     <article class="strategy-item">
       <strong>${escapeHtml(title)}</strong>
       <span>${escapeHtml(body)}</span>
+    </article>
+  `).join("");
+}
+
+function renderRoadmapItems(items) {
+  return items.map(([priority, title, action, outcome]) => `
+    <article class="strategy-item roadmap-item">
+      <div class="roadmap-topline">
+        <span class="roadmap-priority">${escapeHtml(priority)}</span>
+        <strong>${escapeHtml(title)}</strong>
+      </div>
+      <p>${escapeHtml(action)}</p>
+      <small>${escapeHtml(outcome)}</small>
     </article>
   `).join("");
 }

@@ -1,0 +1,119 @@
+[
+  {
+    "providerName": "OSF SAINT ANTHONYS HEALTH CNTR",
+    "providerId": "1004489449",
+    "cmsFacilityId": "140052",
+    "cmsFacilityName": "OSF SAINT ANTHONY'S HEALTH CENTER",
+    "confidence": "manual_high",
+    "confidenceScore": 95,
+    "reason": "Alias abbreviates CMS hospital name in same county."
+  },
+  {
+    "providerName": "GATEWAY REGIONAL MEDICAL CTR",
+    "providerId": "1101142093",
+    "cmsFacilityId": "140125",
+    "cmsFacilityName": "GATEWAY REGIONAL MEDICAL CENTER",
+    "confidence": "manual_high",
+    "confidenceScore": 95,
+    "reason": "Provider name is an abbreviation of CMS hospital name in same county."
+  },
+  {
+    "providerName": "HEARTLAND REGIONAL MEDICAL CTR",
+    "providerId": "1101483440",
+    "cmsFacilityId": "140184",
+    "cmsFacilityName": "HEARTLAND REGIONAL MEDICAL CENTER",
+    "confidence": "manual_high",
+    "confidenceScore": 95,
+    "reason": "Provider name is an abbreviation of CMS hospital name in same county."
+  },
+  {
+    "providerName": "MEMORIAL HOSP CARBONDALE",
+    "providerId": "1101161718",
+    "cmsFacilityId": "140164",
+    "cmsFacilityName": "MEMORIAL HOSPITAL OF CARBONDALE",
+    "confidence": "manual_high",
+    "confidenceScore": 95,
+    "reason": "Historical/short-form provider name matches CMS hospital name in same county."
+  },
+  {
+    "providerName": "METHODIST MEDICAL CENTER OF IL",
+    "providerId": "1006492153",
+    "cmsFacilityId": "140209",
+    "cmsFacilityName": "CARLE HEALTH METHODIST HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Legacy Methodist Medical Center identity maps to current CMS Carle Methodist hospital record."
+  },
+  {
+    "providerName": "METHODIST MEDICAL CENTER OF IL",
+    "providerId": "1004556686",
+    "cmsFacilityId": "140209",
+    "cmsFacilityName": "CARLE HEALTH METHODIST HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Legacy Methodist Medical Center identity maps to current CMS Carle Methodist hospital record."
+  },
+  {
+    "providerName": "METHODIST MEDICAL CNTR",
+    "providerId": "1101057388",
+    "cmsFacilityId": "140209",
+    "cmsFacilityName": "CARLE HEALTH METHODIST HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Short-form Methodist Medical Center identity maps to current CMS Carle Methodist hospital record."
+  },
+  {
+    "providerName": "ST ELIZABETH HOSPITAL",
+    "providerId": "1101479698",
+    "cmsFacilityId": "140187",
+    "cmsFacilityName": "HSHS ST ELIZABETH'S HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 95,
+    "reason": "Provider name omits HSHS prefix but matches CMS hospital name in same county."
+  },
+  {
+    "providerName": "SWEDISH COVENANT HOSPITAL",
+    "providerId": "1101429878",
+    "cmsFacilityId": "140114",
+    "cmsFacilityName": "SWEDISH HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Legacy Swedish Covenant name maps to current CMS Swedish Hospital record."
+  },
+  {
+    "providerName": "SWEDISH COVENANT HOSPITAL",
+    "providerId": "1004345986",
+    "cmsFacilityId": "140114",
+    "cmsFacilityName": "SWEDISH HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Legacy Swedish Covenant name maps to current CMS Swedish Hospital record."
+  },
+  {
+    "providerName": "SWEDISH COVENANT HOSPITAL",
+    "providerId": "1004132933",
+    "cmsFacilityId": "140114",
+    "cmsFacilityName": "SWEDISH HOSPITAL",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Legacy Swedish Covenant name maps to current CMS Swedish Hospital record."
+  },
+  {
+    "providerName": "DR JOHN WARNER HOSPITAL",
+    "providerId": "1101270028",
+    "cmsFacilityId": "141303",
+    "cmsFacilityName": "WARNER HOSPITAL AND HEALTH SERVICES",
+    "confidence": "manual_high",
+    "confidenceScore": 90,
+    "reason": "Legacy Dr. John Warner name maps to current CMS Warner Hospital record in same county."
+  },
+  {
+    "providerName": "PROVIDENT HOSPITAL OF COOK CO",
+    "providerId": "1101423097",
+    "cmsFacilityId": "140300",
+    "cmsFacilityName": "PROVIDENT HOSPITAL OF CHICAGO",
+    "confidence": "manual_high",
+    "confidenceScore": 95,
+    "reason": "County-owned provider name maps to current CMS Provident Hospital record."
+  }
+]
