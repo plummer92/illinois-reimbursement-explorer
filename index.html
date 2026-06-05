@@ -20,6 +20,7 @@
             <span>Search</span>
             <input id="searchInput" type="search" placeholder="facility, service, payer, code">
           </label>
+          <p id="filterStatus" class="filter-status">Filters apply to rate, facility, hospital, and pressure views.</p>
 
           <label class="field">
             <span>Category</span>
@@ -53,32 +54,56 @@
         </aside>
 
         <section class="content">
+          <section class="evidence-rail" aria-label="Evidence limits">
+            <div>
+              <span>Public evidence model</span>
+              <strong>Screening signals, not claims-level proof</strong>
+            </div>
+            <p>Rates, cost reports, quality files, and public payments are kept separate so charges, reimbursement, cost, margin, and access risk are not treated as the same thing.</p>
+          </section>
           <nav class="tabs" aria-label="Dashboard sections">
-            <button class="tab active" data-tab="executive">Executive Summary</button>
-            <button class="tab" data-tab="caseStudy">Case Study</button>
-            <button class="tab" data-tab="audit">Audit Framework</button>
-            <button class="tab" data-tab="moneyFlow">Money Flow</button>
-            <button class="tab" data-tab="priceTransparency">Price Transparency</button>
-            <button class="tab" data-tab="findings">Executive Findings</button>
-            <button class="tab" data-tab="records">Records</button>
-            <button class="tab" data-tab="geography">Geography</button>
-            <button class="tab" data-tab="analysis">Analysis</button>
-            <button class="tab" data-tab="capital">Capital Equity</button>
-            <button class="tab" data-tab="quality">Quality Correlation</button>
-            <button class="tab" data-tab="county">County Context</button>
-            <button class="tab" data-tab="facilityRisk">Facility Risk</button>
-            <button class="tab" data-tab="chain">Chain Analytics</button>
-            <button class="tab" data-tab="hospital">Hospital Intelligence</button>
-            <button class="tab" data-tab="leaderboard">Hospital Leaderboard</button>
-            <button class="tab" data-tab="binder">Evidence Binder</button>
-            <button class="tab" data-tab="payment">Hospital Payment Explorer</button>
-            <button class="tab" data-tab="pressure">Financial Pressure</button>
-            <button class="tab" data-tab="systemFinance">System Financials</button>
-            <button class="tab" data-tab="hshsDeepDive">HSHS Deep Dive</button>
-            <button class="tab" data-tab="methodology">Methodology</button>
-            <button class="tab" data-tab="workforce">Workforce Demand</button>
-            <button class="tab" data-tab="sources">Sources</button>
-            <button class="tab" data-tab="model">Estimate Model</button>
+            <div class="nav-group nav-group-primary" data-nav-group="brief">
+              <span class="nav-group-label">Brief</span>
+              <button class="tab active" data-tab="executive" data-nav-group="brief">Summary</button>
+              <button class="tab" data-tab="caseStudy" data-nav-group="brief">Case Study</button>
+              <button class="tab" data-tab="findings" data-nav-group="brief">Findings</button>
+            </div>
+            <div class="nav-group nav-group-primary" data-nav-group="hospital">
+              <span class="nav-group-label">Hospital</span>
+              <button class="tab" data-tab="hospital" data-nav-group="hospital">Intelligence</button>
+              <button class="tab" data-tab="binder" data-nav-group="hospital">Evidence Binder</button>
+              <button class="tab" data-tab="pressure" data-nav-group="hospital">Financial Pressure</button>
+              <button class="tab" data-tab="payment" data-nav-group="hospital">Payment Explorer</button>
+            </div>
+            <div class="nav-group" data-nav-group="facility">
+              <span class="nav-group-label">Facility</span>
+              <button class="tab" data-tab="records" data-nav-group="facility">Records</button>
+              <button class="tab" data-tab="facilityRisk" data-nav-group="facility">Risk</button>
+              <button class="tab" data-tab="chain" data-nav-group="facility">Chains</button>
+              <button class="tab" data-tab="quality" data-nav-group="facility">Quality</button>
+            </div>
+            <div class="nav-group" data-nav-group="market">
+              <span class="nav-group-label">Market</span>
+              <button class="tab" data-tab="moneyFlow" data-nav-group="market">Money Flow</button>
+              <button class="tab" data-tab="priceTransparency" data-nav-group="market">Prices</button>
+              <button class="tab" data-tab="systemFinance" data-nav-group="market">Systems</button>
+              <button class="tab" data-tab="workforce" data-nav-group="market">Workforce</button>
+            </div>
+            <details class="nav-more">
+              <summary>More views</summary>
+              <div class="nav-more-grid">
+                <button class="tab" data-tab="audit" data-nav-group="more">Audit Framework</button>
+                <button class="tab" data-tab="geography" data-nav-group="more">Geography</button>
+                <button class="tab" data-tab="analysis" data-nav-group="more">Analysis</button>
+                <button class="tab" data-tab="capital" data-nav-group="more">Capital Equity</button>
+                <button class="tab" data-tab="county" data-nav-group="more">County Context</button>
+                <button class="tab" data-tab="leaderboard" data-nav-group="more">Leaderboard</button>
+                <button class="tab" data-tab="hshsDeepDive" data-nav-group="more">HSHS Deep Dive</button>
+                <button class="tab" data-tab="methodology" data-nav-group="more">Methodology</button>
+                <button class="tab" data-tab="sources" data-nav-group="more">Sources</button>
+                <button class="tab" data-tab="model" data-nav-group="more">Estimate Model</button>
+              </div>
+            </details>
           </nav>
 
           <section id="executivePanel" class="panel active" aria-labelledby="executive">
@@ -91,6 +116,10 @@
             <section class="summary-section">
               <h3>Project Purpose</h3>
               <p id="projectPurpose" class="summary-copy"></p>
+            </section>
+            <section class="summary-section">
+              <h3>Guided Tour</h3>
+              <div id="guidedTour" class="guided-tour"></div>
             </section>
             <section class="summary-section">
               <h3>Key Metrics</h3>
@@ -123,6 +152,10 @@
             <div class="callout muted-callout">
               This case study explains the project as a healthcare economics, reimbursement intelligence, and disparity analytics portfolio piece. Findings are screening signals and should be validated before operational, financial, or policy decisions.
             </div>
+            <section class="summary-section">
+              <h3>Flagship Case</h3>
+              <div id="flagshipCase" class="flagship-case"></div>
+            </section>
             <section class="summary-section">
               <h3>Project Narrative</h3>
               <div id="caseStudyNarrative" class="narrative-box"></div>

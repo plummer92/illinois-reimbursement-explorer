@@ -51,6 +51,7 @@ const els = {
   categorySelect: document.querySelector("#categorySelect"),
   tierSelect: document.querySelector("#tierSelect"),
   searchInput: document.querySelector("#searchInput"),
+  filterStatus: document.querySelector("#filterStatus"),
   sourceCount: document.querySelector("#sourceCount"),
   recordCount: document.querySelector("#recordCount"),
   visibleCount: document.querySelector("#visibleCount"),
@@ -109,6 +110,7 @@ const els = {
   executiveFindings: document.querySelector("#executiveFindings"),
   strategicImplications: document.querySelector("#strategicImplications"),
   recommendedActions: document.querySelector("#recommendedActions"),
+  guidedTour: document.querySelector("#guidedTour"),
   countyFindingList: document.querySelector("#countyFindingList"),
   countyPriorityCards: document.querySelector("#countyPriorityCards"),
   countyDrilldown: document.querySelector("#countyDrilldown"),
@@ -147,6 +149,7 @@ Object.assign(els, {
   caseStudyValueCards: document.querySelector("#caseStudyValueCards"),
   caseStudyNextSteps: document.querySelector("#caseStudyNextSteps"),
   caseStudyPortfolioBlurb: document.querySelector("#caseStudyPortfolioBlurb"),
+  flagshipCase: document.querySelector("#flagshipCase"),
   moneyFlowMetricCards: document.querySelector("#moneyFlowMetricCards"),
   topPaidProviders: document.querySelector("#topPaidProviders"),
   providerTypePayments: document.querySelector("#providerTypePayments"),
@@ -347,6 +350,7 @@ function renderCaseStudy() {
   const sourceCount = state.sources.length + (state.sourceRegistry?.length || 0);
   const totalSpread = chicago && downstate ? chicago.average - downstate.average : null;
   const capitalSpread = chicagoCapital && downstateCapital ? chicagoCapital.averageCapital - downstateCapital.averageCapital : null;
+  renderFlagshipCase();
 
   els.caseStudyNarrative.innerHTML = [
     "I built the Illinois Reimbursement Explorer to test whether public reimbursement, quality, geography, and facility-finance data could make healthcare disparities easier to see. The project started with Illinois nursing facility Medicaid rates, then expanded into CMS quality data, county social-risk context, hospital rate sheets, HFS provider-payment records, cost report economics, price transparency examples, workforce signals, and facility evidence binders.",
@@ -423,6 +427,72 @@ function renderCaseStudyCards(cards) {
       <span>${escapeHtml(body)}</span>
     </div>
   `).join("");
+}
+
+function getFlagshipHospital() {
+  return getAllHospitalsWithContext().find((hospital) => /TAYLORVILLE MEMORIAL/i.test(hospital.facilityName || ""))
+    || getAllHospitalsWithContext()[0]
+    || null;
+}
+
+function renderGuidedTour() {
+  if (!els.guidedTour) return;
+  const steps = [
+    ["01", "Read the thesis", "Start with the executive summary to understand the reimbursement, quality, and access question.", "executive"],
+    ["02", "Open hospital intelligence", "Move from broad nursing-facility context into hospital market, access, quality, and rate-sheet signals.", "hospital"],
+    ["03", "Inspect the binder", "Use the evidence binder to see what prices, cost reports, public payments, and clinical logic can actually prove.", "binder"],
+    ["04", "Stress-test the budget", "Review financial pressure and service scenarios without mistaking public indicators for confirmed distress.", "pressure"],
+    ["05", "Audit the sources", "Finish at public sources so a reviewer can trace the story back to the underlying evidence.", "sources"]
+  ];
+
+  els.guidedTour.innerHTML = steps.map(([number, title, body, tab]) => `
+    <article class="tour-card" data-tour-tab="${escapeHtml(tab)}">
+      <span>${escapeHtml(number)}</span>
+      <strong>${escapeHtml(title)}</strong>
+      <p>${escapeHtml(body)}</p>
+      <button class="mini-button" type="button" data-tour-tab="${escapeHtml(tab)}">Open</button>
+    </article>
+  `).join("");
+}
+
+function renderFlagshipCase() {
+  if (!els.flagshipCase) return;
+  const hospital = getFlagshipHospital();
+  if (!hospital) {
+    els.flagshipCase.innerHTML = '<p class="status">No flagship hospital is available yet.</p>';
+    return;
+  }
+
+  const costReport = getCostReportForHospital(hospital);
+  const paymentRows = getProviderPaymentRowsForHospital(hospital);
+  const priceRows = getPriceTransparencyRecords().filter((record) => String(record.facilityId) === String(hospital.facilityId));
+  const pressure = buildHospitalPressureProfile(hospital);
+  const fields = hospital.hfsPayment?.paymentFields || {};
+  const paymentTotal = paymentRows.reduce((total, row) => total + (Number(row.totalPaid) || 0), 0);
+
+  els.flagshipCase.innerHTML = `
+    <article class="flagship-card">
+      <div>
+        <p class="eyebrow">Flagship walkthrough</p>
+        <h4>${escapeHtml(hospital.facilityName || "Selected hospital")}</h4>
+        <p>${escapeHtml("This is the cleanest demonstration case because it connects facility identity, HFS rate-sheet fields, provider-payment flow, cost-report economics, price transparency examples, and pressure screening into one traceable story.")}</p>
+      </div>
+      <div class="flagship-metrics">
+        ${renderProfileMetric("Hospital type", hospital.hospitalType || "N/A")}
+        ${renderProfileMetric("CMS rating", Number.isFinite(hospital.overallRating) ? `${hospital.overallRating} / 5` : "N/A")}
+        ${renderProfileMetric("Acute DRG rate", formatCurrencyOrNA(fields.ipCos20AcuteDrgRate))}
+        ${renderProfileMetric("Provider payments", paymentTotal ? formatCurrencyOrNA(paymentTotal, 0) : "N/A")}
+        ${renderProfileMetric("Price rows", formatIntegerOrNA(priceRows.length))}
+        ${renderProfileMetric("Pressure score", pressure ? `${pressure.score}/100` : "N/A")}
+      </div>
+      <div class="tour-actions">
+        <button class="mini-button" type="button" data-tour-tab="hospital">Open Intelligence</button>
+        <button class="mini-button" type="button" data-tour-tab="binder">Open Binder</button>
+        <button class="mini-button" type="button" data-tour-tab="pressure">Open Pressure</button>
+        <button class="mini-button" type="button" data-tour-tab="sources">Open Sources</button>
+      </div>
+    </article>
+  `;
 }
 
 function renderCategoryOptions() {
@@ -1554,6 +1624,7 @@ function renderExecutiveSummary() {
   const highestGeography = classifiedTierGroups[0] || null;
 
   els.projectPurpose.textContent = "This tool analyzes Illinois nursing facility Medicaid reimbursement, geographic reimbursement patterns, capital reimbursement components, and CMS Care Compare quality data to identify possible healthcare disparity signals, infrastructure-risk patterns, and planning questions for long-term care leaders.";
+  renderGuidedTour();
   els.executiveMetricCards.innerHTML = renderExecutiveMetricCards({
     totalRecords: state.records.filter((record) => Number.isFinite(record.publishedAmount)).length,
     matchedRecords: state.qualityRecords.length,
@@ -8200,9 +8271,40 @@ function setTab(tabName) {
     tab.classList.toggle("active", tab.dataset.tab === tabName);
   });
 
+  const activeTab = document.querySelector(`.tab[data-tab="${tabName}"]`);
+  const activeGroup = activeTab?.dataset.navGroup || "";
+  document.querySelectorAll(".nav-group").forEach((group) => {
+    group.classList.toggle("active", group.dataset.navGroup === activeGroup);
+  });
+  const moreNav = document.querySelector(".nav-more");
+  if (moreNav) {
+    moreNav.classList.toggle("active", activeGroup === "more");
+    if (activeGroup === "more") moreNav.open = true;
+  }
+
   Object.entries(els.panels).forEach(([name, panel]) => {
     panel.classList.toggle("active", name === tabName);
   });
+
+  updateFilterStatus();
+}
+
+function getActiveTabLabel() {
+  return document.querySelector(`.tab[data-tab="${state.activeTab}"]`)?.textContent?.trim() || "current view";
+}
+
+function updateFilterStatus() {
+  if (!els.filterStatus) return;
+  const filters = [];
+  if (state.query) filters.push(`"${state.query}"`);
+  if (state.category !== "all") filters.push(els.categorySelect.selectedOptions[0]?.textContent || state.category);
+  if (state.tier !== "all") filters.push(els.tierSelect.selectedOptions[0]?.textContent || state.tier);
+  if (state.riskLevel !== "all") filters.push(`risk: ${state.riskLevel}`);
+  if (state.ownership !== "all") filters.push(`ownership: ${state.ownership}`);
+  if (state.staffingRating !== "all") filters.push(`staffing: ${state.staffingRating}`);
+  els.filterStatus.textContent = filters.length
+    ? `Filtering ${getActiveTabLabel()}: ${filters.join(" / ")}.`
+    : `Filters apply to ${getActiveTabLabel()} and related analytic views.`;
 }
 
 function getInitialTab() {
@@ -8442,6 +8544,7 @@ function escapeHtml(value) {
 
 els.searchInput.addEventListener("input", (event) => {
   state.query = event.target.value;
+  updateFilterStatus();
   renderRecords();
   renderGeography();
   renderAnalysis();
@@ -8461,6 +8564,7 @@ els.searchInput.addEventListener("input", (event) => {
 
 els.categorySelect.addEventListener("change", (event) => {
   state.category = event.target.value;
+  updateFilterStatus();
   renderRecords();
   renderGeography();
   renderAnalysis();
@@ -8478,6 +8582,7 @@ els.categorySelect.addEventListener("change", (event) => {
 
 els.tierSelect.addEventListener("change", (event) => {
   state.tier = event.target.value;
+  updateFilterStatus();
   renderRecords();
   renderGeography();
   renderAnalysis();
@@ -8495,6 +8600,7 @@ els.tierSelect.addEventListener("change", (event) => {
 
 els.riskLevelSelect.addEventListener("change", (event) => {
   state.riskLevel = event.target.value;
+  updateFilterStatus();
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
@@ -8504,6 +8610,7 @@ els.riskLevelSelect.addEventListener("change", (event) => {
 
 els.ownershipSelect.addEventListener("change", (event) => {
   state.ownership = event.target.value;
+  updateFilterStatus();
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
@@ -8513,6 +8620,7 @@ els.ownershipSelect.addEventListener("change", (event) => {
 
 els.staffingRatingSelect.addEventListener("change", (event) => {
   state.staffingRating = event.target.value;
+  updateFilterStatus();
   renderFacilityRisk();
   renderChainAnalytics();
   renderHospitalPaymentExplorer();
@@ -8733,6 +8841,15 @@ window.reimbursementExplorer = {
 
 els.tabs.forEach((tab) => {
   tab.addEventListener("click", () => setTab(tab.dataset.tab));
+});
+
+document.addEventListener("click", (event) => {
+  const target = event.target.closest("[data-tour-tab]");
+  if (!target) return;
+  const tabName = target.dataset.tourTab;
+  if (!els.panels[tabName]) return;
+  setTab(tabName);
+  els.panels[tabName].scrollIntoView({ behavior: "smooth", block: "start" });
 });
 
 loadData().catch((error) => {
