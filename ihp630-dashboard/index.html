@@ -1,0 +1,330 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>IHP 630 Revenue Cycle Deep Dive</title>
+  <link rel="stylesheet" href="./styles.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="topbar" aria-labelledby="dashboard-title">
+      <div>
+        <p class="eyebrow">IHP 630 Module One Activity</p>
+        <h1 id="dashboard-title">Revenue Cycle Deep Dive</h1>
+        <p class="lede">
+          A student-built dashboard connecting patient access, provider reimbursement, payer review, HSHS operations,
+          and strategic sourcing decisions.
+        </p>
+      </div>
+      <div class="identity-panel">
+        <span>Jared Wolfe Elleman</span>
+        <strong>HSHS Strategic Sourcing -> Capital Purchasing</strong>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="Dashboard controls">
+      <label>
+        Perspective
+        <select id="perspectiveSelect">
+          <option value="patient">Patient</option>
+          <option value="provider">Provider</option>
+          <option value="payer">Third-Party Payer</option>
+        </select>
+      </label>
+      <label>
+        Procedure Type
+        <select id="procedureSelect">
+          <option value="infusion">Infusion / Medication Administration</option>
+          <option value="surgery">Outpatient Surgery</option>
+          <option value="imaging">Advanced Imaging</option>
+          <option value="dme">DME / Capital-Dependent Service</option>
+        </select>
+      </label>
+      <label>
+        Payer Scenario
+        <select id="payerSelect">
+          <option value="commercial">Commercial Plan</option>
+          <option value="medicareAdvantage">Medicare Advantage</option>
+          <option value="selfPay">Self-Pay / Uninsured</option>
+        </select>
+      </label>
+      <label>
+        Government Program Lens
+        <select id="programSelect">
+          <option value="originalMedicare">Original Medicare</option>
+          <option value="medicareAdvantage">Medicare Advantage</option>
+          <option value="illinoisMedicaid">Illinois Medicaid</option>
+          <option value="dualEligible">Medicare + Medicaid</option>
+        </select>
+      </label>
+      <label>
+        Staffing Focus
+        <select id="staffingSelect">
+          <option value="claimsProduction">Claims Production</option>
+          <option value="claimsSubmission">Claims Submission</option>
+          <option value="denialManagement">Denial Management</option>
+          <option value="reimbursementAnalytics">Expected Reimbursement</option>
+        </select>
+      </label>
+    </section>
+
+    <section class="metric-grid" aria-label="Public-source indicators">
+      <article class="metric">
+        <span class="metric-label">Adults Reporting Difficulty Affording Care</span>
+        <strong>44%</strong>
+        <p>KFF Health Tracking Poll, May 2025.</p>
+      </article>
+      <article class="metric">
+        <span class="metric-label">Adults With Payment Problems in Past Year</span>
+        <strong>28%</strong>
+        <p>KFF analysis of health care affordability.</p>
+      </article>
+      <article class="metric">
+        <span class="metric-label">Medicare Advantage PA Determinations</span>
+        <strong>52.8M</strong>
+        <p>KFF review of 2024 plan-reported prior authorization data.</p>
+      </article>
+      <article class="metric">
+        <span class="metric-label">MA PA Requests Denied Fully or Partially</span>
+        <strong>7.7%</strong>
+        <p>Shows payer review can affect access and reimbursement timing.</p>
+      </article>
+    </section>
+
+    <section class="layout">
+      <article class="panel timeline-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Cycle Map</p>
+            <h2>Where Revenue Integrity Is Protected</h2>
+          </div>
+          <span id="stageCount" class="status-pill">9 stages</span>
+        </div>
+        <div id="timeline" class="timeline"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Scenario Lens</p>
+            <h2 id="scenarioTitle">Patient Cost and Access View</h2>
+          </div>
+        </div>
+        <div id="scenarioBody" class="scenario-body"></div>
+      </article>
+    </section>
+
+    <section id="medicareMedicaidStrategy" class="layout strategy-section">
+      <article class="panel strategy-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Strategic Planning</p>
+            <h2>Medicare and Medicaid Impact on Financial Performance</h2>
+          </div>
+          <span id="programSignal" class="status-pill">Original Medicare</span>
+        </div>
+        <div id="programImpact" class="program-impact"></div>
+      </article>
+
+      <article class="panel strategy-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Decision Support</p>
+            <h2>What Administrators Should Watch</h2>
+          </div>
+        </div>
+        <div id="strategyScorecard" class="scorecard"></div>
+      </article>
+    </section>
+
+    <section id="staffingIntegrity" class="layout staffing-section">
+      <article class="panel staffing-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Module Five Lens</p>
+            <h2>Back-End Staffing and Denial Risk</h2>
+          </div>
+          <span id="staffingSignal" class="status-pill">Claims Production</span>
+        </div>
+        <div id="staffingImpact" class="staffing-impact"></div>
+      </article>
+
+      <article class="panel staffing-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">HSHS Strategy</p>
+            <h2>Strategic Sourcing Action Tracker</h2>
+          </div>
+        </div>
+        <div id="staffingScorecard" class="scorecard"></div>
+        <div class="tracker-note">
+          Staffing risk is strongest when payer complexity, documentation gaps, and manual follow-up all hit the same
+          workflow. Strategic sourcing can help by selecting tools, vendors, and service contracts that reduce rework.
+        </div>
+      </article>
+    </section>
+
+    <section id="explorerBridge" class="layout bridge-section">
+      <article class="panel bridge-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Portfolio Bridge</p>
+            <h2>Illinois Reimbursement Explorer Data Added to IHP 630</h2>
+          </div>
+          <span class="status-pill">Public data</span>
+        </div>
+        <div id="explorerMetricCards" class="bridge-metric-grid"></div>
+        <div id="explorerBridgeRows" class="bridge-rows"></div>
+        <div class="dashboard-linkout">
+          <a href="../">Open Advanced Illinois Reimbursement Explorer</a>
+          <span>Local portfolio dashboard with deeper Illinois HFS, CMS HCRIS, price transparency, workforce, and HSHS public-data layers.</span>
+        </div>
+      </article>
+
+      <article class="panel simulator-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Financial Impact</p>
+            <h2>Staffing Failure Cost Simulator</h2>
+          </div>
+        </div>
+        <div class="simulator-grid" aria-label="Staffing failure cost inputs">
+          <label>
+            Monthly Claims
+            <input id="claimVolumeInput" type="number" min="0" step="100" value="10000" />
+          </label>
+          <label>
+            Denial Rate %
+            <input id="denialRateInput" type="number" min="0" max="100" step="0.1" value="12" />
+          </label>
+          <label>
+            Average Reimbursement
+            <input id="avgReimbursementInput" type="number" min="0" step="50" value="750" />
+          </label>
+          <label>
+            Preventable Share %
+            <input id="preventableShareInput" type="number" min="0" max="100" step="1" value="35" />
+          </label>
+          <label>
+            Rework Minutes
+            <input id="reworkMinutesInput" type="number" min="0" step="1" value="25" />
+          </label>
+          <label>
+            Labor Cost / Hour
+            <input id="laborCostInput" type="number" min="0" step="1" value="35" />
+          </label>
+        </div>
+        <div id="simulatorOutput" class="simulator-output"></div>
+        <p class="simulator-note">
+          These are adjustable learning assumptions, not HSHS internal performance values. The purpose is to show how
+          staffing gaps can translate into delayed revenue, rework hours, and avoidable administrative cost.
+        </p>
+      </article>
+    </section>
+
+    <section class="layout lower">
+      <article class="panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Risk Model</p>
+            <h2>What Happens When a Step Is Missed</h2>
+          </div>
+        </div>
+        <div class="chart-wrap">
+          <canvas id="riskChart" width="720" height="360" aria-label="Risk by revenue cycle step"></canvas>
+        </div>
+        <div id="riskLegend" class="legend"></div>
+      </article>
+
+      <article class="panel sourcing-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">Jared's Work Connection</p>
+            <h2>HSHS Strategic Sourcing Impact</h2>
+          </div>
+        </div>
+        <div class="work-grid">
+          <div>
+            <span class="work-icon">SC</span>
+            <h3>Supply and Service Alignment</h3>
+            <p>
+              Sourcing decisions influence whether supplies, equipment, purchased services, and vendor workflows
+              support accurate documentation and charge capture.
+            </p>
+          </div>
+          <div>
+            <span class="work-icon">PO</span>
+            <h3>Contract and Purchasing Decisions</h3>
+            <p>
+              Strategic sourcing influences procedural cost through negotiated pricing, equipment standardization,
+              item availability, and alignment between operational cost and payer reimbursement.
+            </p>
+          </div>
+          <div>
+            <span class="work-icon">$</span>
+            <h3>Patient Estimate Reliability</h3>
+            <p>
+              Accurate product, service, and equipment data improves the estimate patients receive before care
+              and lowers the chance of surprise balances after adjudication.
+            </p>
+          </div>
+        </div>
+      </article>
+    </section>
+
+    <section class="panel source-panel">
+      <div class="panel-heading">
+        <div>
+          <p class="eyebrow">Evidence Base</p>
+          <h2>Sources Used in This Dashboard</h2>
+        </div>
+      </div>
+      <ol class="sources">
+        <li>
+          Centers for Medicare & Medicaid Services. (2026). <a href="https://www.cms.gov/priorities/key-initiatives/hospital-price-transparency">Hospital price transparency</a>.
+        </li>
+        <li>
+          Centers for Medicare & Medicaid Services. (2025). <a href="https://www.cms.gov/data-research/monitoring-programs/medicare-fee-service-compliance-programs/prior-authorization-and-pre-claim-review-initiatives">Prior authorization and pre-claim review initiatives</a>.
+        </li>
+        <li>
+          Healthcare Financial Management Association. (2024). <a href="https://www.hfma.org/reference/revenue-cycle-management/">Healthcare revenue cycle management: What it is and how it works</a>.
+        </li>
+        <li>
+          KFF. (2026). <a href="https://www.kff.org/medicare/medicare-advantage-insurers-made-nearly-53-million-prior-authorization-determinations-in-2024/">Medicare Advantage insurers made nearly 53 million prior authorization determinations in 2024</a>.
+        </li>
+        <li>
+          KFF. (2026). <a href="https://www.kff.org/health-costs/americans-challenges-with-health-care-costs/">Americans' challenges with health care costs</a>.
+        </li>
+        <li>
+          KFF. (2025). <a href="https://www.kff.org/medicare/health-policy-101-medicare/">Medicare 101</a>.
+        </li>
+        <li>
+          Centers for Medicare &amp; Medicaid Services. (2026). <a href="https://www.cms.gov/data-research/statistics-trends-and-reports/national-health-expenditure-data/nhe-fact-sheet">National health expenditure fact sheet</a>.
+        </li>
+        <li>
+          Illinois Department of Healthcare and Family Services. (2026). <a href="https://hfs.illinois.gov/content/dam/soi/en/web/hfs/info/reports/annual/fy25hfsannualreport.pdf">FY 2025 Medical Assistance Program annual report</a>.
+        </li>
+        <li>
+          Illinois Department on Aging. (2026). <a href="https://ilaging.illinois.gov/content/dam/soi/en/web/aging/ship/documents/medicare-savings-program-chart.pdf">2026 Illinois Medicare Savings Programs</a>.
+        </li>
+        <li>
+          Centers for Medicare &amp; Medicaid Services. (2026). <a href="https://www.cms.gov/newsroom/fact-sheets/fiscal-year-2025-improper-payments-fact-sheet">Fiscal year 2025 improper payments fact sheet</a>.
+        </li>
+        <li>
+          CAQH. (2026). <a href="https://www.caqh.org/hubfs/CORE/CORE%20Accelerating%20Claims%20Processing%3A%20Insights%20from%20Implementation.pdf">Accelerating claims processing: Insights from implementation</a>.
+        </li>
+        <li>
+          American Hospital Association. (2024). <a href="https://www.aha.org/news/headline/2024-01-10-aha-infographic-medicare-underpayments-hospitals-nearly-100-billion-2022">Medicare underpayments to hospitals nearly $100 billion in 2022</a>.
+        </li>
+        <li>
+          Illinois Reimbursement Explorer. (2026). Local student-built public-data dashboard using Illinois HFS,
+          CMS HCRIS, hospital price transparency, and HSHS public financial sources.
+        </li>
+      </ol>
+    </section>
+  </main>
+
+  <script src="./script.js"></script>
+</body>
+</html>
