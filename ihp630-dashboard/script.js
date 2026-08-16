@@ -241,6 +241,89 @@ const explorerBridgeRows = [
   }
 ];
 
+const denialRootCauses = [
+  {
+    stage: "Front End",
+    stageClass: "front",
+    cause: "Registration or eligibility error",
+    share: 0.18,
+    control: "Real-time eligibility, card scan, required-field validation"
+  },
+  {
+    stage: "Front End",
+    stageClass: "front",
+    cause: "Missing or invalid authorization",
+    share: 0.17,
+    control: "Financial clearance and payer-specific authorization work queue"
+  },
+  {
+    stage: "Middle",
+    stageClass: "middle",
+    cause: "Incomplete clinical documentation",
+    share: 0.19,
+    control: "Clinical documentation improvement and prebill query"
+  },
+  {
+    stage: "Middle",
+    stageClass: "middle",
+    cause: "Coding, modifier, or charge-capture error",
+    share: 0.16,
+    control: "Coding edits, charge reconciliation, targeted prebill review"
+  },
+  {
+    stage: "Back End",
+    stageClass: "back",
+    cause: "Claim submission or timely-filing failure",
+    share: 0.12,
+    control: "Acknowledgment reconciliation, deadline alerts, work-queue ownership"
+  },
+  {
+    stage: "Cross-Workflow",
+    stageClass: "cross",
+    cause: "Interface, payer-rule, or vendor workflow issue",
+    share: 0.10,
+    control: "Interface monitoring, change control, vendor service levels"
+  },
+  {
+    stage: "Back End",
+    stageClass: "back",
+    cause: "Other payer or follow-up issue",
+    share: 0.08,
+    control: "Standard denial categories, appeal tracking, payer escalation"
+  }
+];
+
+const denialInvestments = [
+  {
+    label: "Registration Accuracy",
+    icon: "RA",
+    description: "Eligibility, demographic validation, financial clearance, and authorization discipline.",
+    addressed: [0, 1],
+    reduction: 0.26
+  },
+  {
+    label: "Documentation Improvement",
+    icon: "CD",
+    description: "Clinical documentation education, concurrent review, and prebill clarification.",
+    addressed: [2, 3],
+    reduction: 0.30
+  },
+  {
+    label: "Workflow Automation",
+    icon: "AU",
+    description: "Claim edits, acknowledgments, deadline alerts, and standardized denial routing.",
+    addressed: [0, 3, 4, 6],
+    reduction: 0.18
+  },
+  {
+    label: "Vendor Management",
+    icon: "VM",
+    description: "Interface reliability, payer-rule updates, support response, and contract accountability.",
+    addressed: [4, 5],
+    reduction: 0.22
+  }
+];
+
 const perspectiveSelect = document.getElementById("perspectiveSelect");
 const procedureSelect = document.getElementById("procedureSelect");
 const payerSelect = document.getElementById("payerSelect");
@@ -269,6 +352,17 @@ const simulatorInputs = [
   "preventableShareInput",
   "reworkMinutesInput",
   "laborCostInput"
+].map((id) => document.getElementById(id));
+const denialSummary = document.getElementById("denialSummary");
+const denialRootCauseRows = document.getElementById("denialRootCauseRows");
+const investmentComparison = document.getElementById("investmentComparison");
+const denialOpportunitySignal = document.getElementById("denialOpportunitySignal");
+const denialPreventionInputs = [
+  "dpClaimVolume",
+  "dpDenialRate",
+  "dpClaimValue",
+  "dpRecoveryRate",
+  "dpDaysDelayed"
 ].map((id) => document.getElementById(id));
 
 function riskClass(value) {
@@ -540,6 +634,94 @@ function renderSimulator() {
   `;
 }
 
+function renderDenialPrevention() {
+  const claimVolume = Math.max(0, getNumberInput("dpClaimVolume", 10000));
+  const denialRate = Math.min(1, Math.max(0, getNumberInput("dpDenialRate", 12) / 100));
+  const claimValue = Math.max(0, getNumberInput("dpClaimValue", 750));
+  const recoveryRate = Math.min(1, Math.max(0, getNumberInput("dpRecoveryRate", 65) / 100));
+  const daysDelayed = Math.max(0, getNumberInput("dpDaysDelayed", 45));
+
+  const deniedClaims = claimVolume * denialRate;
+  const delayedRevenue = deniedClaims * claimValue;
+  const recoveredRevenue = delayedRevenue * recoveryRate;
+  const netLoss = delayedRevenue - recoveredRevenue;
+  const cashDaysExposure = delayedRevenue * daysDelayed;
+
+  denialSummary.innerHTML = `
+    <div class="denial-summary-card primary">
+      <span>Denied Claims / Month</span>
+      <strong>${formatNumber(deniedClaims)}</strong>
+    </div>
+    <div class="denial-summary-card">
+      <span>Revenue Delayed</span>
+      <strong>${formatCurrency(delayedRevenue)}</strong>
+    </div>
+    <div class="denial-summary-card">
+      <span>Expected Recovery</span>
+      <strong>${formatCurrency(recoveredRevenue)}</strong>
+    </div>
+    <div class="denial-summary-card loss">
+      <span>Estimated Net Loss</span>
+      <strong>${formatCurrency(netLoss)}</strong>
+    </div>
+    <div class="denial-summary-card">
+      <span>Cash-Days Exposure</span>
+      <strong>${formatCurrency(cashDaysExposure)}</strong>
+      <small>Delayed dollars multiplied by days outstanding</small>
+    </div>
+  `;
+
+  denialRootCauseRows.innerHTML = denialRootCauses.map((item) => {
+    const causeClaims = deniedClaims * item.share;
+    const causeDelayed = causeClaims * claimValue;
+    const causeLoss = causeDelayed * (1 - recoveryRate);
+    return `
+      <tr>
+        <td><span class="workflow-badge ${item.stageClass}">${item.stage}</span></td>
+        <td><strong>${item.cause}</strong></td>
+        <td>${Math.round(item.share * 100)}%</td>
+        <td>${formatNumber(causeClaims)}</td>
+        <td>${formatCurrency(causeDelayed)}</td>
+        <td>${formatCurrency(causeLoss)}</td>
+        <td>${item.control}</td>
+      </tr>
+    `;
+  }).join("");
+
+  const investmentResults = denialInvestments.map((investment) => {
+    const addressableShare = investment.addressed.reduce(
+      (total, index) => total + denialRootCauses[index].share,
+      0
+    );
+    const claimsPrevented = deniedClaims * addressableShare * investment.reduction;
+    const monthlyValue = claimsPrevented * claimValue;
+    return { ...investment, addressableShare, claimsPrevented, monthlyValue };
+  }).sort((a, b) => b.monthlyValue - a.monthlyValue);
+
+  const bestValue = investmentResults[0]?.monthlyValue || 0;
+  denialOpportunitySignal.textContent = bestValue > 0
+    ? `Top modeled opportunity: ${investmentResults[0].label}`
+    : "Enter assumptions to compare";
+
+  investmentComparison.innerHTML = investmentResults.map((investment, index) => `
+    <article class="investment-card ${index === 0 ? "recommended" : ""}">
+      <div class="investment-card-head">
+        <span class="investment-icon">${investment.icon}</span>
+        ${index === 0 ? '<span class="rank-pill">Highest modeled value</span>' : `<span class="rank-pill muted">Rank ${index + 1}</span>`}
+      </div>
+      <h4>${investment.label}</h4>
+      <p>${investment.description}</p>
+      <dl>
+        <div><dt>Addressable denial share</dt><dd>${Math.round(investment.addressableShare * 100)}%</dd></div>
+        <div><dt>Illustrative reduction</dt><dd>${Math.round(investment.reduction * 100)}%</dd></div>
+        <div><dt>Claims prevented / month</dt><dd>${formatNumber(investment.claimsPrevented)}</dd></div>
+        <div><dt>Monthly revenue protected</dt><dd>${formatCurrency(investment.monthlyValue)}</dd></div>
+        <div><dt>Annualized value</dt><dd>${formatCurrency(investment.monthlyValue * 12)}</dd></div>
+      </dl>
+    </article>
+  `).join("");
+}
+
 function renderAll() {
   renderTimeline();
   renderScenario();
@@ -547,6 +729,7 @@ function renderAll() {
   renderStaffingStrategy();
   renderExplorerBridge();
   renderSimulator();
+  renderDenialPrevention();
   drawChart();
 }
 
@@ -556,6 +739,10 @@ function renderAll() {
 
 simulatorInputs.forEach((input) => {
   input.addEventListener("input", renderSimulator);
+});
+
+denialPreventionInputs.forEach((input) => {
+  input.addEventListener("input", renderDenialPrevention);
 });
 
 window.addEventListener("resize", drawChart);

@@ -177,7 +177,7 @@
         <div id="explorerMetricCards" class="bridge-metric-grid"></div>
         <div id="explorerBridgeRows" class="bridge-rows"></div>
         <div class="dashboard-linkout">
-          <a href="../">Open Advanced Illinois Reimbursement Explorer</a>
+          <a href="https://plummer92.github.io/illinois-reimbursement-explorer/">Open Advanced Illinois Reimbursement Explorer</a>
           <span>Local portfolio dashboard with deeper Illinois HFS, CMS HCRIS, price transparency, workforce, and HSHS public-data layers.</span>
         </div>
       </article>
@@ -221,6 +221,87 @@
           staffing gaps can translate into delayed revenue, rework hours, and avoidable administrative cost.
         </p>
       </article>
+    </section>
+
+    <section id="denialPrevention" class="panel denial-panel">
+      <div class="panel-heading denial-heading">
+        <div>
+          <p class="eyebrow">Module Six Decision Support</p>
+          <h2>Denial-Prevention Workflow and Investment Model</h2>
+        </div>
+        <span id="denialOpportunitySignal" class="status-pill">Educational scenario</span>
+      </div>
+
+      <div class="denial-model-layout">
+        <div>
+          <div class="denial-inputs" aria-label="Denial prevention model assumptions">
+            <label>
+              Monthly Claims
+              <input id="dpClaimVolume" type="number" min="0" step="100" value="10000" />
+            </label>
+            <label>
+              Denial Rate %
+              <input id="dpDenialRate" type="number" min="0" max="100" step="0.1" value="12" />
+            </label>
+            <label>
+              Average Claim Value
+              <input id="dpClaimValue" type="number" min="0" step="50" value="750" />
+            </label>
+            <label>
+              Recovery Rate %
+              <input id="dpRecoveryRate" type="number" min="0" max="100" step="1" value="65" />
+            </label>
+            <label>
+              Average Days Delayed
+              <input id="dpDaysDelayed" type="number" min="0" step="1" value="45" />
+            </label>
+          </div>
+          <div id="denialSummary" class="denial-summary" aria-live="polite"></div>
+        </div>
+
+        <div class="workflow-key" aria-label="Revenue cycle workflow key">
+          <div><i class="front"></i><strong>Front End</strong><span>Registration, eligibility, authorization</span></div>
+          <div><i class="middle"></i><strong>Middle</strong><span>Documentation, coding, charge capture</span></div>
+          <div><i class="back"></i><strong>Back End</strong><span>Submission, payment, appeals, follow-up</span></div>
+          <div><i class="cross"></i><strong>Cross-Workflow</strong><span>Interfaces, payer rules, vendor performance</span></div>
+        </div>
+      </div>
+
+      <div class="denial-section-heading">
+        <div>
+          <h3>Root Causes Mapped to Workflow Stages</h3>
+          <p>Each row applies a transparent share assumption to the selected denial scenario.</p>
+        </div>
+      </div>
+      <div class="denial-table-wrap">
+        <table class="denial-table">
+          <thead>
+            <tr>
+              <th scope="col">Workflow</th>
+              <th scope="col">Root Cause</th>
+              <th scope="col">Share</th>
+              <th scope="col">Denied Claims</th>
+              <th scope="col">Revenue Delayed</th>
+              <th scope="col">Estimated Net Loss</th>
+              <th scope="col">Primary Control</th>
+            </tr>
+          </thead>
+          <tbody id="denialRootCauseRows"></tbody>
+        </table>
+      </div>
+
+      <div class="denial-section-heading investment-heading">
+        <div>
+          <h3>Where an Improvement Investment May Have the Greatest Return</h3>
+          <p>Comparison uses the same scenario and illustrative reduction assumptions for each intervention.</p>
+        </div>
+      </div>
+      <div id="investmentComparison" class="investment-grid"></div>
+      <p class="simulator-note">
+        Model outputs are adjustable learning estimates based on user-entered assumptions, not internal HSHS claim,
+        denial, cash-flow, or vendor-performance data. Actual decisions require validated organizational data and
+        contract review.
+      </p>
     </section>
 
     <section class="layout lower">
