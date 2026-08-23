@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>IHP 630 Revenue Cycle Deep Dive</title>
-  <link rel="stylesheet" href="./styles.css?v=20260816-denial-model" />
+  <link rel="stylesheet" href="./styles.css?v=20260823-module7-kpis" />
 </head>
 <body>
   <main class="shell">
@@ -304,6 +304,106 @@
       </p>
     </section>
 
+    <section id="moduleSevenKpis" class="panel kpi-command-panel">
+      <div class="panel-heading kpi-command-heading">
+        <div>
+          <p class="eyebrow">Module Seven Activity</p>
+          <h2>Revenue-Cycle KPI and Strategic Sourcing Command Center</h2>
+        </div>
+        <div class="kpi-command-status">
+          <strong id="kpiMetCount">0 of 6 KPIs met</strong>
+          <span id="kpiOverallStatus" class="status-pill">Calculating</span>
+        </div>
+      </div>
+
+      <div class="kpi-command-intro">
+        <p>
+          This educational scenario evaluates two front-end, two middle, and two back-end KPIs. Change any current
+          value or target to see how the executive interpretation and sourcing priorities respond.
+        </p>
+        <div class="visual-cue-key" aria-label="KPI status key">
+          <span><i class="met"></i>Meeting target</span>
+          <span><i class="watch"></i>Within 10% of target</span>
+          <span><i class="missed"></i>Target missed</span>
+        </div>
+      </div>
+
+      <div id="kpiStageGroups" class="kpi-stage-groups"></div>
+
+      <div class="kpi-analysis-layout">
+        <article class="kpi-executive-panel">
+          <div class="section-label-row">
+            <div>
+              <p class="eyebrow">Executive Readout</p>
+              <h3>What the Metrics Say About Cash Flow</h3>
+            </div>
+            <span id="kpiRiskSignal" class="status-pill">Reviewing performance</span>
+          </div>
+          <div id="kpiExecutiveSummary" class="kpi-executive-summary" aria-live="polite"></div>
+        </article>
+
+        <article class="sourcing-priority-panel">
+          <div class="section-label-row">
+            <div>
+              <p class="eyebrow">Jared's Strategic Sourcing Lens</p>
+              <h3>Priority Queue for Vendor and Capital Decisions</h3>
+            </div>
+          </div>
+          <div id="sourcingPriorityQueue" class="sourcing-priority-queue"></div>
+        </article>
+      </div>
+
+      <div class="sourcing-toolkit">
+        <div class="denial-section-heading">
+          <div>
+            <h3>How to Use Module Seven in Strategic Sourcing</h3>
+            <p>Questions and habits that connect a purchase decision to measurable revenue-cycle performance.</p>
+          </div>
+        </div>
+
+        <div class="sourcing-toolkit-grid">
+          <article>
+            <span class="toolkit-step">30</span>
+            <h4>First 30 Days: Learn the Baseline</h4>
+            <ul>
+              <li>Ask the KPI owner to show the numerator, denominator, exclusions, and data source.</li>
+              <li>Identify which vendor, interface, item-master field, or manual handoff affects each KPI.</li>
+              <li>Separate an operational problem from a payer-contract or technology problem.</li>
+            </ul>
+          </article>
+          <article>
+            <span class="toolkit-step">60</span>
+            <h4>By 60 Days: Build Accountability</h4>
+            <ul>
+              <li>Add uptime, interface reliability, rule-update timing, and support response to vendor scorecards.</li>
+              <li>Connect capital requests to charge capture, documentation, authorization, and reimbursement setup.</li>
+              <li>Require an owner, target, baseline, and review date for every promised improvement.</li>
+            </ul>
+          </article>
+          <article>
+            <span class="toolkit-step">90</span>
+            <h4>By 90 Days: Prove the Value</h4>
+            <ul>
+              <li>Compare KPI movement with implementation cost, labor saved, cash accelerated, and denials avoided.</li>
+              <li>Use total cost of ownership instead of purchase price alone when evaluating vendors.</li>
+              <li>Bring finance, revenue cycle, clinical operations, IT, and sourcing into the same quarterly review.</li>
+            </ul>
+          </article>
+        </div>
+
+        <div class="capital-gate">
+          <strong>Capital-purchase gate:</strong>
+          <span>Before approval, confirm reimbursement pathway, authorization need, coding and charge-master setup, required clinical documentation, item-master data, training, maintenance, downtime support, and the KPI that will prove value.</span>
+        </div>
+      </div>
+
+      <p class="simulator-note">
+        Current values and targets are adjustable educational assumptions, not HSHS performance data. HFMA MAP Keys
+        provide standardized KPI definitions; the dashboard uses illustrative targets to demonstrate Module Seven
+        analysis and should not be treated as a formal organizational benchmark report.
+      </p>
+    </section>
+
     <section class="layout lower">
       <article class="panel">
         <div class="panel-heading">
@@ -402,10 +502,19 @@
           Illinois Reimbursement Explorer. (2026). Local student-built public-data dashboard using Illinois HFS,
           CMS HCRIS, hospital price transparency, and HSHS public financial sources.
         </li>
+        <li>
+          Healthcare Financial Management Association. (2026). <a href="https://www.hfma.org/data-and-insights/map-initiative/map-keys/">MAP Keys: Industry-standard revenue-cycle KPIs</a>.
+        </li>
+        <li>
+          Healthcare Financial Management Association. (2026). <a href="https://www.hfma.org/guidance/standardizing-denial-metrics-revenue-cycle-benchmarking-process-improvement/">Standardizing denial metrics for revenue-cycle benchmarking and process improvement</a>.
+        </li>
+        <li>
+          Centers for Medicare &amp; Medicaid Services. (2024). <a href="https://www.cms.gov/medicare/coding-billing/electronic-billing/electronic-healthcare-claims">Electronic health care claims</a>.
+        </li>
       </ol>
     </section>
   </main>
 
-  <script src="./script.js?v=20260816-denial-model"></script>
+  <script src="./script.js?v=20260823-module7-kpis"></script>
 </body>
 </html>

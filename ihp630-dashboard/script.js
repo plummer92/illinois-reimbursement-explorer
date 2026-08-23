@@ -324,6 +324,99 @@ const denialInvestments = [
   }
 ];
 
+const revenueCycleKpis = [
+  {
+    id: "preRegistration",
+    stage: "Front End",
+    stageClass: "front",
+    name: "Pre-Registration Rate",
+    current: 84,
+    target: 90,
+    unit: "%",
+    direction: "higher",
+    definition: "Scheduled encounters completed in registration before the date of service.",
+    cashRisk: "Incomplete accounts delay estimates, eligibility work, authorization, and clean claim production.",
+    improvement: "Move work earlier, standardize required fields, and monitor exceptions by location and service line.",
+    sourcing: "Scheduling and registration platform workflow, identity tools, card capture, and implementation support.",
+    question: "Can the vendor show exception queues and completion by site before the patient arrives?"
+  },
+  {
+    id: "authorization",
+    stage: "Front End",
+    stageClass: "front",
+    name: "Outpatient Authorization Rate",
+    current: 96,
+    target: 95,
+    unit: "%",
+    direction: "higher",
+    definition: "Required outpatient authorizations obtained before claim release.",
+    cashRisk: "Missing approval can delay care, create avoidable denials, or leave the organization unable to collect.",
+    improvement: "Use payer-specific work queues, escalation dates, and closed-loop status from scheduling to billing.",
+    sourcing: "Authorization technology, payer connectivity, outsourced support, and service-level accountability.",
+    question: "How quickly are payer-rule changes loaded, tested, and communicated to users?"
+  },
+  {
+    id: "cleanClaim",
+    stage: "Middle",
+    stageClass: "middle",
+    name: "Clean Claim Rate",
+    current: 91,
+    target: 95,
+    unit: "%",
+    direction: "higher",
+    definition: "Claims passing processing edits without manual intervention.",
+    cashRisk: "A lower rate signals rework before submission and a slower path from service to payer acceptance.",
+    improvement: "Analyze edit categories, correct upstream data, and measure first-pass performance by payer.",
+    sourcing: "Claims scrubber logic, interface quality, coding tools, item data, and vendor rule maintenance.",
+    question: "Does the tool expose edit root causes and prove that rule updates reduce manual touches?"
+  },
+  {
+    id: "chargeLag",
+    stage: "Middle",
+    stageClass: "middle",
+    name: "Average Charge Lag",
+    current: 2.6,
+    target: 3,
+    unit: " days",
+    direction: "lower",
+    definition: "Average elapsed time between the service date and charge posting.",
+    cashRisk: "Longer lag increases unbilled revenue and postpones coding, claim creation, and payment.",
+    improvement: "Reconcile procedures, supplies, devices, and late-charge exceptions with named department owners.",
+    sourcing: "Item-master completeness, device integration, point-of-use capture, and vendor implementation design.",
+    question: "Will every purchased item and service map cleanly to documentation and charge capture on day one?"
+  },
+  {
+    id: "denialRate",
+    stage: "Back End",
+    stageClass: "back",
+    name: "Initial Denial Rate",
+    current: 8.2,
+    target: 6,
+    unit: "%",
+    direction: "lower",
+    definition: "Initial denied claim dollars or claims as a share of adjudicated volume, using one consistent method.",
+    cashRisk: "High denials delay cash, increase appeal labor, and can turn recoverable revenue into write-offs.",
+    improvement: "Standardize denial categories, identify the originating stage, and return trends to operational owners.",
+    sourcing: "Denial platform, electronic attachments, payer workflow, analytics services, and contract escalation support.",
+    question: "Can the vendor distinguish preventable denials, overturns, net loss, and source department?"
+  },
+  {
+    id: "arDays",
+    stage: "Back End",
+    stageClass: "back",
+    name: "Net Days in Accounts Receivable",
+    current: 39,
+    target: 32,
+    unit: " days",
+    direction: "lower",
+    definition: "Net patient receivables divided by average daily net patient service revenue.",
+    cashRisk: "Rising A/R days indicate cash is tied up longer and may point to payer, staffing, or follow-up bottlenecks.",
+    improvement: "Segment aging by payer and root cause, prioritize high-value accounts, and enforce follow-up ownership.",
+    sourcing: "Clearinghouse performance, payment posting, work-queue automation, collection services, and payer interfaces.",
+    question: "Which contract service level directly improves payment speed, exception visibility, or staff productivity?"
+  }
+];
+
 const perspectiveSelect = document.getElementById("perspectiveSelect");
 const procedureSelect = document.getElementById("procedureSelect");
 const payerSelect = document.getElementById("payerSelect");
@@ -364,6 +457,12 @@ const denialPreventionInputs = [
   "dpRecoveryRate",
   "dpDaysDelayed"
 ].map((id) => document.getElementById(id));
+const kpiStageGroups = document.getElementById("kpiStageGroups");
+const kpiMetCount = document.getElementById("kpiMetCount");
+const kpiOverallStatus = document.getElementById("kpiOverallStatus");
+const kpiRiskSignal = document.getElementById("kpiRiskSignal");
+const kpiExecutiveSummary = document.getElementById("kpiExecutiveSummary");
+const sourcingPriorityQueue = document.getElementById("sourcingPriorityQueue");
 
 function riskClass(value) {
   if (value >= 80) return "high";
@@ -722,6 +821,119 @@ function renderDenialPrevention() {
   `).join("");
 }
 
+function kpiStatus(kpi) {
+  const met = kpi.direction === "higher" ? kpi.current >= kpi.target : kpi.current <= kpi.target;
+  if (met) return { key: "met", label: "Meeting target", score: 0 };
+
+  const variance = kpi.direction === "higher"
+    ? (kpi.target - kpi.current) / Math.max(kpi.target, 0.01)
+    : (kpi.current - kpi.target) / Math.max(kpi.target, 0.01);
+  return variance <= 0.1
+    ? { key: "watch", label: "Near target", score: variance }
+    : { key: "missed", label: "Target missed", score: variance };
+}
+
+function formatKpiValue(value, unit) {
+  const maximumFractionDigits = Number.isInteger(value) ? 0 : 1;
+  return `${new Intl.NumberFormat("en-US", { maximumFractionDigits }).format(value)}${unit}`;
+}
+
+function renderKpiCommandCenter() {
+  const stages = ["Front End", "Middle", "Back End"];
+  const results = revenueCycleKpis.map((kpi) => ({ ...kpi, status: kpiStatus(kpi) }));
+  const metCount = results.filter((kpi) => kpi.status.key === "met").length;
+  const missedCount = results.filter((kpi) => kpi.status.key === "missed").length;
+
+  kpiMetCount.textContent = `${metCount} of ${results.length} KPIs met`;
+  kpiOverallStatus.textContent = metCount === results.length
+    ? "All targets met"
+    : missedCount >= 3 ? "Material improvement needed" : "Focused action needed";
+  kpiOverallStatus.className = `status-pill ${metCount === results.length ? "status-met" : missedCount >= 3 ? "status-missed" : "status-watch"}`;
+  kpiRiskSignal.textContent = missedCount === 0
+    ? "Cash-flow indicators stable"
+    : `${missedCount} material cash-flow warning${missedCount === 1 ? "" : "s"}`;
+  kpiRiskSignal.className = `status-pill ${missedCount === 0 ? "status-met" : "status-missed"}`;
+
+  kpiStageGroups.innerHTML = stages.map((stage) => {
+    const stageKpis = results.filter((kpi) => kpi.stage === stage);
+    const stageMisses = stageKpis.filter((kpi) => kpi.status.key !== "met").length;
+    return `
+      <section class="kpi-stage-group">
+        <div class="kpi-stage-heading">
+          <div>
+            <span class="workflow-badge ${stageKpis[0].stageClass}">${stage}</span>
+            <h3>${stage} Performance</h3>
+          </div>
+          <strong>${stageKpis.length - stageMisses}/${stageKpis.length} met</strong>
+        </div>
+        <div class="kpi-card-grid">
+          ${stageKpis.map((kpi) => `
+            <article class="kpi-performance-card ${kpi.status.key}">
+              <div class="kpi-card-title">
+                <h4>${kpi.name}</h4>
+                <span class="kpi-status-chip ${kpi.status.key}">${kpi.status.label}</span>
+              </div>
+              <div class="kpi-value-grid">
+                <label>
+                  Current
+                  <input data-kpi-id="${kpi.id}" data-kpi-field="current" type="number" min="0" step="0.1" value="${kpi.current}" />
+                </label>
+                <label>
+                  Target
+                  <input data-kpi-id="${kpi.id}" data-kpi-field="target" type="number" min="0" step="0.1" value="${kpi.target}" />
+                </label>
+              </div>
+              <div class="kpi-value-line">
+                <strong>${formatKpiValue(kpi.current, kpi.unit)}</strong>
+                <span>${kpi.direction === "higher" ? "Target at least" : "Target no more than"} ${formatKpiValue(kpi.target, kpi.unit)}</span>
+              </div>
+              <div class="kpi-progress" aria-label="${kpi.name}: ${kpi.status.label}">
+                <i style="width:${Math.min(100, kpi.direction === "higher" ? (kpi.current / Math.max(kpi.target, 0.01)) * 100 : (kpi.target / Math.max(kpi.current, 0.01)) * 100)}%"></i>
+              </div>
+              <p><strong>Definition:</strong> ${kpi.definition}</p>
+              <p><strong>Cash-flow signal:</strong> ${kpi.cashRisk}</p>
+              <p><strong>Improvement:</strong> ${kpi.improvement}</p>
+            </article>
+          `).join("")}
+        </div>
+      </section>
+    `;
+  }).join("");
+
+  kpiExecutiveSummary.innerHTML = stages.map((stage) => {
+    const stageKpis = results.filter((kpi) => kpi.stage === stage);
+    const missed = stageKpis.filter((kpi) => kpi.status.key !== "met");
+    const names = stageKpis.map((kpi) => `${kpi.name} (${formatKpiValue(kpi.current, kpi.unit)} vs. ${formatKpiValue(kpi.target, kpi.unit)})`).join(" and ");
+    const interpretation = missed.length === 0
+      ? "Both indicators meet the selected targets, suggesting this stage is supporting timely cash conversion."
+      : `${missed.map((kpi) => kpi.name).join(" and ")} ${missed.length === 1 ? "is" : "are"} below expectation, creating a visible operational and cash-flow improvement opportunity.`;
+    return `
+      <div class="executive-stage-row">
+        <span class="workflow-badge ${stageKpis[0].stageClass}">${stage}</span>
+        <p><strong>${names}.</strong> ${interpretation}</p>
+      </div>
+    `;
+  }).join("");
+
+  const priorities = [...results]
+    .filter((kpi) => kpi.status.key !== "met")
+    .sort((a, b) => (b.status.key === "missed" ? 1 : 0) - (a.status.key === "missed" ? 1 : 0) || b.status.score - a.status.score);
+
+  sourcingPriorityQueue.innerHTML = priorities.length ? priorities.map((kpi, index) => `
+    <div class="sourcing-priority-row">
+      <span class="priority-rank">${index + 1}</span>
+      <div>
+        <div class="priority-title-row">
+          <strong>${kpi.name}</strong>
+          <span class="kpi-status-chip ${kpi.status.key}">${kpi.status.label}</span>
+        </div>
+        <p><b>Sourcing lever:</b> ${kpi.sourcing}</p>
+        <small><b>Ask:</b> ${kpi.question}</small>
+      </div>
+    </div>
+  `).join("") : '<div class="all-met-message"><strong>All selected targets are met.</strong><span>Use vendor governance to sustain performance and verify that gains persist.</span></div>';
+}
+
 function renderAll() {
   renderTimeline();
   renderScenario();
@@ -730,6 +942,7 @@ function renderAll() {
   renderExplorerBridge();
   renderSimulator();
   renderDenialPrevention();
+  renderKpiCommandCenter();
   drawChart();
 }
 
@@ -743,6 +956,20 @@ simulatorInputs.forEach((input) => {
 
 denialPreventionInputs.forEach((input) => {
   input.addEventListener("input", renderDenialPrevention);
+});
+
+let kpiUpdateTimer;
+kpiStageGroups.addEventListener("input", (event) => {
+  const input = event.target.closest("input[data-kpi-id]");
+  if (!input) return;
+  clearTimeout(kpiUpdateTimer);
+  kpiUpdateTimer = setTimeout(() => {
+    const kpi = revenueCycleKpis.find((item) => item.id === input.dataset.kpiId);
+    const value = Number(input.value);
+    if (!kpi || !Number.isFinite(value)) return;
+    kpi[input.dataset.kpiField] = Math.max(0, value);
+    renderKpiCommandCenter();
+  }, 350);
 });
 
 window.addEventListener("resize", drawChart);
